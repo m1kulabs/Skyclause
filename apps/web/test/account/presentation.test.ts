@@ -6,6 +6,7 @@ import {
   formatSessionDate
 } from '../../features/account/presentation'
 import { DEFAULT_PREFERENCES } from '@skyclause/contracts'
+import '../../features/settings/catalogue'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -41,6 +42,16 @@ describe('account settings presentation', () => {
 
   test('formats session timestamps in Malaysia time', () => {
     expect(formatSessionDate('2026-11-10T13:30:00.000Z')).toBe('10 November 2026, 21:30 MYT')
+  })
+
+  test('writes session dates and unknown devices in the reader’s language', () => {
+    expect(formatSessionDate('2026-11-10T13:30:00.000Z', 'ms')).toBe('10 November 2026, 21:30 MYT')
+    expect(formatSessionDate('not a date', 'ms')).toBe('Masa tidak diketahui · MYT')
+    expect(presentSessionAgent('curl/8.0', 'ms')).toEqual({
+      device: 'Peranti tidak diketahui',
+      browser: 'Pelayar tidak diketahui'
+    })
+    expect(presentSessionAgent(null)).toEqual({ device: 'Unknown device', browser: 'Unknown browser' })
   })
 
   test('applies saved display choices to the current document', () => {

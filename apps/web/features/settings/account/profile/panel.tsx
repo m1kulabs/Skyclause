@@ -7,9 +7,11 @@ import { Skeleton } from '#ui/skeleton'
 import { authClient } from '@skyclause/auth/client'
 import { t } from '@skyclause/i18n'
 import { authRequest } from '../../../account/auth-api'
+import { useUnsavedChangesGuard } from '../../set-7'
 import {
   SettingsAside,
   SettingsField,
+  SettingsLoading,
   SettingsParts,
   SettingsReadError,
   SettingsStatus,
@@ -34,6 +36,8 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const [unchanged, setUnchanged] = useState(false)
+  useUnsavedChangesGuard(!loading && !loadFailure && name.trim() !== saved, locale)
 
   const load = useCallback(async (isCurrent: () => boolean) => {
     setLoading(true)
@@ -62,18 +66,29 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || !name.trim()) return
+    if (saving) return
+    setDone(false)
+    setUnchanged(false)
+    if (!name.trim()) {
+      setError(copy('nameRequired'))
+      return
+    }
+    if (name.trim() === saved) {
+      setError(null)
+      setUnchanged(true)
+      return
+    }
     setSaving(true)
     setError(null)
-    setDone(false)
     try {
       const result = await authClient.updateUser({ name: name.trim() })
-      if (result.error) throw new Error(result.error.message ?? copy('saveFailed'))
+      if (result.error) throw new Error('update-user-failed')
       setName(name.trim())
       setSavedName(name.trim())
       setDone(true)
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : copy('saveFailed'))
+    } catch {
+      // The server's own message is in English and says nothing the person can act on.
+      setError(copy('saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -106,7 +121,9 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
             <SettingsField label={copy('name')} hint={copy('nameHint', { limit: NAME_LIMIT })} error={error}>
               {(aria) =>
                 loading ? (
-                  <Skeleton className="h-10 w-full rounded-md" />
+                  <SettingsLoading locale={locale}>
+                    <Skeleton className="h-10 w-full rounded-md" />
+                  </SettingsLoading>
                 ) : (
                   <Input
                     {...aria}
@@ -118,6 +135,8 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                     onChange={(event) => {
                       setName(event.target.value)
                       setDone(false)
+                      setUnchanged(false)
+                      setError(null)
                     }}
                     disabled={saving}
                     required
@@ -145,14 +164,11 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
             </SettingsField>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="submit"
-              disabled={loading || saving || !name.trim() || name.trim() === saved}
-              aria-busy={saving}
-            >
+            <Button type="submit" disabled={loading || saving} aria-busy={saving}>
               {saving ? copy('saving') : copy('save')}
             </Button>
             {done ? <SettingsStatus>{copy('saved')}</SettingsStatus> : null}
+            {unchanged ? <SettingsStatus>{copy('unchanged')}</SettingsStatus> : null}
           </div>
         </SettingsParts>
       </form>

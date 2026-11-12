@@ -10,9 +10,11 @@
     "save": "Save changes",
     "saving": "Saving…",
     "saved": "Name saved.",
-    "saveFailed": "Your name could not be updated.",
+    "saveFailed": "Your name could not be updated. Try again.",
     "summaryName": "Name now",
-    "summaryEmail": "Sign-in email"
+    "summaryEmail": "Sign-in email",
+    "nameRequired": "Enter a name.",
+    "unchanged": "That is already your name."
   },
   "appearance": {
     "theme": "Theme",
@@ -74,7 +76,6 @@
     "off": "Off",
     "linked": "Linked",
     "notLinked": "Not linked",
-    "summaryMethods": "{passkeys} passkeys · magic link {magic} · Google {google}",
     "summarySessions": "{count} signed in",
     "passkeys": "Passkeys",
     "noPasskeys": "No passkeys are registered.",
@@ -124,6 +125,13 @@
     "confirmDescription": "This change takes effect immediately.",
     "addedOn": "Added {date}",
     "createdOn": "Created {date}",
-    "lastActiveOn": "Last active {date}"
+    "lastActiveOn": "Last active {date}",
+    "summaryMethods_one": "1 passkey · magic link {magic} · Google {google}",
+    "summaryMethods_other": "{passkeys} passkeys · magic link {magic} · Google {google}",
+    "passkeyNameRequired": "Enter a name for the passkey.",
+    "addingPasskey": "Adding passkey…",
+    "nameLimit": "Up to {limit} characters.",
+    "unlinkNamed": "Unlink {name}",
+    "signOutNamed": "Sign out of {name}"
   }
 }

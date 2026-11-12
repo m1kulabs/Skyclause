@@ -15,14 +15,16 @@ import {
   SettingsField,
   SettingsItem,
   SettingsList,
+  SettingsLoading,
   SettingsPart,
   SettingsParts,
   SettingsReadError,
   SettingsStatus,
   SettingsSummaryLine,
-  SettingsSwitchRow
+  SettingsSwitchRow,
+  focusPartHeading
 } from '../../parts'
-import { authRequest, isProblem, unwrapAuthResult } from '../../../account/auth-api'
+import { authError, authRequest, isProblem, unwrapAuthResult } from '../../../account/auth-api'
 import { accountApi } from '../../../account/operations'
 import { formatSessionDate, presentSessionAgent } from '../../../account/presentation'
 import '../../catalogue'
@@ -61,6 +63,10 @@ type PendingAction =
 
 type Where = 'methods' | 'devices'
 
+const NAME_LIMIT = 100
+const METHODS_HEADING = 'security-methods-heading'
+const SESSIONS_HEADING = 'security-sessions-heading'
+
 export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
   const copy = useCallback(
     (key: string, vars: Record<string, string | number> = {}) => t(`account-settings.security.${key}`, vars, locale),
@@ -80,14 +86,23 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
   const [passkeyName, setPasskeyName] = useState('')
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [nameError, setNameError] = useState<{ field: 'add' | 'rename'; message: string } | null>(null)
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [working, setWorking] = useState(false)
+  const [linking, setLinking] = useState(false)
+  const [adding, setAdding] = useState(false)
+  // A control that changes under the keyboard (the magic-link switch, a row that goes) must not leave focus nowhere.
+  const inFlight = useRef(false)
+  const renameInput = useRef<HTMLInputElement>(null)
+  const lastRenaming = useRef<string | null>(null)
+  const focusHeadingAfterClose = useRef<string | null>(null)
 
+  // Only what the panel knows how to word is shown; a server's own message is never put in front of the person.
   const messageOf = useCallback(
-    (failure: unknown): string => {
+    (failure: unknown, fallback = 'genericFailure'): string => {
       if (isProblem(failure, 'last-sign-in-method')) return copy('lastSignInMethod')
-      if (failure instanceof Error) return failure.message
-      return copy('genericFailure')
+      if (isProblem(failure, 'reauth-cancelled')) return copy('reauthCancelled')
+      return copy(fallback)
     },
     [copy]
   )
@@ -99,7 +114,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
       authRequest<AccountRow[]>('/list-accounts'),
       authRequest<PasskeyRow[]>('/passkey/list-user-passkeys')
     ])
-    if (!current) throw new Error(copy('loadFailed'))
+    if (!current) throw authError('session-expired', 401, copy('loadFailed'))
     setCurrentSessionId(current.session.id)
     setMagicLinkEnabled(current.user.magicLinkEnabled !== false)
     setSessions(sessionRows)
@@ -134,7 +149,9 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
       const waiter = reauthWaiter.current
       reauthWaiter.current = null
       setReauthOpen(false)
-      waiter?.reject(failure instanceof ReauthCancelledError ? new Error(copy('reauthCancelled')) : failure)
+      waiter?.reject(
+        failure instanceof ReauthCancelledError ? authError('reauth-cancelled', 401, copy('reauthCancelled')) : failure
+      )
     },
     [copy]
   )
@@ -152,6 +169,26 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
       active = false
     }
   }, [load])
+
+  // Opening a rename puts the cursor in its field; closing it returns to that passkey's Rename button.
+  useEffect(() => {
+    if (renaming) renameInput.current?.focus()
+    else if (lastRenaming.current) {
+      document
+        .querySelector<HTMLElement>(`[data-passkey-id="${lastRenaming.current}"] [data-rename]`)
+        ?.focus({ preventScroll: true })
+    }
+    lastRenaming.current = renaming
+  }, [renaming])
+
+  // The dialog hands focus back to the row's own button; when that row is gone, the part's heading takes it.
+  useEffect(() => {
+    if (pending !== null || !focusHeadingAfterClose.current) return
+    const id = focusHeadingAfterClose.current
+    focusHeadingAfterClose.current = null
+    const frame = requestAnimationFrame(() => focusPartHeading(id))
+    return () => cancelAnimationFrame(frame)
+  }, [pending])
 
   async function withRecentAuth<T>(action: () => Promise<T>): Promise<T> {
     try {
@@ -173,6 +210,8 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
   }
 
   async function saveMagicLink(enabled: boolean) {
+    if (inFlight.current) return
+    inFlight.current = true
     begin('methods')
     try {
       await withRecentAuth(() => accountApi('updateMySecurity', { body: { magic_link_enabled: enabled } }))
@@ -181,13 +220,20 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
     } catch (failure) {
       setError({ where: 'methods', message: messageOf(failure) })
     } finally {
+      inFlight.current = false
       setWorking(false)
     }
   }
 
   async function addPasskey() {
     const name = passkeyName.trim()
-    if (!name || working) return
+    if (working) return
+    if (!name) {
+      setNameError({ field: 'add', message: copy('passkeyNameRequired') })
+      return
+    }
+    setNameError(null)
+    setAdding(true)
     begin('methods')
     try {
       await withRecentAuth(async () => {
@@ -200,13 +246,19 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
     } catch (failure) {
       setError({ where: 'methods', message: messageOf(failure) })
     } finally {
+      setAdding(false)
       setWorking(false)
     }
   }
 
   async function renamePasskey(id: string) {
     const name = renameValue.trim()
-    if (!name || working) return
+    if (working) return
+    if (!name) {
+      setNameError({ field: 'rename', message: copy('passkeyNameRequired') })
+      return
+    }
+    setNameError(null)
     begin('methods')
     try {
       await authRequest('/passkey/update-passkey', { method: 'POST', body: { id, name } })
@@ -221,13 +273,17 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
   }
 
   async function linkGoogle() {
+    if (linking) return
+    setLinking(true)
     setError(null)
     try {
       const result = await authClient.linkSocial({ provider: 'google', callbackURL: window.location.href })
-      if (result.error) throw new Error(result.error.message ?? copy('googleLinkFailed'))
+      if (result.error) throw authError('google-link-failed', result.error.status, copy('googleLinkFailed'))
       if (result.data.url) window.location.assign(result.data.url)
     } catch (failure) {
-      setError({ where: 'methods', message: messageOf(failure) })
+      setError({ where: 'methods', message: messageOf(failure, 'googleLinkFailed') })
+    } finally {
+      setLinking(false)
     }
   }
 
@@ -235,6 +291,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
     const action = pending
     if (!action) return
     const where: Where = action.kind === 'session' || action.kind === 'others' ? 'devices' : 'methods'
+    let failed = false
     begin(where)
     try {
       if (action.kind === 'passkey') {
@@ -260,8 +317,11 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
       })
     } catch (failure) {
       // Keep guard reasons on the panel so the person can act on them after the confirmation closes.
+      failed = true
       setError({ where, message: messageOf(failure) })
     } finally {
+      // After a removal the row (and the button that opened this dialog) is gone: the part's heading takes focus.
+      if (!failed) focusHeadingAfterClose.current = where === 'devices' ? SESSIONS_HEADING : METHODS_HEADING
       setPending(null)
       setWorking(false)
     }
@@ -278,14 +338,15 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
           : pending?.kind === 'others'
             ? copy('otherSessions')
             : ''
+  // The phrase already carries the object's name in quotes, so the dialog does not add it a second time.
   const pendingAction =
     pending?.kind === 'passkey'
       ? copy('removePasskey')
       : pending?.kind === 'google'
-        ? copy('unlinkGoogle')
+        ? copy('unlinkNamed', { name: `“${pendingName}”` })
         : pending?.kind === 'session'
           ? copy('revokeSession')
-          : copy('signOutEverywhere')
+          : copy('signOutNamed', { name: `“${pendingName}”` })
   const pendingDescription =
     pending?.kind === 'others'
       ? copy('signOutOthersDescription')
@@ -310,14 +371,18 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
       </div>
     )
 
-  const listSkeleton = <Skeleton className="h-16 w-full rounded-md" />
+  const listSkeleton = (
+    <SettingsLoading locale={locale}>
+      <Skeleton className="h-16 w-full rounded-md" />
+    </SettingsLoading>
+  )
 
   return (
     <div data-account-panel="security" aria-busy={loading || working}>
       {!loading && (
         <SettingsAside>
           <SettingsSummaryLine label={copy('methods')}>
-            {copy('summaryMethods', {
+            {copy(passkeys.length === 1 ? 'summaryMethods_one' : 'summaryMethods_other', {
               passkeys: passkeys.length,
               magic: magicLinkEnabled ? copy('on') : copy('off'),
               google: google ? copy('linked') : copy('notLinked')
@@ -329,14 +394,14 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
         </SettingsAside>
       )}
       <SettingsParts>
-        <SettingsPart title={copy('methods')} description={copy('methodsDescription')}>
+        <SettingsPart title={copy('methods')} description={copy('methodsDescription')} id={METHODS_HEADING}>
           <SettingsSwitchRow
             id="magic-link-enabled"
             title={copy('magicLink')}
             description={copy('magicLinkDescription')}
             state={magicLinkEnabled ? copy('on') : copy('off')}
             checked={magicLinkEnabled}
-            disabled={loading || working}
+            disabled={loading}
             onCheckedChange={(checked) => void saveMagicLink(checked)}
           />
 
@@ -358,22 +423,36 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                             void renamePasskey(credential.id)
                           }}
                         >
-                          <SettingsField label={copy('passkeyName')} className="min-w-48 flex-1">
+                          <SettingsField
+                            label={copy('passkeyName')}
+                            hint={copy('nameLimit', { limit: NAME_LIMIT })}
+                            error={nameError?.field === 'rename' ? nameError.message : undefined}
+                            className="min-w-48 flex-1"
+                          >
                             {(aria) => (
                               <Input
                                 {...aria}
+                                ref={renameInput}
                                 name="passkey-name"
                                 type="text"
                                 autoComplete="off"
+                                maxLength={NAME_LIMIT}
                                 value={renameValue}
                                 onChange={(event) => setRenameValue(event.target.value)}
                               />
                             )}
                           </SettingsField>
-                          <Button type="submit" disabled={working || !renameValue.trim()}>
+                          <Button type="submit" disabled={working}>
                             {copy('saveName')}
                           </Button>
-                          <Button type="button" variant="ghost" onClick={() => setRenaming(null)}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                              setNameError(null)
+                              setRenaming(null)
+                            }}
+                          >
                             {copy('cancel')}
                           </Button>
                         </form>
@@ -383,7 +462,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                             <span className="type-body font-medium [overflow-wrap:anywhere]">{name}</span>
                             <span className="type-small text-muted-foreground">
                               <time dateTime={credential.createdAt}>
-                                {copy('addedOn', { date: formatSessionDate(credential.createdAt) })}
+                                {copy('addedOn', { date: formatSessionDate(credential.createdAt, locale) })}
                               </time>
                             </span>
                           </div>
@@ -391,8 +470,10 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                             <Button
                               type="button"
                               variant="outline"
+                              data-rename
                               aria-label={copy('renameNamed', { name })}
                               onClick={() => {
+                                setNameError(null)
                                 setRenameValue(name)
                                 setRenaming(credential.id)
                               }}
@@ -424,20 +505,26 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                 void addPasskey()
               }}
             >
-              <SettingsField label={copy('newPasskeyName')} hint={copy('newPasskeyHint')} className="min-w-56 flex-1">
+              <SettingsField
+                label={copy('newPasskeyName')}
+                hint={`${copy('newPasskeyHint')} ${copy('nameLimit', { limit: NAME_LIMIT })}`}
+                error={nameError?.field === 'add' ? nameError.message : undefined}
+                className="min-w-56 flex-1"
+              >
                 {(aria) => (
                   <Input
                     {...aria}
                     name="new-passkey-name"
                     type="text"
                     autoComplete="off"
+                    maxLength={NAME_LIMIT}
                     value={passkeyName}
                     onChange={(event) => setPasskeyName(event.target.value)}
                   />
                 )}
               </SettingsField>
-              <Button type="submit" className="sm:mt-7" disabled={loading || working || !passkeyName.trim()}>
-                {copy('addPasskey')}
+              <Button type="submit" className="sm:mt-7" disabled={loading || working} aria-busy={adding}>
+                {adding ? copy('addingPasskey') : copy('addPasskey')}
               </Button>
             </form>
           </div>
@@ -468,7 +555,13 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                     {copy('unlinkGoogle')}
                   </Button>
                 ) : (
-                  <Button type="button" variant="outline" onClick={() => void linkGoogle()}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={linking}
+                    aria-busy={linking}
+                    onClick={() => void linkGoogle()}
+                  >
                     {copy('linkGoogle')}
                   </Button>
                 )}
@@ -482,6 +575,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
         <SettingsPart
           title={copy('sessions')}
           description={copy('sessionsDescription')}
+          id={SESSIONS_HEADING}
           actions={
             <Button
               type="button"
@@ -498,13 +592,15 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
           ) : (
             <SettingsList>
               {sessions.map((session) => {
-                const agent = presentSessionAgent(session.userAgent)
+                const agent = presentSessionAgent(session.userAgent, locale)
                 const current = session.id === currentSessionId
                 const name = `${agent.device} · ${agent.browser}`
+                // Two sessions on one device and browser read alike: the date they began tells them apart.
+                const distinct = `${name} · ${formatSessionDate(session.createdAt, locale)}`
                 return (
                   <SettingsItem key={session.id} data-session-row data-session-id={session.id}>
                     <div className="grid min-w-0 gap-0.5">
-                      <span className="type-body font-medium [overflow-wrap:anywhere]" aria-label={name}>
+                      <span className="type-body font-medium [overflow-wrap:anywhere]">
                         {name}
                         {current ? (
                           <span className="type-small ml-2 font-normal text-muted-foreground">
@@ -514,12 +610,12 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                       </span>
                       <span className="type-small text-muted-foreground">
                         <time dateTime={session.createdAt}>
-                          {copy('createdOn', { date: formatSessionDate(session.createdAt) })}
+                          {copy('createdOn', { date: formatSessionDate(session.createdAt, locale) })}
                         </time>
                       </span>
                       <span className="type-small text-muted-foreground">
                         <time dateTime={session.updatedAt}>
-                          {copy('lastActiveOn', { date: formatSessionDate(session.updatedAt) })}
+                          {copy('lastActiveOn', { date: formatSessionDate(session.updatedAt, locale) })}
                         </time>
                       </span>
                     </div>
@@ -527,8 +623,10 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
                       type="button"
                       variant="outline"
                       disabled={working}
-                      aria-label={copy('revokeNamed', { name })}
-                      onClick={() => setPending({ kind: 'session', id: session.id, token: session.token, name })}
+                      aria-label={copy('revokeNamed', { name: distinct })}
+                      onClick={() =>
+                        setPending({ kind: 'session', id: session.id, token: session.token, name: distinct })
+                      }
                     >
                       {copy('revoke')}
                     </Button>

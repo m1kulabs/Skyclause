@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { CheckIcon } from 'lucide-react'
 import { DEFAULT_PREFERENCES } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
 import { cn } from '#lib/utils'
@@ -38,25 +39,10 @@ const motions = [
 ] as const
 const densities = ['comfortable', 'compact'] as const
 
-/** The scheme the document is drawn in now, followed live: the contrast previews are drawn in it. */
-function useDocumentScheme(): Scheme {
-  const [scheme, setScheme] = useState<Scheme>('dark')
-  useEffect(() => {
-    const root = document.documentElement
-    const read = () => setScheme(root.classList.contains('light') ? 'light' : 'dark')
-    read()
-    const observer = new MutationObserver(read)
-    observer.observe(root, { attributes: true, attributeFilter: ['class'] })
-    return () => observer.disconnect()
-  }, [])
-  return scheme
-}
-
 export default function Panel({ locale = 'en' }: { locale?: Locale }) {
   const copy = (key: string, vars: Record<string, string | number> = {}) =>
     t(`account-settings.appearance.${key}`, vars, locale)
-  const { preferences, save, saving, saved, error } = useAccountPreferences(DEFAULT_PREFERENCES)
-  const scheme = useDocumentScheme()
+  const { preferences, save, saving, saved, error } = useAccountPreferences(DEFAULT_PREFERENCES, locale)
   const theme = themes.find((item) => item.value === preferences.theme) ?? themes[0]
   const contrast = contrasts.find((item) => item.value === preferences.high_contrast) ?? contrasts[0]
   const motion = motions.find((item) => item.value === preferences.reduced_motion) ?? motions[0]
@@ -82,7 +68,6 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
                 name="theme"
                 value={item.value}
                 checked={preferences.theme === item.value}
-                disabled={saving}
                 label={copy(item.key)}
                 note={copy(`${item.key}Note`)}
                 wide={item.value === 'system'}
@@ -110,12 +95,23 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
                 name="contrast"
                 value={item.key}
                 checked={preferences.high_contrast === item.value}
-                disabled={saving}
                 label={copy(item.key)}
                 note={copy(`${item.key}Note`)}
                 onSelect={() => void save({ high_contrast: item.value })}
               >
-                <Specimen scheme={scheme} contrast={item.value} locale={locale} />
+                {item.value ? (
+                  // Drawn in the scheme the page is in, chosen by the page's own class so nothing switches after paint.
+                  <>
+                    <span className={styles.whenDark}>
+                      <Specimen scheme="dark" contrast locale={locale} />
+                    </span>
+                    <span className={styles.whenLight}>
+                      <Specimen scheme="light" contrast locale={locale} />
+                    </span>
+                  </>
+                ) : (
+                  <Specimen contrast={false} locale={locale} />
+                )}
               </Tile>
             ))}
           </fieldset>
@@ -130,12 +126,11 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
                 name="motion"
                 value={item.key}
                 checked={preferences.reduced_motion === item.value}
-                disabled={saving}
                 label={copy(item.key)}
                 note={copy(`${item.key}Note`)}
                 onSelect={() => void save({ reduced_motion: item.value })}
               >
-                <div className={cn(styles.preview, scheme)} aria-hidden="true">
+                <div className={styles.preview} aria-hidden="true">
                   <div className={styles.track} data-motion={item.value ? 'reduce' : 'full'}>
                     <span className={styles.traveller} />
                   </div>
@@ -154,12 +149,11 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
                 name="density"
                 value={density}
                 checked={preferences.density === density}
-                disabled={saving}
                 label={copy(density)}
                 note={copy(`${density}Note`)}
                 onSelect={() => void save({ density })}
               >
-                <div className={cn(styles.preview, scheme)} aria-hidden="true">
+                <div className={styles.preview} aria-hidden="true">
                   <div className={styles.rows} data-density={density}>
                     {(['previewRowWindows', 'previewRowCalls'] as const).map((row) => (
                       <div className={styles.row} key={row}>
@@ -181,7 +175,6 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
                 name="language"
                 autoComplete="off"
                 value={preferences.language}
-                disabled={saving}
                 onChange={(event) => void save({ language: event.target.value as Locale })}
               >
                 <option value="en">{copy('english')}</option>
@@ -195,7 +188,6 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
             description={copy('keyboardShortcutsDescription')}
             state={preferences.shortcuts ? copy('on') : copy('off')}
             checked={preferences.shortcuts}
-            disabled={saving}
             onCheckedChange={(checked) => void save({ shortcuts: checked })}
           />
         </SettingsPart>
@@ -212,7 +204,6 @@ function Tile({
   name,
   value,
   checked,
-  disabled,
   label,
   note,
   onSelect,
@@ -222,7 +213,6 @@ function Tile({
   name: string
   value: string
   checked: boolean
-  disabled: boolean
   label: string
   note: string
   onSelect: () => void
@@ -234,10 +224,15 @@ function Tile({
       data-wide={wide || undefined}
       className={cn(styles.tile, 'current-mark')}
       data-current={checked || undefined}
-      data-disabled={disabled || undefined}
     >
-      <input type="radio" name={name} value={value} checked={checked} disabled={disabled} onChange={onSelect} />
+      <input type="radio" name={name} value={value} checked={checked} aria-checked={checked} onChange={onSelect} />
       {children}
+      {checked ? (
+        // The chosen card carries a mark as well as the ink edge and the heavier name, so it never rests on colour.
+        <span className={styles.check} aria-hidden="true">
+          <CheckIcon />
+        </span>
+      ) : null}
       <span className={styles.name}>{label}</span>
       <span className={styles.note}>{note}</span>
     </label>
@@ -251,7 +246,8 @@ function Specimen({
   compact = false,
   locale
 }: {
-  scheme: Scheme
+  /** Omitted, the specimen takes the page's own scheme. */
+  scheme?: Scheme
   contrast?: boolean
   compact?: boolean
   locale: Locale

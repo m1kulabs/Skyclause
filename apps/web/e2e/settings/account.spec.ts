@@ -142,7 +142,7 @@ test('ACC-3 refuses unlinking Google when it is the only remaining method', asyn
   await stubPasskeyApi(page)
   await page.goto('/account/security')
   await page.getByRole('button', { name: 'Unlink Google' }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Unlink Google' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Unlink “Google”' }).click()
   await expect(page.locator('[data-account-panel="security"]').getByRole('alert')).toHaveText(
     'This is your only way to sign in. Add a passkey or link Google first.'
   )
@@ -183,7 +183,7 @@ test('ACC-7 sign out everywhere keeps this session and revokes every other sessi
   await stubPasskeyApi(page)
   await page.goto('/account/security')
   await page.getByRole('button', { name: 'Sign out everywhere' }).click()
-  await page.getByRole('alertdialog').getByRole('button', { name: 'Sign out everywhere' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Sign out of “other sessions”' }).click()
 
   await expect(page.locator('[data-session-row]')).toHaveCount(1)
   await expect(page.locator(`[data-session-id="${login.sessionId}"]`)).toContainText('This device')
