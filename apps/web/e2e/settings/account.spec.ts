@@ -217,7 +217,7 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   await page.reload()
   await expect(page.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
 
-  await page.getByRole('radio', { name: /^Reduced motion/ }).check()
+  await page.getByText('Reduced motion', { exact: true }).click()
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await expect
     .poll(() =>

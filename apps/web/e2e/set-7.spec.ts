@@ -406,7 +406,7 @@ test('last-owner — #104: the refusal reason appears next to the role control',
   const dialog = page.getByRole('alertdialog')
   await expect(dialog.getByRole('heading', { name: 'Change “Morgan Owner” to Admin?' })).toBeVisible()
   await dialog.getByRole('button', { name: /Change role to Admin/ }).click()
-  const ownerRow = page.getByRole('row', { name: /Morgan Owner/ })
+  const ownerRow = page.getByRole('listitem').filter({ hasText: 'Morgan Owner' })
   await expect(ownerRow.getByRole('alert')).toHaveText('The organisation must retain at least one Owner.')
 })
 
@@ -438,19 +438,20 @@ test('ORG-4: a new organisation shows both empty rota templates and Add an appro
   await expect(page.getByText('Rota shifts (n=0)')).toBeVisible()
 })
 
-test('ORG settings tables and timeline fit the 375px viewport', async ({ page }) => {
+test('ORG settings lists and the week fit the 375px viewport', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
   await prepareMemberSettings(page, 'members')
   await page.goto('/test-org/settings/members')
-  await expect(page.getByRole('table', { name: 'Organisation members' })).toBeVisible()
-  await expect(page.getByRole('cell', { name: /^Name Aisha Rahman/ })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Organisation members' })).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Aisha Rahman' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
 
   await prepareMemberSettings(page, 'rota')
   await page.goto('/test-org/settings/rota')
-  const timeline = page.locator('[role="region"][aria-label="Approver rota for the next 7 days"]')
-  await expect(timeline).toBeVisible()
-  await expect(timeline).toHaveCSS('overflow-x', 'auto')
+  const week = page.getByRole('region', { name: 'Approver rota for the next 7 days' })
+  await expect(week).toBeVisible()
+  // The week reflows into stacked day strips: nothing scrolls sideways, in the region or the page.
+  expect(await week.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375)
 })
 
