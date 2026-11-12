@@ -498,7 +498,8 @@
 }
 .analysis-night svg text {
   fill: var(--muted-foreground);
-  font-size: 10px;
+  /* In the drawing's own units: 11px or more at every width the lane is drawn. */
+  font-size: 11px;
 }
 .analysis-night-facts {
   display: flex;
