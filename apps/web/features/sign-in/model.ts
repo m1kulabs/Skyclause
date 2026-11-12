@@ -59,9 +59,10 @@ export type AuthState =
   | { kind: 'google-failed' }
   // The form posted without JavaScript (form-post.ts) says what happened through these.
   | { kind: 'link-sent'; until: string }
-  | { kind: 'email-invalid' }
-  | { kind: 'send-failed' }
-  | { kind: 'send-limited'; retryAt?: string }
+  // `email` is the address the form posted, put back in the field so nobody retypes it.
+  | { kind: 'email-invalid'; email?: string }
+  | { kind: 'send-failed'; email?: string }
+  | { kind: 'send-limited'; retryAt?: string; email?: string }
   | { kind: 'step-up-confirmed' }
   | { kind: 'form' }
 
@@ -84,6 +85,12 @@ function linkEnd(value: string | undefined, now: Date): string | null {
   const until = instant(value)
   if (!until || until.getTime() > now.getTime() + LINK_LIFETIME_MS + 60_000) return null
   return until.toISOString()
+}
+
+/** The address a refused no-script post carries back: only ever a field's value, at most an address's length. */
+function postedEmail(params: AuthSearchParams): { email?: string } {
+  const email = first(params.email)?.trim()
+  return email && email.length <= 254 ? { email } : {}
 }
 
 export function resolveAuthState(params: AuthSearchParams, now: Date = new Date()): AuthState {
@@ -110,12 +117,12 @@ export function resolveAuthState(params: AuthSearchParams, now: Date = new Date(
     const until = linkEnd(first(params.until), now)
     return until ? { kind: 'link-sent', until } : { kind: 'form' }
   }
-  if (state === 'email-invalid') return { kind: 'email-invalid' }
+  if (state === 'email-invalid') return { kind: 'email-invalid', ...postedEmail(params) }
   if (state === 'step-up-confirmed') return { kind: 'step-up-confirmed' }
-  if (state === 'send-failed') return { kind: 'send-failed' }
+  if (state === 'send-failed') return { kind: 'send-failed', ...postedEmail(params) }
   if (state === 'send-limited') {
     const retryAt = instant(first(params.retry))?.toISOString()
-    return { kind: 'send-limited', ...(retryAt ? { retryAt } : {}) }
+    return { kind: 'send-limited', ...(retryAt ? { retryAt } : {}), ...postedEmail(params) }
   }
   return { kind: 'form' }
 }

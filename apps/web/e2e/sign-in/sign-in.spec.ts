@@ -51,7 +51,7 @@ test('sign-in shows the email link, passkey, Google, the legal links and the roo
     'href',
     '/#picture-credits'
   )
-  await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d\sMYT/)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })
@@ -95,7 +95,7 @@ test('email sign-in preserves next, announces Sending, names the address, and al
   await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeFocused()
   await expect(page.getByRole('link', { name: 'Use a different email' })).toBeVisible()
   // The strip draws the link's window and says until when it works.
-  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
   await expect(page.locator('[data-sign-in-window]')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(requestCount).toBe(1)
@@ -238,10 +238,13 @@ test('link confirmation posts once and follows the continue redirect', async ({ 
   await page.goto('/sign-in?link=one-time-token&resend=resend-handle&next=%2Fcommons')
   await expect(page.getByRole('button', { name: 'Sign in' })).toHaveCount(1)
   await expectAuthAxe(page)
+  const entries = await page.evaluate(() => history.length)
   await page.getByRole('button', { name: 'Sign in' }).click()
 
   await expect(page).toHaveURL(/\/commons$/)
   expect(confirmCount).toBe(1)
+  // The signed-in page takes sign-in's place in history, so Back never lands on a page that sends you forward again.
+  expect(await page.evaluate(() => history.length)).toBe(entries)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })
@@ -283,7 +286,7 @@ test('an expired link with a resend handle takes one press and announces the sen
   await expect(signInRegion(page).getByRole('status')).toContainText(
     'A new sign-in link is on its way to the same address.'
   )
-  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
   expect(resendCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -429,7 +432,7 @@ test('too many links says when to ask again, from the API’s Retry-After, never
   await page.getByLabel('Email address').fill('reader@example.org')
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
   const alert = signInRegion(page).getByRole('alert')
-  await expect(alert).toContainText(/You can ask again at \d\d:\d\d MYT\./)
+  await expect(alert).toContainText(/You can ask again at \d\d:\d\d\sMYT\./)
   await expect(alert).not.toContainText(/429|RATE_LIMITED/)
   await expectAuthAxe(page)
 })
@@ -450,7 +453,7 @@ test('the link’s window runs to its real end; then the form returns with the a
   const email = page.getByLabel('Email address')
   await expect(email).toHaveValue('reader@example.org')
   await expect(email).toBeFocused()
-  await expect(signInRegion(page).getByRole('status')).toContainText(/Your sign-in link expired at \d\d:\d\d MYT/)
+  await expect(signInRegion(page).getByRole('status')).toContainText(/Your sign-in link expired at \d\d:\d\d\sMYT/)
   await expect(page.locator('[data-sign-in-strip="day"]')).toBeVisible()
   await expect(page.locator('[data-sign-in-window]')).toHaveCount(0)
   await expectAuthAxe(page)
@@ -498,15 +501,17 @@ test('without JavaScript the email form posts and the page says what happened', 
   // This server has no mail transport, so the real send fails, and the page says so in words.
   await page.getByLabel('Email address').fill('reader@example.org')
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
-  await expect(page).toHaveURL(/\/sign-in\?state=send-failed&next=%2Fnew$/)
+  await expect(page).toHaveURL(/\/sign-in\?state=send-failed&email=reader%40example\.org&next=%2Fnew$/)
   await expect(page.getByRole('alert')).toHaveText('We couldn’t send the sign-in link just now. Try again in a minute.')
+  // The typed address comes back in the field, so a second try needs no retyping.
+  await expect(page.getByLabel('Email address')).toHaveValue('reader@example.org')
 
   // A sent link's page, as the form lands on it: the address it went to, and until when it works.
   const until = new Date(Date.now() + 14 * 60_000).toISOString()
   await page.goto(`/sign-in?state=link-sent&until=${encodeURIComponent(until)}`)
   await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeVisible()
-  await expect(page.getByText(/It works until \d\d:\d\d MYT\./)).toBeVisible()
-  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await expect(page.getByText(/It works until \d\d:\d\d\sMYT\./)).toBeVisible()
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
   await page.getByRole('link', { name: 'Use a different email' }).click()
   await expect(page).toHaveURL(/\/sign-in$/)
   await expect(page.getByLabel('Email address')).toBeVisible()
