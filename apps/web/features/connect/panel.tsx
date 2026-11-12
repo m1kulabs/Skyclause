@@ -316,7 +316,7 @@ export function ConnectPanel({
           </fieldset>
         </div>
       </div>
-      <Card>
+      <Card className="overflow-visible">
         <CardContent className="grid min-w-0 gap-8">
           <Config key={`${target}-${transport}`} target={target} transport={transport} />
           <Listener />

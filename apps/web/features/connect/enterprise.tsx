@@ -41,7 +41,7 @@ export function Enterprise({ orgId }: { orgId: string | null }) {
       ? (memberships.value.find((item) => item.org_id === selected) ?? memberships.value[0])
       : undefined
   return (
-    <Card aria-labelledby="enterprise-title" role="region">
+    <Card aria-labelledby="enterprise-title" role="region" className="overflow-visible">
       <CardContent className="grid min-w-0 gap-5">
         <div className="grid gap-1">
           <h2 id="enterprise-title" className="type-section" translate="no">
@@ -233,7 +233,11 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
               </CodeBlock>
               <div className="flex flex-wrap items-center gap-3">
                 <CopyButton value={client.client_secret} label="copy_secret" />
-                <Button variant="outline" onClick={() => setClient(undefined)}>
+                <Button
+                  variant="outline"
+                  className="h-auto min-h-9 max-w-full py-2 text-left whitespace-normal"
+                  onClick={() => setClient(undefined)}
+                >
                   {t('connect.dismiss_secret')}
                 </Button>
               </div>
@@ -244,7 +248,12 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
               <span>{t('connect.client_created')}</span>
             </p>
           ) : (
-            <Button className="justify-self-start" translate="no" disabled={busy} onClick={() => void create()}>
+            <Button
+              className="h-auto min-h-9 max-w-full justify-self-start py-2 text-left whitespace-normal"
+              translate="no"
+              disabled={busy}
+              onClick={() => void create()}
+            >
               {t(busy ? 'connect.creating' : 'connect.create_client')}
             </Button>
           )}
