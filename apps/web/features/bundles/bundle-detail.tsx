@@ -333,6 +333,7 @@ export function BundleDetail({ bundleId, actionsRef, initial }: BundleDetailProp
                       <label className="bundle-choice" key={choice}>
                         <input
                           type="radio"
+                          className="native-check"
                           name={`verdict-${bundleId}-${call.id}`}
                           aria-label={t(`bundles.${choice}`, { mode: t(`bundles.modes.${mode}`) })}
                           checked={decisions[call.id]?.chosen === choice}

@@ -65,24 +65,25 @@
   line-height: 18px;
   color: var(--muted-foreground);
 }
-.field select,
+/* The selects take the foundation's native-select; the date fields match it. */
+.field select {
+  inline-size: 168px;
+  max-width: 100%;
+}
 .field input {
-  width: 168px;
+  width: 140px;
   max-width: 100%;
   height: 40px;
   min-width: 0;
-  padding: 0 10px;
-  border: 2px solid var(--control-edge);
+  padding: 0 12px;
+  border: 2px solid var(--input);
   border-radius: var(--radius-nested, 10px);
   background: var(--field);
   color: var(--foreground);
   font-size: 14px;
 }
-.field input {
-  width: 140px;
-}
-.field select#calls-mode {
-  width: 216px;
+.field select:global(#calls-mode) {
+  inline-size: 216px;
 }
 .field input::placeholder {
   color: var(--muted-foreground);
@@ -433,7 +434,8 @@
   }
   .field select,
   .field input,
-  .field select#calls-mode {
+  .field select:global(#calls-mode) {
+    inline-size: 100%;
     width: 100%;
     min-height: 44px;
   }

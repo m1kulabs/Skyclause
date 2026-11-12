@@ -239,13 +239,6 @@ html:has(.bundle-detail) {
   font-size: 14px;
   font-weight: 500;
 }
-.bundle-choice input,
-.bundle-recipient input {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  accent-color: var(--foreground);
-}
 
 /* One block per call, a nested surface; the focused one scopes A, E and R and the bar's Edit and Reject. */
 .bundle-call-list {

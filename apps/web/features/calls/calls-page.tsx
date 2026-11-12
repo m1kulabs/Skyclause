@@ -174,7 +174,7 @@ export function CallsPage({
       <form className={styles.filters} action={base} method="get" aria-label={t('calls.filters', {}, locale)}>
         <label className={styles.field} htmlFor="calls-pack">
           <span>{t('calls.pack', {}, locale)}</span>
-          <select id="calls-pack" name="pack" autoComplete="off" defaultValue={pack ?? ''}>
+          <select id="calls-pack" name="pack" className="native-select" autoComplete="off" defaultValue={pack ?? ''}>
             <option value="">{t('calls.all_packs', {}, locale)}</option>
             <option value="sky">{t('calls.packs.sky', {}, locale)}</option>
             <option value="crowd">{t('calls.packs.crowd', {}, locale)}</option>
@@ -216,6 +216,7 @@ export function CallsPage({
           <select
             id="calls-mode"
             name="mode"
+            className="native-select"
             autoComplete="off"
             value={mode ?? ''}
             onChange={(event) => highlight('mode', event.target.value)}
@@ -233,6 +234,7 @@ export function CallsPage({
           <select
             id="calls-state"
             name="state"
+            className="native-select"
             autoComplete="off"
             value={callState ?? ''}
             onChange={(event) => highlight('state', event.target.value)}
