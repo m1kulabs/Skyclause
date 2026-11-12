@@ -149,7 +149,9 @@ test('agreement kill line, delay columns and table views use a single scale', as
   await page.goto(`${projectRoute}?tab=agreement`)
   const agreement = page.locator('[data-live-chart=agreement]')
   await expect(agreement).toContainText(copy('killLine'))
-  await expect(page.locator('.analysis-ranked')).toContainText('test-storm')
+  // Ranked clauses read by name, never by their key.
+  await expect(page.locator('.analysis-ranked')).toContainText('Test-storm')
+  await expect(page.locator('.analysis-ranked')).not.toContainText('test-storm')
   await expect(agreement.locator('.recharts-reference-line-line')).toHaveAttribute('stroke-dasharray', '4 4')
   await expect(agreement.locator('.recharts-yAxis')).toHaveCount(1)
   expect(await agreement.locator('.recharts-yAxis .recharts-cartesian-axis-tick').count()).toBeGreaterThanOrEqual(3)
