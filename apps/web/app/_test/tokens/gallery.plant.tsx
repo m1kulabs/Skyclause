@@ -17,6 +17,7 @@ import { Kbd } from '#ui/kbd'
 import { Label } from '#ui/label'
 import { Progress } from '#ui/progress'
 import { Skeleton } from '#ui/skeleton'
+import { Spinner } from '#ui/spinner'
 import { Switch } from '#ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableMeasure, TableRow } from '#ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#ui/tabs'
@@ -710,6 +711,7 @@ export function Gallery() {
             <Skeleton className="h-6 w-40 rounded-full" />
             <Skeleton className="h-10 w-full rounded-full" />
             <Skeleton className="h-4 w-56" />
+            <Spinner />
           </div>
           <div className="flex flex-col gap-3">
             <Progress value={67} aria-label="Setup" />
