@@ -51,7 +51,7 @@ test('sign-in shows the email link, passkey, Google, the legal links and the roo
     'href',
     '/#picture-credits'
   )
-  await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d\sMYT/)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })
@@ -95,7 +95,7 @@ test('email sign-in preserves next, announces Sending, names the address, and al
   await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeFocused()
   await expect(page.getByRole('link', { name: 'Use a different email' })).toBeVisible()
   // The strip draws the link's window and says until when it works.
-  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
   await expect(page.locator('[data-sign-in-window]')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(requestCount).toBe(1)
@@ -286,7 +286,7 @@ test('an expired link with a resend handle takes one press and announces the sen
   await expect(signInRegion(page).getByRole('status')).toContainText(
     'A new sign-in link is on its way to the same address.'
   )
-  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
   expect(resendCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -432,7 +432,7 @@ test('too many links says when to ask again, from the API’s Retry-After, never
   await page.getByLabel('Email address').fill('reader@example.org')
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
   const alert = signInRegion(page).getByRole('alert')
-  await expect(alert).toContainText(/You can ask again at \d\d:\d\d MYT\./)
+  await expect(alert).toContainText(/You can ask again at \d\d:\d\d\sMYT\./)
   await expect(alert).not.toContainText(/429|RATE_LIMITED/)
   await expectAuthAxe(page)
 })
@@ -453,7 +453,7 @@ test('the link’s window runs to its real end; then the form returns with the a
   const email = page.getByLabel('Email address')
   await expect(email).toHaveValue('reader@example.org')
   await expect(email).toBeFocused()
-  await expect(signInRegion(page).getByRole('status')).toContainText(/Your sign-in link expired at \d\d:\d\d MYT/)
+  await expect(signInRegion(page).getByRole('status')).toContainText(/Your sign-in link expired at \d\d:\d\d\sMYT/)
   await expect(page.locator('[data-sign-in-strip="day"]')).toBeVisible()
   await expect(page.locator('[data-sign-in-window]')).toHaveCount(0)
   await expectAuthAxe(page)
@@ -510,8 +510,8 @@ test('without JavaScript the email form posts and the page says what happened', 
   const until = new Date(Date.now() + 14 * 60_000).toISOString()
   await page.goto(`/sign-in?state=link-sent&until=${encodeURIComponent(until)}`)
   await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeVisible()
-  await expect(page.getByText(/It works until \d\d:\d\d MYT\./)).toBeVisible()
-  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d MYT/)
+  await expect(page.getByText(/It works until \d\d:\d\d\sMYT\./)).toBeVisible()
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
   await page.getByRole('link', { name: 'Use a different email' }).click()
   await expect(page).toHaveURL(/\/sign-in$/)
   await expect(page.getByLabel('Email address')).toBeVisible()

@@ -66,7 +66,7 @@ test('a refused send says when to ask again from the API’s Retry-After, never 
   renderPanel()
   submit('reader@example.test')
   const alert = await screen.findByRole('alert')
-  expect(alert.textContent).toMatch(/You can ask again at \d\d:\d\d MYT\./)
+  expect(alert.textContent).toMatch(/You can ask again at \d\d:\d\d\u00a0MYT\./)
   expect(alert.textContent).not.toMatch(/429|RATE_LIMITED/)
   expect(alert.querySelector('time')).not.toBeNull()
 })

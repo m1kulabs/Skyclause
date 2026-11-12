@@ -97,13 +97,13 @@ test('without script, the posted form lands on a page that says what happened', 
   const sent = render('sign-in', { kind: 'link-sent', until: '2026-11-13T02:25:00.000Z' })
   expect(sent).toContain('Check your email')
   expect(sent).toContain('We sent a sign-in link to the address you entered.')
-  expect(sent).toMatch(/It works until <time datetime="2026-11-13T02:25:00.000Z">10:25<\/time> MYT\./i)
-  expect(sent).toMatch(/Your link works until <time[^>]*>10:25<\/time> MYT/)
+  expect(sent).toMatch(/It works until <time datetime="2026-11-13T02:25:00.000Z">10:25<\/time>\u00a0MYT\./i)
+  expect(sent).toMatch(/Your link works until <time[^>]*>10:25<\/time>\u00a0MYT/)
   expect(sent).toContain('15\u00a0min left')
   expect(sent).not.toContain('type="email"')
 
   const lapsed = render('sign-in', { kind: 'link-sent', until: '2026-11-13T02:05:00.000Z' })
-  expect(lapsed).toMatch(/Your sign-in link expired at <time[^>]*>10:05<\/time> MYT\. Send a new one\./)
+  expect(lapsed).toMatch(/Your sign-in link expired at <time[^>]*>10:05<\/time>\u00a0MYT\. Send a new one\./)
   expect(lapsed).toContain('type="email"')
 
   const invalid = render('sign-in', { kind: 'email-invalid' })
@@ -113,7 +113,7 @@ test('without script, the posted form lands on a page that says what happened', 
 
   expect(render('sign-in', { kind: 'send-failed' })).toContain('We couldn’t send the sign-in link just now.')
   expect(render('sign-in', { kind: 'send-limited', retryAt: '2026-11-13T02:50:00.000Z' })).toMatch(
-    /You can ask again at <time[^>]*>10:50<\/time> MYT\./
+    /You can ask again at <time[^>]*>10:50<\/time>\u00a0MYT\./
   )
 })
 
@@ -137,7 +137,7 @@ test('the room shows one credited photograph of Bukit Jalil and today’s strip 
   expect(html).toContain('href="/#picture-credits"')
   expect(html).toContain('Photo by *angys*, CC BY-SA 4.0')
   expect(html).toContain('Bukit Jalil, Friday 13 November 2026')
-  expect(html).toMatch(/Now <time datetime="2026-11-13T02:10:00.000Z">10:10<\/time> MYT/i)
+  expect(html).toMatch(/Now <time datetime="2026-11-13T02:10:00.000Z">10:10<\/time>\u00a0MYT/i)
 })
 
 test('the page says what it is in one h1', () => {
