@@ -30,7 +30,6 @@
     "create": "Cipta projek",
     "askAdmin": "Minta Admin mencipta projek",
     "needsReview": "{count} perlu semakan",
-    "meta": "{review} · {signal}",
     "signal": "Kesihatan isyarat: {state} · {reporting}{oldest}",
     "inputsReporting": "{count} input melaporkan",
     "oldestAge": "· tertua {age}",
@@ -38,7 +37,8 @@
     "archived": "Diarkib",
     "showArchived": "Tunjuk yang diarkib",
     "hideArchived": "Sembunyi yang diarkib",
-    "loadError": "Tidak dapat memuatkan projek.",
-    "retry": "Cuba lagi"
+    "retry": "Cuba lagi",
+    "loading": "Memuatkan projek…",
+    "source": "senarai projek"
   }
 }

@@ -30,7 +30,6 @@
     "create": "Create a project",
     "askAdmin": "Ask an Admin to create a project",
     "needsReview": "{count} need review",
-    "meta": "{review} · {signal}",
     "signal": "Signal health: {state} · {reporting}{oldest}",
     "inputsReporting": "{count} inputs reporting",
     "oldestAge": "· oldest {age}",
@@ -38,7 +37,8 @@
     "archived": "Archived",
     "showArchived": "Show archived",
     "hideArchived": "Hide archived",
-    "loadError": "Could not load projects.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "loading": "Loading projects…",
+    "source": "the projects list"
   }
 }
