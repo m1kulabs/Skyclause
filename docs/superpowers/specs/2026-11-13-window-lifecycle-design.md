@@ -61,6 +61,26 @@ Local occurrence overrides and cancellations survive source refreshes. A later g
 
 Limits proposed for parent approval: 5 MiB UTF-8 input, 10,000 VEVENTs, 100,000 iterator steps including skipped historical iterations, 10,000 output occurrences and 20,000 changed rows per reconciliation. Exceeding a limit rejects the entire import/refresh without partial destructive application. All-day and other individual WIN-8 failures appear as `{uid, recurrence_id, pointer, detail}` in `skipped`; no handwritten production calendars.
 
+The bounded initial parser reports/protects the whole UID for RANGE exceptions, including THISANDFUTURE, although the library supports its core shift. Correct range horizon/cancellation handling is outside this initial supported subset. Unsupported EXRULE rejects the document. No silently unchanged partial series is emitted.
+
+Admitted event RRULE selectors are unfiltered SECONDLY/MINUTELY/HOURLY/DAILY/MONTHLY/YEARLY, or WEEKLY with only ordinary non-ordinal BYDAY and WKST. COUNT/UNTIL and a positive integer INTERVAL remain supported. Other event selector combinations protect the UID before constructing an iterator; this deliberately rejects some valid calendars whose internal contracting/constructor scans cannot be bounded. Source observance DTSTART must be a floating date-time; source rules use YEARLY at that clock, with BYMONTH, ordinary/first-through-fourth/last BYDAY, or nonzero BYMONTHDAY within -28..28; BYDAY and BYMONTHDAY cannot intersect. If a source rule selects months without an explicit day selector, the DTSTART day must exist in every selected month in every year. Stored duplicate selectors reject; the text parser's own selector deduplication remains effective. These admitted forms guarantee nonempty source constructor candidates without a second recurrence engine.
+
+| Frequency | Maximum INTERVAL |
+| --------- | ---------------: |
+| SECONDLY  |       31,622,400 |
+| MINUTELY  |          527,040 |
+| HOURLY    |            8,784 |
+| DAILY     |              366 |
+| WEEKLY    |               52 |
+| MONTHLY   |               12 |
+| YEARLY    |                1 |
+
+These bounds cap each civil normalization advance at a leap-year-sized increment. DURATION must be finite, nonnegative and at most 43,200 nominal seconds before hydration; positive civil days/weeks are outside this supported WIN-8 subset. Explicit DTEND preserves its supplied endpoints and establishes the exact elapsed duration reused by a recurring master. Supported DURATION hours/minutes/seconds likewise add elapsed time, so a source DST crossing cannot stretch a window. [RFC 5545 §3.3.6](https://www.rfc-editor.org/rfc/rfc5545#section-3.3.6) distinguishes those accurate units from nominal days/weeks; [§3.8.5.3](https://www.rfc-editor.org/rfc/rfc5545#section-3.8.5.3) preserves DTEND-derived exact duration across recurrences. A two-day raw civil endpoint guard bounds the library's intermediate arithmetic before elapsed WIN-8 checks. Calendars relying on otherwise valid longer nominal durations, larger intervals or unproved selector intersections are explicitly refused/protected, never truncated.
+
+Source offsets must be exactly representable by pinned 2.2.1: whole minutes between -12:00 and +14:00 inclusive; nonzero seconds or wrapped offsets reject the source definition. Source observance RDATE lists normalize into equivalent single-value properties and include DTSTART's onset, preserving transitions the pinned hydrator would otherwise lose. Source timestamps before known onset coverage protect their UID, and recurrence-frame conversions must round-trip the original instant exactly; an ambiguous/unrepresentable exception identity rejects the document. This avoids the library's zero-offset fallback and lossy fold conversions.
+
+The shared 100,000 work ceiling includes raw RDATE preprocessing, logical event candidates (including historical/excluded positions), and source-transition preflight candidates. Event RDATE values are canonicalized to the master's frame, sorted and deduplicated into one property before the library's ordered insertion; semantically distinct supported values remain intact. Source preflight uses public Recur iterators, the pinned UTC-UNTIL adjustment, and the exact library minimum/current year plus EXTRA_COVERAGE. Hydration replays only verified work, with component-local zones prefilled through that verified year; it is not claimed to expose private iteration counters. Farther source years repeat preflight before offset lookup. Whole-document budget overflow still applies no diff.
+
 ## Durable storage
 
 Extend the existing three owned tables; no generic workflow engine or separate manifest table:

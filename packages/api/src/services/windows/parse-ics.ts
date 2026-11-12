@@ -93,6 +93,24 @@ function normalized(value: unknown, strict: boolean, parent?: string): Jcal {
     }
     output[1].push([property[0], params, property[2], ...structuredClone(property.slice(3))])
   }
+  if (name === 'standard' || name === 'daylight') {
+    const dates = output[1].filter((property) => property[0] === 'rdate')
+    const onset = output[1].find((property) => property[0] === 'dtstart')
+    if (dates.length || output[1].some((property) => property[0] === 'rrule')) {
+      // Pinned timezone hydration reads one value per RDATE and otherwise omits DTSTART onset.
+      const onsets = new Map<string, unknown[]>()
+      for (const property of dates)
+        for (const value of property.slice(3)) {
+          const single = [...property.slice(0, 3), value]
+          onsets.set(JSON.stringify(single), single)
+        }
+      if (onset) {
+        const first = ['rdate', onset[1], onset[2], onset[3]]
+        onsets.set(JSON.stringify(first), first)
+      }
+      output[1] = [...output[1].filter((property) => property[0] !== 'rdate'), ...onsets.values()]
+    }
+  }
   for (const child of children) {
     if (
       !strict &&
@@ -177,14 +195,47 @@ function checkRule(value: unknown, zoneRule: boolean) {
     !['SECONDLY', 'MINUTELY', 'HOURLY', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(String(value.freq))
   )
     throw new Error('Invalid recurrence frequency.')
-  // Public next() can hide unbounded contracting-rule scans for filtered subdaily rules.
-  if (
-    ['SECONDLY', 'MINUTELY', 'HOURLY'].includes(String(value.freq)) &&
-    Object.keys(value).some((key) => key.startsWith('by'))
-  )
-    throw new Error('Subdaily recurrence with BY selectors is unsupported because iterator work cannot be bounded.')
-  if (zoneRule && (value.freq !== 'YEARLY' || ['byhour', 'byminute', 'bysecond'].some((key) => key in value)))
-    throw new Error('VTIMEZONE recurrence must be YEARLY at the DTSTART clock.')
+  const selectors = Object.keys(value).filter((key) => key.startsWith('by'))
+  const values = (key: string) => (Array.isArray(value[key]) ? value[key] : [value[key]])
+  if (selectors.some((key) => new Set(values(key)).size !== values(key).length))
+    throw new Error('Stored duplicate recurrence selectors are unsupported to bound constructor work.')
+  if (zoneRule) {
+    if (
+      value.freq !== 'YEARLY' ||
+      selectors.some((key) => !['bymonth', 'byday', 'bymonthday'].includes(key)) ||
+      ('byday' in value && 'bymonthday' in value) ||
+      ('byday' in value &&
+        !values('byday').every(
+          (day) => typeof day === 'string' && /^(?:-1|[1-4])?(?:MO|TU|WE|TH|FR|SA|SU)$/.test(day)
+        )) ||
+      ('bymonthday' in value &&
+        !values('bymonthday').every(
+          (day) => Number.isInteger(day) && Math.abs(Number(day)) >= 1 && Math.abs(Number(day)) <= 28
+        ))
+    )
+      throw new Error('VTIMEZONE recurrence requires a provably nonempty yearly selector at the DTSTART clock.')
+  } else if (
+    selectors.some((key) => value.freq !== 'WEEKLY' || key !== 'byday') ||
+    (value.freq === 'WEEKLY' &&
+      'byday' in value &&
+      !values('byday').every((day) => typeof day === 'string' && /^(?:MO|TU|WE|TH|FR|SA|SU)$/.test(day)))
+  ) {
+    throw new Error(
+      `${['SECONDLY', 'MINUTELY', 'HOURLY'].includes(String(value.freq)) ? 'Subdaily' : 'Filtered'} recurrence selectors cannot be bounded safely.`
+    )
+  }
+  // Bound every civil normalization advance before constructing a library iterator.
+  const maxInterval: Record<string, number> = {
+    SECONDLY: 31622400,
+    MINUTELY: 527040,
+    HOURLY: 8784,
+    DAILY: 366,
+    WEEKLY: 52,
+    MONTHLY: 12,
+    YEARLY: 1
+  }
+  if (Number(value.interval ?? 1) > maxInterval[String(value.freq)]!)
+    throw new Error('Recurrence INTERVAL may advance at most one civil year.')
   const ranges: Record<string, [number, number, boolean]> = {
     bysecond: [0, 59, false],
     byminute: [0, 59, false],
@@ -229,6 +280,26 @@ function checkRule(value: unknown, zoneRule: boolean) {
     throw new Error('Recurrence cannot combine COUNT and UNTIL.')
 }
 
+function durationSeconds(value: unknown): number {
+  if (
+    typeof value !== 'string' ||
+    !/^P(?:\d+W|(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?)$/.test(value) ||
+    value === 'P' ||
+    value === 'PT'
+  )
+    throw new Error('Invalid event duration.')
+  const units: Record<string, number> = { W: 604800, D: 86400, H: 3600, M: 60, S: 1 }
+  let seconds = 0
+  for (const part of value.matchAll(/(\d+)([WDHMS])/g)) {
+    const amount = Number(part[1])
+    if (!Number.isSafeInteger(amount) || amount > 43200)
+      throw new Error('DURATION must be finite and between zero and 12 hours.')
+    seconds += amount * units[part[2]!]!
+    if (seconds > 43200) throw new Error('DURATION must be finite and between zero and 12 hours.')
+  }
+  return seconds
+}
+
 function checkComponent(component: ICAL.Component, zones: Set<string>) {
   const repeated = new Set<string>()
   for (const property of component.getAllProperties()) {
@@ -240,19 +311,34 @@ function checkComponent(component: ICAL.Component, zones: Set<string>) {
       if (!raw.slice(3).every((value) => validTime(value, raw[2])))
         throw new Error(`Invalid ${property.name} date or time.`)
       const tzid = property.getParameter('tzid')
+      if (
+        component.name !== 'vevent' &&
+        property.name === 'dtstart' &&
+        (raw[2] !== 'date-time' || tzid || String(raw[3]).endsWith('Z'))
+      )
+        throw new Error('Source observance DTSTART must be a floating date-time clock.')
       if (tzid && (!zones.has(String(tzid)) || raw.slice(3).some((value) => String(value).endsWith('Z'))))
         throw new Error('TZID requires its own source VTIMEZONE and local date-time values.')
     } else if (property.name === 'rrule') {
       checkRule(raw[3], component.name !== 'vevent')
-    } else if (property.name === 'duration') {
       if (
-        raw[2] !== 'duration' ||
-        typeof raw[3] !== 'string' ||
-        !/^P(?:\d+W|(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?)$/.test(raw[3]) ||
-        raw[3] === 'P' ||
-        raw[3] === 'PT'
-      )
-        throw new Error('Invalid event duration.')
+        component.name !== 'vevent' &&
+        record(raw[3]) &&
+        raw[3].bymonth !== undefined &&
+        raw[3].byday === undefined &&
+        raw[3].bymonthday === undefined
+      ) {
+        const start = component.getFirstProperty('dtstart')?.toJSON()[3]
+        if (!validTime(start, 'date-time')) throw new Error('Invalid source observance DTSTART.')
+        const day = Number(String(start).slice(8, 10))
+        const months = Array.isArray(raw[3].bymonth) ? raw[3].bymonth : [raw[3].bymonth]
+        const minimumDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        if (months.some((month) => day > minimumDays[Number(month) - 1]!))
+          throw new Error('Source yearly month selection cannot guarantee its DTSTART monthday.')
+      }
+    } else if (property.name === 'duration') {
+      if (raw[2] !== 'duration') throw new Error('Invalid event duration type.')
+      durationSeconds(raw[3])
     } else if (property.name === 'tzoffsetfrom' || property.name === 'tzoffsetto') {
       if (
         raw[2] !== 'utc-offset' ||
@@ -260,6 +346,12 @@ function checkComponent(component: ICAL.Component, zones: Set<string>) {
         !/^[+-](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(raw[3])
       )
         throw new Error('Invalid VTIMEZONE offset.')
+      const parts = /^([+-])(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(String(raw[3]))!
+      const minutes = (Number(parts[2]) * 60 + Number(parts[3])) * (parts[1] === '-' ? -1 : 1)
+      if (Number(parts[4] ?? 0) !== 0 || minutes < -720 || minutes > 840)
+        throw new Error(
+          'VTIMEZONE offset must be whole minutes within -12:00 and +14:00 for exact pinned-library representation.'
+        )
     } else if (raw[2] !== 'text' || raw.length !== 4 || typeof raw[3] !== 'string')
       throw new Error(`Invalid ${property.name} value.`)
   }
@@ -267,6 +359,54 @@ function checkComponent(component: ICAL.Component, zones: Set<string>) {
   if (recurrenceId?.getParameter('range')) throw new Error('RANGE recurrence exceptions are unsupported.')
   if (component.hasProperty('dtend') && component.hasProperty('duration'))
     throw new Error('Use DTEND or DURATION, not both.')
+}
+
+function civilTimestamp(time: ICAL.Time): number {
+  return parseLocalDate(time.toString().slice(0, 10))! + ((time.hour * 60 + time.minute) * 60 + time.second) * 1000
+}
+
+function assertSourceCoverage(time: ICAL.Time) {
+  if (time.zone === ICAL.Timezone.utcTimezone || time.zone === ICAL.Timezone.localTimezone) return
+  const first = time.zone.changes[0] as
+    | {
+        year: number
+        month: number
+        day: number
+        hour: number
+        minute: number
+        second: number
+        utcOffset: number
+        prevUtcOffset: number
+      }
+    | undefined
+  if (!first) throw new Error('Source VTIMEZONE has no coverage.')
+  const date = [
+    String(first.year).padStart(4, '0'),
+    String(first.month).padStart(2, '0'),
+    String(first.day).padStart(2, '0')
+  ].join('-')
+  const midnight = parseLocalDate(date)
+  if (midnight === null) throw new Error('Source VTIMEZONE has unrepresentable coverage.')
+  // This guard matches the pinned lookup's first local boundary; it never invents an offset.
+  const boundary =
+    midnight +
+    ((first.hour * 60 + first.minute) * 60 + first.second + Math.min(first.utcOffset, first.prevUtcOffset)) * 1000
+  if (civilTimestamp(time) < boundary) throw new Error('Source VTIMEZONE has no coverage before its first onset.')
+}
+
+function sourceFrame(time: ICAL.Time, frame: ICAL.Time): ICAL.Time {
+  if (
+    time.isDate !== frame.isDate ||
+    (time.zone === ICAL.Timezone.localTimezone) !== (frame.zone === ICAL.Timezone.localTimezone)
+  )
+    throw new Error('Recurrence date must match the master source value type and floating frame.')
+  assertSourceCoverage(time)
+  const originalInstant = time.zone === ICAL.Timezone.localTimezone ? undefined : time.toUnixTime()
+  const converted = time.convertToZone(frame.zone)
+  assertSourceCoverage(converted)
+  if (originalInstant !== undefined && converted.toUnixTime() !== originalInstant)
+    throw new Error('Recurrence value cannot round-trip exactly through its master source frame.')
+  return converted
 }
 
 /** Include TZID in civil identities; UTC and project-floating timestamps retain their source spelling. */
@@ -293,6 +433,8 @@ async function instants(
   if (floatingStart !== floatingEnd) throw new Error('Start and end must use compatible timezones.')
   if (!floatingStart) {
     ensureSourceCoverage(Math.max(start.year, end.year))
+    assertSourceCoverage(start)
+    assertSourceCoverage(end)
     return { startsAt: start.toJSDate(), endsAt: end.toJSDate() }
   }
   return options.resolveLocalSpan({
@@ -395,7 +537,8 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
       for (const tzid of zones) {
         const zone = root.getTimeZoneByID(tzid)
         zone.utcOffset(ICAL.Time.fromData({ year, month: 1, day: 1, hour: 0, minute: 0, second: 0 }, zone))
-        if (!zone.changes.length) fail('Source VTIMEZONE has no covered transitions.')
+        if (!zone.changes.some((change) => change.year <= coverageYear))
+          fail('Source VTIMEZONE has no covered transitions.')
       }
       verifiedCoverageYear = coverageYear
     } catch (error) {
@@ -454,6 +597,29 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
     entries.push({ component, pointer })
     groups.set(uid, entries)
   }
+  const normalizeRdates = (component: ICAL.Component, frame: ICAL.Time) => {
+    const properties = component.getAllProperties('rdate')
+    if (!properties.length) return
+    const distinct = new Map<string, ICAL.Time>()
+    for (const property of properties)
+      for (const value of property.getValues()) {
+        consumeStep() // Raw preprocessing work is bounded even when every value is a duplicate.
+        if (!(value instanceof ICAL.Time)) throw new Error('Unsupported RDATE value.')
+        const canonical = sourceFrame(value, frame)
+        distinct.set(identity(canonical), canonical)
+      }
+    if (!component.hasProperty('rrule') && !distinct.has(identity(frame))) {
+      consumeStep()
+      distinct.set(identity(frame), frame)
+    }
+    const sorted = [...distinct.values()].sort((a, b) => a.compare(b))
+    const property = new ICAL.Property('rdate')
+    if (frame.zone !== ICAL.Timezone.utcTimezone && frame.zone !== ICAL.Timezone.localTimezone)
+      property.setParameter('tzid', frame.zone.tzid)
+    property.setValues(sorted)
+    component.removeAllProperties('rdate')
+    component.addProperty(property)
+  }
   // Validate every identity before event validation/cancellation can bypass an ambiguous source entry.
   const overrideKeys = new Map<ICAL.Component, string>()
   for (const [uid, entries] of groups) {
@@ -483,7 +649,7 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
             (time.zone === ICAL.Timezone.localTimezone) !== (frame.zone === ICAL.Timezone.localTimezone))
         )
           fail('RECURRENCE-ID must match the master source frame.', override.pointer, uid)
-        const key = identity(frame ? time.convertToZone(frame.zone) : time)
+        const key = identity(frame ? sourceFrame(time, frame) : time)
         if (identities.has(key)) fail('Duplicate recurrence identity.', override.pointer, uid, key)
         identities.add(key)
         overrideKeys.set(override.component, key)
@@ -499,6 +665,32 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
     const local: CalendarOccurrence[] = []
     let master: ICAL.Event | undefined
     const exceptions = new Map<string, { event?: ICAL.Event; pointer: string; cancelled: boolean }>()
+    const durations = new Map<ICAL.Event, number>()
+    const elapsedDuration = async (event: ICAL.Event): Promise<number> => {
+      const cached = durations.get(event)
+      if (cached !== undefined) return cached
+      let startsAt: Date
+      let endsAt: Date
+      if (event.component.hasProperty('dtend')) {
+        const start = event.startDate
+        const end = event.endDate // Explicit property: no duration addition/normalization.
+        if (Math.abs(civilTimestamp(end) - civilTimestamp(start)) > 2 * DAY)
+          throw new Error('Explicit event civil span exceeds the safely supported two-day bound.')
+        ;({ startsAt, endsAt } = await instants(start, end, options, ensureSourceCoverage))
+      } else {
+        ;({ startsAt } = await instants(event.startDate, event.startDate, options, ensureSourceCoverage))
+        const raw = event.component.getFirstProperty('duration')?.toJSON()
+        endsAt = new Date(startsAt.getTime() + durationSeconds(raw?.[3] ?? 'PT0S') * 1000)
+      }
+      const issues = validateWindowFields(
+        { starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), kind: options.kind, tz: options.projectTz },
+        startsAt
+      )
+      if (issues.length) throw new Error(issues.map((issue) => issue.detail).join('; '))
+      const duration = endsAt.getTime() - startsAt.getTime()
+      durations.set(event, duration)
+      return duration
+    }
     try {
       if (overrides.some(({ component }) => component.getFirstProperty('recurrence-id')?.getParameter('range')))
         throw new Error('RANGE recurrence exceptions are unsupported; the complete series is protected.')
@@ -508,6 +700,8 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
         if (masterEntry.component.getFirstPropertyValue('status') === 'CANCELLED') continue
         master = new ICAL.Event(masterEntry.component, { exceptions: [], strictExceptions: true })
         if (!master.startDate) throw new Error('DTSTART is required.')
+        normalizeRdates(masterEntry.component, master.startDate)
+        await elapsedDuration(master)
       }
       for (const override of overrides) {
         const key = overrideKeys.get(override.component)!
@@ -523,18 +717,12 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
           exceptions.set(key, { cancelled: true, pointer: override.pointer })
         }
       }
-      const add = async (
-        event: ICAL.Event,
-        key: string,
-        start: ICAL.Time,
-        end: ICAL.Time,
-        recurring: boolean,
-        pointer: string
-      ) => {
+      const add = async (event: ICAL.Event, key: string, start: ICAL.Time, recurring: boolean, pointer: string) => {
         const title = event.summary
         if (typeof title !== 'string' || !title.trim() || title.length > 200)
           throw new Error('SUMMARY must contain between 1 and 200 characters.')
-        const { startsAt, endsAt } = await instants(start, end, options, ensureSourceCoverage)
+        const { startsAt } = await instants(start, start, options, ensureSourceCoverage)
+        const endsAt = new Date(startsAt.getTime() + (await elapsedDuration(event)))
         const issues = validateWindowFields(
           {
             starts_at: startsAt.toISOString(),
@@ -558,9 +746,6 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
         const iterationComponent = new ICAL.Component(structuredClone(master.component.toJSON()))
         iterationComponent.parent = root
         iterationComponent.removeAllProperties('exdate')
-        const rdates = iterationComponent.getAllProperties('rdate')
-        if (rdates.length && !iterationComponent.hasProperty('rrule'))
-          iterationComponent.addPropertyWithValue('rdate', master.startDate)
         const iteratorEvent = new ICAL.Event(iterationComponent, { exceptions: [] })
         const iterator = iteratorEvent.iterator()
         const excludedDates = new Set<string>()
@@ -569,14 +754,15 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
           for (const entry of property.getValues()) {
             if (!(entry instanceof ICAL.Time)) throw new Error('Invalid EXDATE.')
             if (entry.isDate) excludedDates.add(entry.toString())
-            else excludedTimes.add(entry.toUnixTime())
+            else excludedTimes.add(sourceFrame(entry, master.startDate).toUnixTime())
           }
         }
         const seen = new Set<string>()
         while (true) {
-          const time = iterator.next()
-          if (!time) break
+          const next = iterator.next()
+          if (!next) break
           consumeStep()
+          const time = sourceFrame(next, master.startDate)
           const key = master.isRecurring() ? identity(time) : ''
           if (seen.has(key)) continue
           seen.add(key)
@@ -588,7 +774,7 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
             !excludedDates.has(time.toString().slice(0, 10)) &&
             !excludedTimes.has(time.toUnixTime())
           ) {
-            await add(master, key, details.startDate, details.endDate, master.isRecurring(), masters[0]!.pointer)
+            await add(master, key, details.startDate, master.isRecurring(), masters[0]!.pointer)
           }
           if (startsAt > options.through) break
         }
@@ -596,7 +782,7 @@ export async function expandCalendar(document: CalendarDocument, options: Calend
       for (const [key, exception] of exceptions) {
         if (!exception.event || exception.cancelled) continue
         try {
-          await add(exception.event, key, exception.event.startDate, exception.event.endDate, true, exception.pointer)
+          await add(exception.event, key, exception.event.startDate, true, exception.pointer)
         } catch (error) {
           if (error instanceof CalendarParseError) throw error
           skip(uid, key, error instanceof Error ? error.message : 'Invalid exception.', exception.pointer)

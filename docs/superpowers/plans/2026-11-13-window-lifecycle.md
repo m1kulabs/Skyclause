@@ -131,6 +131,8 @@ interface CalendarBatch {
 - [ ] Run `rtk bunx vitest run packages/api/test/windows-ics-parser.test.ts`, observe failure, then use pinned ICAL Event/iterator/exception APIs and the injected local-time resolver. Reject TZID without its source VTIMEZONE explicitly; serialize only normalized permitted semantics.
 - [ ] Run the same command and confirm PASS. Verify parser pin remains exactly 2.2.1 in manifest/lock. This task is independent of list/create and contains no runtime fixture.
 
+Task 2 review hardening verifies all seven Important findings before applying changes. Hang reproductions run only in test-owned child process groups launched through `rtk`, with an external kill deadline and unchanged Vitest defaults. Preserve ordinary weekly/COUNT/UNTIL/RDATE/EXDATE and embedded DST while enforcing the exact selector/interval/duration/offset subset documented in the design. Canonicalize, sort and deduplicate RDATE before iterator construction; count raw preprocessing work in the shared budget. Preserve exact explicit endpoints and elapsed recurring DTEND/DURATION spans across DST. Split source observance RDATE values and retain DTSTART onset; reject lossy offsets and unsupported source coverage. Record each verified RED/GREEN, corrected hypothesis, compatibility cost and final normal-hooks candidate-tree equality in the owned Task 2 report.
+
 ## Task 3: Durable identities and atomic mutations
 
 **Files:** modify `packages/db/src/schema/windows.ts`, `packages/db/src/index.ts`; create `packages/db/src/windows/{index,types,calendar-time,mutations,repository}.ts`; add generated next migration, its new snapshot and journal entry; tests `packages/db/test/windows-lifecycle.test.ts`, `windows-calendar-time.test.ts`. No prior migration edits.

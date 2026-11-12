@@ -1,3 +1,6 @@
+import ICAL from 'ical.js'
+import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import type { CalendarOptions } from '../src/services/windows/calendar-types'
 import { CalendarParseError, expandCalendar, parseCalendar } from '../src/services/windows/parse-ics'
@@ -44,6 +47,59 @@ async function rejected(text: string) {
     return error as CalendarParseError
   }
 }
+
+async function isolated(text: string) {
+  const fixture = fileURLToPath(new URL('./fixtures/windows-ics-isolated.ts', import.meta.url))
+  return new Promise<{
+    timedOut: boolean
+    output: { occurrences?: number; skipped?: number; protected?: number; error?: boolean }
+  }>((resolve, reject) => {
+    const child = spawn('rtk', ['proxy', 'bun', fixture], { detached: true, stdio: ['pipe', 'pipe', 'pipe'] })
+    let timedOut = false
+    let stdout = ''
+    let stderr = ''
+    const timer = setTimeout(() => {
+      timedOut = true
+      if (child.pid) process.kill(-child.pid, 'SIGKILL')
+    }, 1500)
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk)
+    })
+    child.on('error', (error) => {
+      clearTimeout(timer)
+      reject(error)
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (timedOut) return resolve({ timedOut, output: {} })
+      if (code !== 0) return reject(new Error(stderr))
+      resolve({ timedOut, output: JSON.parse(stdout) })
+    })
+    child.stdin.end(JSON.stringify({ text }))
+  })
+}
+
+const dstZone = [
+  'BEGIN:VTIMEZONE',
+  'TZID:Source/Local',
+  'BEGIN:DAYLIGHT',
+  'DTSTART:20250330T020000',
+  'TZOFFSETFROM:+0100',
+  'TZOFFSETTO:+0200',
+  'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU',
+  'END:DAYLIGHT',
+  'BEGIN:STANDARD',
+  'DTSTART:20251026T030000',
+  'TZOFFSETFROM:+0200',
+  'TZOFFSETTO:+0100',
+  'RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU',
+  'END:STANDARD',
+  'END:VTIMEZONE'
+].join('\r\n')
+const dstOptions = { ...options, now: new Date('2026-01-01T00:00:00Z'), through: new Date('2026-03-31T00:00:00Z') }
 
 describe('bounded ICS normalization', () => {
   test('imports a standalone UID with project window zone and stable identity', async () => {
@@ -553,4 +609,308 @@ describe('bounded ICS normalization', () => {
     const source = zone('+0200').replace('DTSTART:19700101T000000', 'DTSTART:20990101T000000\r\nRRULE:FREQ=YEARLY')
     await rejected(calendar(source, zoned()))
   })
+  test.each([
+    ['DAILY', 'RRULE:FREQ=DAILY;BYMONTH=2;BYMONTHDAY=30'],
+    ['WEEKLY', 'RRULE:FREQ=WEEKLY;INTERVAL=52;BYMONTH=2;BYDAY=MO'],
+    ['MONTHLY constructor', 'RRULE:FREQ=MONTHLY;INTERVAL=12;BYMONTH=2;BYDAY=5MO']
+  ])('I1 %s contracting scans finish with an explicit protected skip', async (_name, rule) => {
+    const result = await isolated(calendar(event('one', rule)))
+    expect(result.timedOut).toBe(false)
+    expect(result.output).toMatchObject({ occurrences: 0, skipped: 1, protected: 1 })
+  })
+
+  test.each(['P1000000000000D', `P${'9'.repeat(400)}D`])(
+    'I2 huge DURATION %s is rejected before civil normalization',
+    async (duration) => {
+      const result = await isolated(calendar(event().replace('DTEND:20261116T100000Z', `DURATION:${duration}`)))
+      expect(result.timedOut).toBe(false)
+      expect(result.output).toMatchObject({ occurrences: 0, skipped: 1, protected: 1 })
+    }
+  )
+
+  test.each(['DAILY', 'WEEKLY'])('I2 huge %s interval is rejected before iterator normalization', async (frequency) => {
+    const result = await isolated(calendar(event('one', `RRULE:FREQ=${frequency};INTERVAL=9007199254740991`)))
+    expect(result.timedOut).toBe(false)
+    expect(result.output).toMatchObject({ occurrences: 0, skipped: 1, protected: 1 })
+  })
+
+  test.each(['STATUS:CANCELLED', 'DTSTART:20261201T070000Z\r\nDTEND:20261201T080000Z\r\nSUMMARY:Moved'])(
+    'I3 UTC RDATE and zoned-master exception share one original identity: %s',
+    async (properties) => {
+      const master = zoned().replace('END:VEVENT', 'RDATE:20261130T070000Z\r\nEND:VEVENT')
+      const override = ['BEGIN:VEVENT', 'UID:one', 'RECURRENCE-ID:20261130T070000Z', properties, 'END:VEVENT'].join(
+        '\r\n'
+      )
+      const result = await parseCalendar(calendar(zone('+0200'), master, override), options)
+      expect(
+        result.occurrences.filter((entry) => entry.recurrenceId === 'Source/Local:2026-11-30T09:00:00')
+      ).toHaveLength(properties.startsWith('STATUS') ? 0 : 1)
+      expect(result.occurrences).toHaveLength(properties.startsWith('STATUS') ? 1 : 2)
+      expect(result.occurrences.every((entry) => entry.recurrenceId.startsWith('Source/Local:'))).toBe(true)
+    }
+  )
+
+  test('I3 equivalent UTC/local RDATE encodings preserve identities and incompatible floating values protect UID', async () => {
+    const master = zoned().replace('END:VEVENT', 'RDATE:20261130T070000Z\r\nEND:VEVENT')
+    const first = await parseCalendar(calendar(zone('+0200'), master), options)
+    const second = await parseCalendar(
+      calendar(zone('+0200'), master.replace('RDATE:20261130T070000Z', 'RDATE;TZID=Source/Local:20261130T090000')),
+      options
+    )
+    expect(first.occurrences.map((entry) => entry.recurrenceId)).toEqual(
+      second.occurrences.map((entry) => entry.recurrenceId)
+    )
+    const bad = await parseCalendar(
+      calendar(zone('+0200'), master.replace('RDATE:20261130T070000Z', 'RDATE:20261130T090000')),
+      options
+    )
+    expect(bad.occurrences).toEqual([])
+    expect(bad.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
+  })
+
+  test.each([
+    ['20260329T013000', '20260329T033000', '2026-03-29T00:30:00.000Z', '2026-03-29T01:30:00.000Z'],
+    ['20261025T013000', '20261025T033000', '2026-10-24T23:30:00.000Z', '2026-10-25T02:30:00.000Z']
+  ])('I4 standalone source DST crossing retains both explicit endpoints %s', async (start, end, utcStart, utcEnd) => {
+    const input = zoned().replace('20261116T090000', start).replace('20261116T100000', end)
+    const now = new Date(Date.parse(utcStart) - 86400000)
+    const result = await parseCalendar(calendar(dstZone, input), {
+      ...options,
+      now,
+      through: new Date(now.getTime() + 10 * 86400000)
+    })
+    expect(result.occurrences.map((entry) => [entry.startsAt.toISOString(), entry.endsAt.toISOString()])).toEqual([
+      [utcStart, utcEnd]
+    ])
+  })
+
+  test('I4 recurring explicit DTEND repeats exact elapsed duration through a source DST change', async () => {
+    const input = zoned()
+      .replaceAll('20261116', '20260322')
+      .replace('T090000', 'T013000')
+      .replace('T100000', 'T033000')
+      .replace('END:VEVENT', 'RRULE:FREQ=WEEKLY;COUNT=2\r\nEND:VEVENT')
+    const result = await parseCalendar(calendar(dstZone, input), {
+      ...dstOptions,
+      now: new Date('2026-03-21T00:00:00Z')
+    })
+    expect(result.occurrences.map((entry) => entry.endsAt.getTime() - entry.startsAt.getTime())).toEqual([
+      7200000, 7200000
+    ])
+    expect(result.occurrences[1]?.endsAt.toISOString()).toBe('2026-03-29T02:30:00.000Z')
+  })
+
+  test.each([
+    ['20260329', '2026-03-29T03:30:00.000Z'],
+    ['20261025', '2026-10-25T02:30:00.000Z']
+  ])('I4 accurate DURATION PT3H stays three elapsed hours across DST %s', async (date, expectedEnd) => {
+    const input = zoned()
+      .replaceAll('20261116', date)
+      .replace('T090000', 'T013000')
+      .replace(`DTEND;TZID=Source/Local:${date}T100000`, 'DURATION:PT3H')
+    const now = new Date(Date.parse(expectedEnd) - 2 * 86400000)
+    const result = await parseCalendar(calendar(dstZone, input), {
+      ...options,
+      now,
+      through: new Date(now.getTime() + 5 * 86400000)
+    })
+    expect(result.occurrences[0]!.endsAt.toISOString()).toBe(expectedEnd)
+    expect(result.occurrences[0]!.endsAt.getTime() - result.occurrences[0]!.startsAt.getTime()).toBe(10800000)
+  })
+
+  test('I5 multi-value source RDATE preserves every onset and DTSTART onset on re-expansion', async () => {
+    const source = [
+      'BEGIN:VTIMEZONE',
+      'TZID:Source/Local',
+      'BEGIN:DAYLIGHT',
+      'DTSTART:20240331T020000',
+      'TZOFFSETFROM:+0100',
+      'TZOFFSETTO:+0200',
+      'RDATE:20250330T020000,20260329T020000',
+      'END:DAYLIGHT',
+      'BEGIN:STANDARD',
+      'DTSTART:20241027T030000',
+      'TZOFFSETFROM:+0200',
+      'TZOFFSETTO:+0100',
+      'RDATE:20251026T030000,20261025T030000',
+      'END:STANDARD',
+      'END:VTIMEZONE'
+    ].join('\r\n')
+    for (const date of ['20240701', '20260701']) {
+      const now = new Date(`${date.slice(0, 4)}-06-30T00:00:00Z`)
+      const opts = { ...options, now, through: new Date(now.getTime() + 5 * 86400000) }
+      const result = await parseCalendar(calendar(source, zoned().replaceAll('20261116', date)), opts)
+      expect(result.occurrences[0]?.startsAt.toISOString()).toBe(`${date.slice(0, 4)}-07-01T07:00:00.000Z`)
+      expect((await expandCalendar(result.document, opts)).occurrences).toEqual(result.occurrences)
+    }
+  })
+
+  test.each(['+001932', '+1500', '-1300'])(
+    'I6 unrepresentable source offset %s is explicitly rejected',
+    async (offset) => {
+      await rejected(calendar(zone(offset), zoned()))
+    }
+  )
+
+  test.each([
+    ['+1400', '2026-11-15T19:00:00.000Z'],
+    ['-1200', '2026-11-16T21:00:00.000Z'],
+    ['+001900', '2026-11-16T08:41:00.000Z']
+  ])('I6 exact supported offset boundary %s round-trips', async (offset, start) => {
+    const result = await parseCalendar(calendar(zone(offset), zoned()), options)
+    expect(result.occurrences[0]?.startsAt.toISOString()).toBe(start)
+    expect((await expandCalendar(result.document, options)).occurrences).toEqual(result.occurrences)
+  })
+
+  test.each(['reverse', 'duplicates'])(
+    'I7 large %s RDATE preprocessing finishes before an enforced child deadline',
+    async (order) => {
+      const values = Array.from({ length: 100000 }, (_, index) =>
+        new Date(Date.parse('2026-11-16T09:00:00Z') + (order === 'reverse' ? 99999 - index : 0) * 1000)
+          .toISOString()
+          .replaceAll('-', '')
+          .replaceAll(':', '')
+          .replace('.000', '')
+      )
+      const result = await isolated(calendar(event('one', `RDATE:${values.join(',')}`)))
+      expect(result.timedOut).toBe(false)
+      expect(result.output.error).toBe(true)
+    }
+  )
+
+  test('I7 normalized RDATE lists are sorted/deduplicated without losing distinct dates', async () => {
+    const result = await parseCalendar(
+      calendar(event('one', 'RDATE:20261130T090000Z,20261123T090000Z,20261123T090000Z')),
+      options
+    )
+    const component = new ICAL.Component(result.document.jcal).getFirstSubcomponent('vevent')!
+    const dates = component
+      .getAllProperties('rdate')
+      .flatMap((property) => property.getValues().map((value) => String(value)))
+    expect(dates).toEqual(['2026-11-16T09:00:00Z', '2026-11-23T09:00:00Z', '2026-11-30T09:00:00Z'])
+    expect(result.occurrences).toHaveLength(3)
+  })
+
+  test('I4 source timestamps before the first known onset protect UID instead of adopting zero offset', async () => {
+    const source = dstZone
+      .replace('DTSTART:20250330T020000', 'DTSTART:20260329T020000')
+      .replace('DTSTART:20251026T030000', 'DTSTART:20261025T030000')
+    const input = zoned().replaceAll('20261116', '20260328')
+    const result = await parseCalendar(calendar(source, input), {
+      ...options,
+      now: new Date('2026-03-27T00:00:00Z'),
+      through: new Date('2026-04-01T00:00:00Z')
+    })
+    expect(result.occurrences).toEqual([])
+    expect(result.skipped[0]?.detail).toContain('coverage')
+    expect(result.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
+  })
+
+  test.each([
+    ['SECONDLY', 31622400],
+    ['MINUTELY', 527040],
+    ['HOURLY', 8784],
+    ['DAILY', 366],
+    ['WEEKLY', 52],
+    ['MONTHLY', 12],
+    ['YEARLY', 1]
+  ] as const)('I2 %s interval admits the exact one-year bound and protects above it', async (frequency, limit) => {
+    const accepted = await parseCalendar(
+      calendar(event('one', `RRULE:FREQ=${frequency};INTERVAL=${limit};COUNT=2`)),
+      options
+    )
+    expect(accepted.occurrences).toHaveLength(1)
+    expect(accepted.skipped).toEqual([])
+    const refused = await parseCalendar(
+      calendar(event('one', `RRULE:FREQ=${frequency};INTERVAL=${limit + 1};COUNT=2`)),
+      options
+    )
+    expect(refused.occurrences).toEqual([])
+    expect(refused.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
+  })
+
+  test('I2 DURATION admits exactly 12 elapsed hours and protects a longer nominal span', async () => {
+    for (const [duration, count] of [
+      ['PT12H', 1],
+      ['PT12H1S', 0],
+      ['P1D', 0]
+    ] as const) {
+      const result = await parseCalendar(
+        calendar(event().replace('DTEND:20261116T100000Z', `DURATION:${duration}`)),
+        options
+      )
+      expect(result.occurrences).toHaveLength(count)
+      if (count)
+        expect(result.occurrences[0]!.endsAt.getTime() - result.occurrences[0]!.startsAt.getTime()).toBe(43200000)
+      else expect(result.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
+    }
+  })
+
+  test('I1 annual month selection cannot invoke an impossible default-monthday constructor', async () => {
+    const source = zone('+0200').replace(
+      'DTSTART:19700101T000000',
+      'DTSTART:19700131T000000\r\nRRULE:FREQ=YEARLY;BYMONTH=2'
+    )
+    const result = await isolated(calendar(source, zoned()))
+    expect(result.timedOut).toBe(false)
+    expect(result.output.error).toBe(true)
+  })
+
+  test('I3 a UTC recurrence value that cannot round-trip through the source DST fold protects UID', async () => {
+    const input = zoned()
+      .replaceAll('20261116', '20261018')
+      .replace('END:VEVENT', 'RDATE:20261025T003000Z,20261025T013000Z\r\nEND:VEVENT')
+    const result = await parseCalendar(calendar(dstZone, input), {
+      ...options,
+      now: new Date('2026-10-17T00:00:00Z'),
+      through: new Date('2026-10-30T00:00:00Z')
+    })
+    expect(result.occurrences).toEqual([])
+    expect(result.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
+  })
+
+  test('I1 stored duplicate selectors cannot amplify constructor work; text parsing retains its own deduplication', async () => {
+    const source = zone('+0200').replace(
+      'DTSTART:19700101T000000',
+      'DTSTART:19700101T000000\r\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU,-1SU'
+    )
+    const result = await parseCalendar(calendar(source, zoned()), options)
+    expect(result.occurrences).toHaveLength(1)
+    const document = structuredClone(result.document)
+    const component = new ICAL.Component(document.jcal)
+      .getFirstSubcomponent('vtimezone')!
+      .getFirstSubcomponent('standard')!
+    const raw = component.getFirstProperty('rrule')!.toJSON()
+    ;(raw[3] as { byday: string[] }).byday = ['-1SU', '-1SU']
+    await expect(expandCalendar(document, options)).rejects.toBeInstanceOf(CalendarParseError)
+  })
+
+  test.each(['DTSTART;VALUE=DATE:19700101', 'DTSTART:19700101T000000Z', 'DTSTART;TZID=Source/Local:19700101T000000'])(
+    'I5 source onset must have a floating date-time clock: %s',
+    async (onset) => {
+      await rejected(calendar(zone('+0200').replace('DTSTART:19700101T000000', onset), zoned()))
+    }
+  )
+  test.each([
+    ['20260329', '130000', '2026-03-29T11:00:00.000Z'],
+    ['20261025', '110000', '2026-10-25T10:00:00.000Z']
+  ])(
+    'I4 source DST %s preserves the exact 12-hour WIN-8 endpoint and rejects one second beyond',
+    async (date, endClock, utcEnd) => {
+      const input = zoned()
+        .replace('20261116T090000', `${date}T000000`)
+        .replace('20261116T100000', `${date}T${endClock}`)
+      const now = new Date(Date.parse(utcEnd) - 2 * 86400000)
+      const opts = { ...options, now, through: new Date(now.getTime() + 5 * 86400000) }
+      const accepted = await parseCalendar(calendar(dstZone, input), opts)
+      expect(accepted.occurrences[0]!.endsAt.toISOString()).toBe(utcEnd)
+      expect(accepted.occurrences[0]!.endsAt.getTime() - accepted.occurrences[0]!.startsAt.getTime()).toBe(43200000)
+      const refused = await parseCalendar(
+        calendar(dstZone, input.replace(`${date}T${endClock}`, `${date}T${endClock.slice(0, 4)}01`)),
+        opts
+      )
+      expect(refused.occurrences).toEqual([])
+      expect(refused.protectedIdentities).toContainEqual({ uid: 'one', recurrenceId: null })
+    }
+  )
 })
