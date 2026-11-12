@@ -181,7 +181,7 @@ describe('securityHeaders', () => {
     expect(cross.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'")
     // A page asked of the other host is sent there (lib/hosts.ts `pageElsewhere`), under the same headers.
     const moved = run('https://skyclause.m1ku.tech/sign-in', multi)
-    expect(`${moved.status} ${moved.headers.get('location')}`).toBe('308 https://app.skyclause.m1ku.tech/sign-in')
+    expect(`${moved.status} ${moved.headers.get('location')}`).toBe('307 https://app.skyclause.m1ku.tech/sign-in')
     expect(moved.headers.get('Strict-Transport-Security')).toBe('max-age=63072000; includeSubdomains')
     expect(moved.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'")
   })

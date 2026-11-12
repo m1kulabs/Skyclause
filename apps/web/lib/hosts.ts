@@ -226,15 +226,16 @@ function strayIntoApp(pathname: string): boolean {
 
 /**
  * Where a page path asked of the wrong host belongs, under HOST_MODE=multi only: the app host's `/` goes to sign-in's
- * continue (a member's organisation, or sign-in), a marketing page on the app host goes to the marketing origin, and an
- * app or auth page on the marketing host goes to the app origin, path and query kept. The origin is always the
- * configured one, never one taken from the request. `org` names the organisation an `/:org` page needs, which
- * `proxy.ts` checks exists before sending anyone there. Null for anything else: `/v1`, `/api`, assets and unknown
- * paths stay the not-found page on the host that was asked.
+ * continue (a member's organisation, or sign-in), a marketing page on the app host goes to the marketing origin, and one
+ * of the app's fixed pages (sign-in, `/new`, `/account/…`, an invite…) on the marketing host goes to the app origin, path
+ * and query kept. An organisation's page is never sent across: telling an existing organisation from an unknown one
+ * would need a lookup, and would tell anyone which exist. The origin is always the configured one, never one taken
+ * from the request. Null for anything else: `/v1`, `/api`, assets, organisations' pages and unknown paths stay the
+ * not-found page on the host that was asked. A 307 (no browser keeps it, unlike a 308), sent uncacheable.
  */
 export function pageElsewhere(
   o: HostConfig & { host: string; pathname: string; search: string; method: string }
-): { url: URL; status: 307 | 308; org?: string } | null {
+): { url: URL; status: 307 } | null {
   if (o.mode !== 'multi' || (o.method !== 'GET' && o.method !== 'HEAD')) return null
   const host = o.host.toLowerCase()
   const asked = (Object.entries(o.hosts) as Array<[Surface, string]>).find(([, value]) => value === host)?.[0]
@@ -260,16 +261,36 @@ export function pageElsewhere(
     }
     if (!PAGES.marketing.some((pattern) => matchPage(pattern, segments))) return null
     const url = at('marketing', o.pathname, o.search)
-    return url && { url, status: 308 }
+    return url && { url, status: 307 }
   }
-  const matched = PAGES.app.filter((pattern) => matchPage(pattern, segments))
-  if (!matched.length) return null
+  // Only a page of the app's own: `/new` and `/account/…` match `/:org…` patterns too, but are no organisation's.
+  if (!PAGES.app.some((pattern) => !pattern.startsWith('/:org') && matchPage(pattern, segments))) return null
   const url = at('app', o.pathname, o.search)
-  if (!url) return null
-  // A path that also matches a page of the app's own (`/new`, `/account/…`) needs no organisation.
-  return matched.every((pattern) => pattern.startsWith('/:org'))
-    ? { url, status: 308, org: segments[0]! }
-    : { url, status: 308 }
+  return url && { url, status: 307 }
+}
+
+/** One-segment `(app)` paths that are not organisations. Add new ones here (#102 adds /new). */
+const STATIC_APP_ROOTS = new Set(['_not-found', 'account', 'connect', 'new'])
+
+/**
+ * The organisation a one-segment `(app)` page names, which `proxy.ts` looks up so an unknown one answers a real 404
+ * (#610): only for a request that carries a credential. A visit without one is sent to sign in first
+ * (`proxyResponse`), before and without any lookup, so an existing and an unknown organisation answer it alike.
+ */
+export function organisationToCheck(request: NextRequest, config: HostConfig): string | null {
+  const { pathname } = request.nextUrl
+  const host = request.headers.get('host') ?? request.nextUrl.host
+  const segments = pathname.split('/').filter(Boolean)
+  if (routeRequest({ ...config, host, pathname })?.group !== '(app)') return null
+  if (segments.length !== 1 || STATIC_APP_ROOTS.has(segments[0]!) || !carriesCredential(request)) return null
+  return segments[0]!
+}
+
+/** A redirect no browser or shared cache keeps: where it goes can change with the session or the hosts. */
+function redirectTo(url: URL): NextResponse {
+  const response = NextResponse.redirect(url, 307)
+  response.headers.set('cache-control', 'no-store')
+  return response
 }
 
 /** The request header that carries an `(app)` page's own path and query, for its sign-in's return path. */
@@ -306,7 +327,7 @@ export function proxyResponse(
         status: 200,
         headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' }
       })
-    if (elsewhere) return NextResponse.redirect(elsewhere.url, elsewhere.status)
+    if (elsewhere) return redirectTo(elsewhere.url)
     return NextResponse.rewrite(new URL('/_not-found', request.url), init)
   }
   // Keep the downstream headers `init` carries (the CSP nonce) and add what the route reads.
@@ -345,7 +366,7 @@ export function proxyResponse(
     ) {
       const signIn = new URL('/sign-in', request.url)
       if (!pathname.startsWith('//')) signIn.searchParams.set('next', own)
-      return NextResponse.redirect(signIn, 307)
+      return redirectTo(signIn)
     }
     // Always set here, so a request can't bring its own.
     requestHeaders.set(APP_PATH_HEADER, own)

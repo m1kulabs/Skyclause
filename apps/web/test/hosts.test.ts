@@ -6,6 +6,7 @@ import { LANGUAGE_COOKIE as AUTH_LANGUAGE_COOKIE } from '@skyclause/auth'
 import {
   APP_PATH_HEADER,
   hostConfig,
+  organisationToCheck,
   pageElsewhere,
   pagesOf,
   proxyResponse,
@@ -275,23 +276,25 @@ describe('a page on the wrong host', () => {
     // The app host's home is sign-in's continue: a member's organisation, or sign-in.
     [`${APP}/`, `307 ${APP}/api/auth/continue`],
     [`${APP}/?utm_source=deck`, `307 ${APP}/api/auth/continue`],
-    [`${APP}/legal/privacy`, `308 ${MARKETING}/legal/privacy`],
-    [`${APP}/legal/terms?from=sign-in#retention`, `308 ${MARKETING}/legal/terms?from=sign-in`],
-    [`${APP}/ms/legal/privacy`, `308 ${MARKETING}/ms/legal/privacy`],
-    [`${MARKETING}/sign-in`, `308 ${APP}/sign-in`],
-    [`${MARKETING}/sign-in?next=%2Facme`, `308 ${APP}/sign-in?next=%2Facme`],
-    [`${MARKETING}/sign-up`, `308 ${APP}/sign-up`],
-    [`${MARKETING}/new`, `308 ${APP}/new`],
-    [`${MARKETING}/connect?target=cursor`, `308 ${APP}/connect?target=cursor`],
-    [`${MARKETING}/account/profile`, `308 ${APP}/account/profile`],
-    [`${MARKETING}/developers/webhooks`, `308 ${APP}/developers/webhooks`],
-    [`${MARKETING}/device`, `308 ${APP}/device`],
-    [`${MARKETING}/oauth/consent`, `308 ${APP}/oauth/consent`],
-    [`${MARKETING}/invite/tok`, `308 ${APP}/invite/tok`],
-    [`${MARKETING}/subscribe/tok/unsubscribe`, `308 ${APP}/subscribe/tok/unsubscribe`],
-    [`${MARKETING}/apu`, `308 ${APP}/apu`],
-    [`${MARKETING}/apu/bukit-jalil/windows`, `308 ${APP}/apu/bukit-jalil/windows`],
-    [`${MARKETING}/apu/bukit-jalil/calls/c-1`, `308 ${APP}/apu/bukit-jalil/calls/c-1`],
+    [`${APP}/legal/privacy`, `307 ${MARKETING}/legal/privacy`],
+    [`${APP}/legal/terms?from=sign-in#retention`, `307 ${MARKETING}/legal/terms?from=sign-in`],
+    [`${APP}/ms/legal/privacy`, `307 ${MARKETING}/ms/legal/privacy`],
+    [`${MARKETING}/sign-in`, `307 ${APP}/sign-in`],
+    [`${MARKETING}/sign-in?next=%2Facme`, `307 ${APP}/sign-in?next=%2Facme`],
+    [`${MARKETING}/sign-up`, `307 ${APP}/sign-up`],
+    [`${MARKETING}/new`, `307 ${APP}/new`],
+    [`${MARKETING}/connect?target=cursor`, `307 ${APP}/connect?target=cursor`],
+    [`${MARKETING}/account/profile`, `307 ${APP}/account/profile`],
+    [`${MARKETING}/developers/webhooks`, `307 ${APP}/developers/webhooks`],
+    [`${MARKETING}/device`, `307 ${APP}/device`],
+    [`${MARKETING}/oauth/consent`, `307 ${APP}/oauth/consent`],
+    [`${MARKETING}/invite/tok`, `307 ${APP}/invite/tok`],
+    [`${MARKETING}/subscribe/tok/unsubscribe`, `307 ${APP}/subscribe/tok/unsubscribe`],
+    // An organisation's pages are never sent across: whether one exists is no question the marketing host answers.
+    [`${MARKETING}/apu`, '404'],
+    [`${MARKETING}/apu/bukit-jalil/windows`, '404'],
+    [`${MARKETING}/apu/bukit-jalil/calls/c-1`, '404'],
+    [`${MARKETING}/commons/bukit-jalil`, '404'],
     // Never the API, the bridge, assets or an unknown path: those stay the not-found page where they were asked.
     [`${MARKETING}/v1/projects`, '404'],
     [`${MARKETING}/api/me/memberships`, '404'],
@@ -314,20 +317,38 @@ describe('a page on the wrong host', () => {
     expect(answer(url)).toBe(expected)
   })
 
-  it('names the organisation an /:org page needs, so proxy.ts can check it exists first', () => {
+  it('sends only the fixed app and auth pages across from the marketing host, never an organisation’s', () => {
     const at = (pathname: string) =>
       pageElsewhere({ ...multi, host: 'skyclause.m1ku.tech', pathname, search: '', method: 'GET' })
-    expect(at('/apu/bukit-jalil')?.org).toBe('apu')
-    expect(at('/apu')?.org).toBe('apu')
-    for (const pathname of ['/new', '/account/security', '/sign-in', '/invite/tok'])
-      expect(at(pathname)?.org).toBeUndefined()
-    // Any other slug-shaped path is an organisation's only if one has that slug, which proxy.ts asks first: none can
-    // be called `account` or `guest`, so those stay the not-found page.
-    expect(at('/account/nothing-here')?.org).toBe('account')
-    expect(at('/guest')?.org).toBe('guest')
-    // The Commons is an organisation under its reserved slug; a shape no slug has is none.
-    expect(at('/commons/bukit-jalil')?.org).toBe('commons')
+    for (const pathname of [
+      '/sign-in',
+      '/sign-up',
+      '/new',
+      '/connect',
+      '/account/security',
+      '/device',
+      '/oauth/consent',
+      '/invite/tok',
+      '/subscribe/tok/data',
+      '/developers/webhooks'
+    ])
+      expect(at(pathname)?.url.href, pathname).toBe(`https://app.skyclause.m1ku.tech${pathname}`)
+    // No lookup and no redirect for an organisation's page: an existing one and an unknown one are the same not-found.
+    for (const pathname of ['/apu', '/apu/bukit-jalil', '/commons/bukit-jalil', '/account/nothing-here', '/guest'])
+      expect(at(pathname), pathname).toBeNull()
     for (const pathname of ['/Apu', '/a.b', '/_x/site', '/-x']) expect(at(pathname)).toBeNull()
+  })
+
+  it('marks every redirect uncacheable, so no browser or shared cache keeps one', () => {
+    const cacheOf = (url: string, headers: Record<string, string> = {}) => {
+      const response = proxyResponse(new NextRequest(url, { headers }), multi)
+      expect(response.headers.get('location'), url).not.toBeNull()
+      return `${response.status} ${response.headers.get('cache-control')}`
+    }
+    expect(cacheOf(`${MARKETING}/sign-in`)).toBe('307 no-store')
+    expect(cacheOf(`${APP}/legal/privacy`)).toBe('307 no-store')
+    expect(cacheOf(`${APP}/`)).toBe('307 no-store')
+    expect(cacheOf(`${APP}/apu/site/windows`)).toBe('307 no-store')
   })
 
   it('redirects only reads: a form post to the wrong host stays the not-found page', () => {
@@ -335,13 +356,13 @@ describe('a page on the wrong host', () => {
       expect(answer(`${MARKETING}/sign-in`, { method }), method).toBe('404')
       expect(answer(`${APP}/`, { method }), method).toBe('404')
     }
-    expect(answer(`${MARKETING}/sign-in`, { method: 'HEAD' })).toBe(`308 ${APP}/sign-in`)
+    expect(answer(`${MARKETING}/sign-in`, { method: 'HEAD' })).toBe(`307 ${APP}/sign-in`)
   })
 
   it('sends only to the configured origins: a forged Host or X-Forwarded-Host never steers the redirect', () => {
     const forged = { 'x-forwarded-host': 'evil.example', 'x-forwarded-proto': 'http', forwarded: 'host=evil.example' }
-    expect(answer(`${MARKETING}/sign-in`, { headers: forged })).toBe(`308 ${APP}/sign-in`)
-    expect(answer(`${APP}/legal/privacy`, { headers: forged })).toBe(`308 ${MARKETING}/legal/privacy`)
+    expect(answer(`${MARKETING}/sign-in`, { headers: forged })).toBe(`307 ${APP}/sign-in`)
+    expect(answer(`${APP}/legal/privacy`, { headers: forged })).toBe(`307 ${MARKETING}/legal/privacy`)
     // The Host header picks the host asked, never the destination; an unknown one is the not-found page.
     expect(answer('https://evil.example/sign-in')).toBe('404')
     expect(answer('https://skyclause.m1ku.tech.evil.example/sign-in')).toBe('404')
@@ -385,7 +406,7 @@ describe('a page on the wrong host', () => {
     // A browser's own navigation, and a client that names no destination (a crawler, curl), get the redirect.
     expect(
       answer(`${MARKETING}/sign-in`, { headers: { 'sec-fetch-dest': 'document', 'sec-fetch-mode': 'navigate' } })
-    ).toBe(`308 ${APP}/sign-in`)
+    ).toBe(`307 ${APP}/sign-in`)
   })
 
   it('answers a marketing or public path that only an app page would match with the not-found page (#610)', () => {
@@ -498,6 +519,35 @@ describe('what the proxy adds for the route', () => {
     expect(visit('/apu', { cookie: 'skyclause-language=ms' })).toBe(
       '307 https://app.skyclause.m1ku.tech/sign-in?next=%2Fapu'
     )
+  })
+
+  it('answers a signed-out visit to any organisation alike, with no organisation looked up', () => {
+    const signedOut = (path: string) => {
+      const request = new NextRequest(`https://app.skyclause.m1ku.tech${path}`)
+      const response = proxyResponse(request, multi)
+      return {
+        lookup: organisationToCheck(request, multi),
+        answer: `${response.status} ${response.headers.get('cache-control')}`,
+        location: response.headers.get('location')?.replace(encodeURIComponent(path), '{path}')
+      }
+    }
+    const existing = signedOut('/apu')
+    expect(existing).toEqual({
+      lookup: null,
+      answer: '307 no-store',
+      location: 'https://app.skyclause.m1ku.tech/sign-in?next={path}'
+    })
+    expect(signedOut('/no-such-organisation')).toEqual(existing)
+    // With a credential, proxy.ts looks up a one-segment organisation, so an unknown one is a real 404 (#610).
+    const credential = { cookie: '__Secure-better-auth.session_token=abc' }
+    const lookup = (path: string) =>
+      organisationToCheck(new NextRequest(`https://app.skyclause.m1ku.tech${path}`, { headers: credential }), multi)
+    expect(lookup('/apu')).toBe('apu')
+    for (const path of ['/new', '/connect', '/account', '/apu/site', '/sign-in', '/legal/privacy'])
+      expect(lookup(path), path).toBeNull()
+    expect(
+      organisationToCheck(new NextRequest('https://skyclause.m1ku.tech/apu', { headers: credential }), multi)
+    ).toBeNull()
   })
 
   it('serves the beacon on every host, so a page posts to its own origin', () => {
