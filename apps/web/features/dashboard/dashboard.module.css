@@ -1,3 +1,110 @@
+/*
+ * The dashboard fills the shell's 1200px column. Lower row: 12 columns of 78px with 24px gaps; signal health takes 7
+ * (690px) and the side column 5 (486px): 690 + 24 + 486 = 1200.
+ */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* One bundle waiting, as its own surface: its SLA countdown, what it is, and the action. */
+.review {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 24px;
+  padding: 20px;
+  border-radius: var(--radius-surface, 16px);
+  background: var(--surface);
+}
+
+.sla {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.slaTrack {
+  display: block;
+  height: 12px;
+  border: 2px solid var(--input);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.slaFill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--ink);
+}
+
+.reviewAction {
+  align-self: center;
+}
+
+.readings > summary {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--ink-muted);
+  text-underline-offset: 4px;
+}
+
+.lower {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 40px 24px;
+}
+
+.signals {
+  grid-column: span 7;
+}
+
+.side {
+  grid-column: span 5;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
+
+.upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.upcoming:first-child {
+  padding-top: 0;
+}
+
+.upcoming:last-child {
+  border-bottom: 0;
+}
+
+.grades {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+}
+
 @keyframes dashboardBundleFade {
   from {
     opacity: 0;
@@ -7,6 +114,7 @@
   }
 }
 
+/* A bundle arriving is the one thing that moves: feedback, not an entrance. */
 .bundleEnter {
   animation: dashboardBundleFade 200ms ease-out both;
 }
@@ -18,5 +126,45 @@
 @media (prefers-reduced-motion: reduce) {
   .bundleEnter {
     animation: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .signals,
+  .side {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .review {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .sla {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .slaTrack {
+    flex: 1 1 120px;
+    max-width: 200px;
+  }
+
+  .reviewAction {
+    justify-self: start;
+  }
+
+  .page {
+    gap: 32px;
+  }
+}
+
+@media (forced-colors: active) {
+  .slaFill {
+    background: CanvasText;
   }
 }

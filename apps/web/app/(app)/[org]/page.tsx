@@ -9,6 +9,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
 
   let initialData: DashboardRead | null = null
   let initialError: number | null = null
+  let initialErrorAt: string | null = null
 
   if (process.env.APP_ENV !== 'test') {
     try {
@@ -16,8 +17,11 @@ export default async function Page({ params }: { params: Promise<{ org: string }
     } catch (error) {
       if (error instanceof ApiProblem && error.status === 404) notFound()
       initialError = error instanceof ApiProblem ? error.status : null
+      initialErrorAt = new Date().toISOString()
     }
   }
 
-  return <DashboardPage org={org} initialData={initialData} initialError={initialError} />
+  return (
+    <DashboardPage org={org} initialData={initialData} initialError={initialError} initialErrorAt={initialErrorAt} />
+  )
 }
