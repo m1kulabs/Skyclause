@@ -504,6 +504,15 @@
 .readout p {
   margin: 0;
 }
+/* While the visitor's window is read, the answer on screen is the last window's: dimmed, under "Checking this window". */
+.readout[data-pending='yes'] .pack,
+.readout[data-pending='yes'] .label,
+.readout[data-pending='yes'] .errorTitle {
+  opacity: 0.55;
+}
+.retry[aria-disabled='true'] {
+  cursor: progress;
+}
 /* The label the verdict must wear (LND-3) and when it was evaluated, on one line where it fits. */
 .verdictHead {
   display: flex;

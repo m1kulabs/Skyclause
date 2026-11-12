@@ -12,6 +12,8 @@
   "strip_label": "Your window on the day",
   "window_text": "{start} to {end}",
   "retry": "Retry",
+  "retrying": "Retrying…",
+  "checking": "Checking this window…",
   "check_window": "Check this window",
   "no_approved": "No approved call yet (n=0): the latest one shows here once a person approves it.",
   "latest_call": "Latest approved call",
