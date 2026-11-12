@@ -88,7 +88,13 @@ export function SignInStrip({
               ['closed', 'sign-in.strip_closed', ended ?? now]
             ] as const
           ).map(([key, message, time]) => (
-            <span key={key} className="sign-in-strip-until" data-phase={key} data-shown={key === phase || undefined}>
+            <span
+              key={key}
+              className="sign-in-strip-until"
+              data-phase={key}
+              data-shown={key === phase || undefined}
+              aria-hidden={key === phase ? undefined : true}
+            >
               {withParts(text(message), { time: clock(time) })}
             </span>
           ))}
