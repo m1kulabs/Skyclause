@@ -190,8 +190,9 @@ test('subscriber page denies other organisations, lower roles and signed-out req
       sameSite: 'Lax'
     }
   ])
+  // A visitor with no session is sent to sign in first, and back.
   await page.goto(projectPath)
-  await expect(page.getByRole('heading', { name: /^Page not found/ })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/sign-in\\?next=${encodeURIComponent(projectPath)}$`))
 })
 
 for (const theme of ['dark', 'light', 'high-contrast'] as const) {

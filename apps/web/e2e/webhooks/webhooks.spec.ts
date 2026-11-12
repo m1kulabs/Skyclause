@@ -88,7 +88,7 @@ test('a real Owner reaching webhooks by URL is told they are not available yet, 
   expect(answers).toEqual([501])
 })
 
-test('signed-out inspector explains sign-up without making webhook requests', async ({ page }) => {
+test('a signed-out visit to the inspector goes to sign in first, without webhook requests', async ({ page }) => {
   await page.context().addCookies([
     {
       name: 'skyclause_test_principal',
@@ -96,9 +96,14 @@ test('signed-out inspector explains sign-up without making webhook requests', as
       url: process.env.E2E_BASE_URL ?? 'http://localhost:3100'
     }
   ])
+  const requests: string[] = []
+  page.on('request', (request) => {
+    if (request.url().includes('/webhooks') && !request.isNavigationRequest()) requests.push(request.url())
+  })
   await page.goto(inspector)
-  await expect(page.getByText(t('webhooks.guest'), { exact: true })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/sign-in\\?next=${encodeURIComponent(inspector)}$`))
   await expect(page.locator('[data-webhooks]')).toHaveCount(0)
+  expect(requests).toEqual([])
 })
 
 async function fillRegistration(page: import('@playwright/test').Page) {
