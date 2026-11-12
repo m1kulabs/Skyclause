@@ -184,6 +184,14 @@ export function groupedVerdicts(verdicts: readonly Verdicts[]): GroupedVerdict[]
   })
 }
 
+/** The Sky pack's state for the band's capsule: its mode, No call when a clause is blocked, null with no Sky verdict. */
+export function skyStateOf(grouped: readonly GroupedVerdict[]): Mode | 'no_call' | null {
+  const sky = grouped.find((group) => group.pack === 'sky')
+  if (!sky) return null
+  if (sky.mode) return sky.mode
+  return sky.blocked.length ? 'no_call' : null
+}
+
 export function blockedLineOf(input: { clause: string; blocked: BlockedInput }): string {
   return t(
     'landing-hero.no_call_for',
