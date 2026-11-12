@@ -1,3 +1,5 @@
+import { serverApiOrigin } from './api-origin'
+
 export interface ApiProblemBody {
   type?: string
   title?: string
@@ -111,9 +113,7 @@ function defaultBaseUrl(path: string): string | undefined {
     if (process.env.HOST_MODE === 'multi') return process.env.APP_ORIGIN
   }
   if (typeof window !== 'undefined') return process.env.NEXT_PUBLIC_API_ORIGIN
-  // No default: a deploy or laptop without the origin must not send its users' session to another environment's host.
-  if (!process.env.API_ORIGIN) throw new Error('API_ORIGIN is not set; server-side API reads have no default origin')
-  return process.env.API_ORIGIN
+  return serverApiOrigin()
 }
 
 /** Bind an operation registry once; the returned apiFetch is typed by its operation IDs. */
