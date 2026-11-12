@@ -1,8 +1,11 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { SignalsPage } from '../../../../../features/signals/signals-page'
+import { t } from '../../../../../features/signals/catalogue'
 import { getOrgPrincipal } from '../../../../../lib/principal'
 import { prefersMalay } from '../../../../../lib/preferred-language'
+
+export const metadata = { title: t('signals.title') }
 
 export default async function Page({ params }: { params: Promise<{ org: string; project: string }> }) {
   const { org, project } = await params

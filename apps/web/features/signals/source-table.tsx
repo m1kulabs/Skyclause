@@ -64,7 +64,7 @@ export function SourceTable({
   return (
     <table className="w-full text-left type-body max-md:block">
       <caption className="sr-only">{t('signals.sources_caption', {}, locale)}</caption>
-      <thead className="max-md:sr-only">
+      <thead className="sr-only md:not-sr-only">
         <tr className="type-small text-muted-foreground">
           <th scope="col" className="px-3 pb-2 font-normal">
             {t('signals.col_source', {}, locale)}
