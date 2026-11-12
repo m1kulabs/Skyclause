@@ -408,6 +408,15 @@
   background: var(--ink);
   color: var(--ground);
 }
+/* Forced colours paint a Canvas backplate behind the label, so the chosen date draws the system's selected pair. */
+@media (forced-colors: active) {
+  .date:has(input:checked) {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
 .date:has(input:focus-visible) {
   outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;

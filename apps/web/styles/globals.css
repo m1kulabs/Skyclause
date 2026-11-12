@@ -1295,7 +1295,7 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     --mode-hybrid-recommended-ink: CanvasText;
     --mode-surge-night-ink: CanvasText;
     --mode-outdoor-limited-edge: CanvasText;
-    --control-edge: CanvasText;
+    --control-edge: ButtonText;
     --background: Canvas;
     --card: Canvas;
     --popover: Canvas;
@@ -1311,7 +1311,7 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     --control: ButtonFace;
     --border: CanvasText;
     --rule: CanvasText;
-    --input: Field;
+    --input: ButtonText;
     --field: Field;
     --ring: Highlight;
     --focus: Highlight;
@@ -1330,6 +1330,44 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     > tr[data-state='selected']::before {
     forced-color-adjust: none;
     background: CanvasText;
+  }
+  /*
+   * Forced colours paint a Canvas backplate behind text, and a label in ButtonFace or HighlightText (Canvas's own
+   * colour in most palettes) vanished into it. Filled controls and selected states opt out of the backplate and paint
+   * their own system pair; what a selected row holds reads in it too. A badge or status capsule keeps its own rule.
+   */
+  :is(.bg-primary, .landing-button, .cta-submit, .skip-link, .shell-review-count) {
+    forced-color-adjust: none;
+    border-color: ButtonText;
+    background: ButtonText;
+    color: ButtonFace;
+  }
+  :is(.bg-primary, .landing-button, .cta-submit):is(:disabled, [aria-disabled='true']) {
+    border-color: GrayText;
+    background: Canvas;
+    color: GrayText;
+  }
+  :is(
+    :is([data-slot='toggle'], [data-slot='toggle-group-item'])[data-pressed],
+    [data-slot='tabs-trigger'][data-active],
+    [data-slot='triage-row'][aria-current='true'],
+    .probation-views > [aria-current='page'],
+    :is(
+      [data-slot='dropdown-menu-item'],
+      [data-slot='dropdown-menu-checkbox-item'],
+      [data-slot='dropdown-menu-radio-item'],
+      [data-slot='select-item'],
+      [data-slot='combobox-item']
+    ):is(:focus, [data-highlighted]),
+    [data-slot='command-item'][data-selected='true']
+  ) {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+    & :not([data-status], [data-slot='badge'], [data-tone]) {
+      color: inherit;
+    }
   }
   /* Fills vanish here: every capsule keeps a system-coloured edge and its glyph and word. */
   [data-status],
