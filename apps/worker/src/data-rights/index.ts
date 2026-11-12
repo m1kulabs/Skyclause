@@ -34,8 +34,10 @@ export interface DataRightsDeps {
   now: () => Date
 }
 
+// The buckets come straight from the environment, not the worker profile: the org-purge job shares these deps and
+// mounts none of the worker's secrets (#665). The worker service checked its whole profile at start (main.ts).
 function productionDeps(): DataRightsDeps {
-  const env = loadEnv('worker')
+  const env = process.env
   const exportsBucket = env.EXPORTS_BUCKET
   if (!exportsBucket) throw new Error('EXPORTS_BUCKET is not set')
   const buckets = [env.EXPORTS_BUCKET, env.FRAMES_BUCKET, env.ARCHIVE_BUCKET, env.SCRATCH_BUCKET, env.SOURCES_BUCKET]
