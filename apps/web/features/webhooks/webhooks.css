@@ -111,6 +111,7 @@
 .webhook-log,
 .webhook-event {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   min-width: 0;
 }
@@ -147,6 +148,7 @@
 }
 .webhook-evidence {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   padding: 4px 16px 16px;
 }
