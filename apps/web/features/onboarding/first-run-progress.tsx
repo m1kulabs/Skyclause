@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { formatTime } from '@skyclause/i18n/format'
 import { cn } from '#lib/utils'
 import { Button, buttonVariants } from '#ui/button'
 import { Skeleton } from '#ui/skeleton'
@@ -14,6 +15,20 @@ import { t, type Locale } from './catalogue'
 import styles from './onboarding.module.css'
 
 type Step = OnboardingView['steps'][number]['step']
+
+/**
+ * A done step's line. The API words each result as an English sentence, and a source step's can carry the source's
+ * status code; in every other language, and for such a result, the line says when the step was done instead.
+ */
+function DoneLine({ item, locale }: { item: OnboardingView['steps'][number]; locale: Locale }) {
+  if (locale === 'en' && item.result && !/\bHTTP\b/.test(item.result)) return item.result
+  if (!item.completed_at) return t('onboarding.done', {}, locale)
+  return (
+    <time dateTime={item.completed_at}>
+      {t('onboarding.done_at', { time: formatTime(item.completed_at, locale) }, locale)}
+    </time>
+  )
+}
 
 export interface FirstRunProgressProps {
   org: string
@@ -183,7 +198,9 @@ export function FirstRunProgress({ org, locale = 'en', redirectFromProject = fal
                 {state === 'skipped' ? (
                   <p className={styles.stepResult}>{t('onboarding.skipped', {}, locale)}</p>
                 ) : state === 'done' ? (
-                  <p className={styles.stepResult}>{item.result ?? t('onboarding.done', {}, locale)}</p>
+                  <p className={styles.stepResult}>
+                    <DoneLine item={item} locale={locale} />
+                  </p>
                 ) : state === 'current' ? (
                   <p className={styles.stepResult}>
                     {here ? t('onboarding.here', {}, locale) : t('onboarding.next_step', {}, locale)}

@@ -2,7 +2,8 @@ import { test, expect } from '../fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
 import { windowsOperations } from '../../features/windows/operations'
-import { prepareWindows, replayWindow, route, skyBundle, crowdBundle, projectId } from './replay'
+import { onboardingOperations } from '../../features/onboarding/operations'
+import { onboarding, prepareWindows, replayWindow, route, skyBundle, crowdBundle, projectId } from './replay'
 import { w } from './messages'
 
 test('WIN-2 replay calls from different runs link to their own bundles', async ({ page }) => {
@@ -391,4 +392,38 @@ test('a link with ?window= opens the period holding that window and marks it', a
   await expect(row).toBeVisible()
   await expect(row).toHaveAttribute('data-added', 'true')
   await expect(page.getByLabel(w('from'), { exact: true })).toHaveValue('2026-12-20')
+})
+
+test('an Owner at the window step of the first run sees the steps here, and declaring moves them on to the rota', async ({
+  page
+}) => {
+  await page.clock.install({ time: new Date('2026-11-02T01:00:00Z') })
+  await prepareWindows(page, [], onboarding('window'))
+  await page.goto(route)
+  const progress = page.locator('[data-first-run-progress]')
+  const current = progress.locator('li[data-state="current"]')
+  await expect(current).toContainText('Declare the first window')
+  await expect(current.getByRole('link', { name: 'Continue' })).toHaveAttribute(
+    'href',
+    '/replay/bukit-jalil/windows?declare=window'
+  )
+  // Steps are read again once the window is saved: the rota step is the next one.
+  await stubApi(page, 'getOnboarding', onboarding('rota'), { registry: onboardingOperations })
+  await stubApi(page, 'createWindow', replayWindow, { registry: windowsOperations })
+  await current.getByRole('link', { name: 'Continue' }).click()
+  const dialog = page.getByRole('dialog', { name: w('declare') })
+  await dialog.locator('[name="title"]').fill(replayWindow.title)
+  await dialog.locator('[name="date"]').fill('2026-11-02')
+  await dialog.locator('[name="start"]').fill('15:30')
+  await dialog.locator('[name="end"]').fill('16:00')
+  await dialog.getByRole('button', { name: w('save'), exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await expect(current).toContainText('Set the rota')
+})
+
+test('the first-run steps stay off the windows page once every step is done', async ({ page }) => {
+  await prepareWindows(page)
+  await page.goto(route)
+  await expect(page.locator('[data-window-row]')).toBeVisible()
+  await expect(page.locator('[data-first-run-progress]')).toHaveCount(0)
 })

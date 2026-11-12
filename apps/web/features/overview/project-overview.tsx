@@ -45,6 +45,7 @@ import {
 } from './operations'
 import { localDateAt, overviewFilterState, selectTodayAtRisk, type OverviewPackFilter } from './model'
 import { t as bundleText } from '../bundles/i18n'
+import { clauseName } from '../bundles/clause-name'
 import { t } from './catalogue'
 import { AskForCall } from './ask-for-call'
 import './overview.css'
@@ -55,7 +56,7 @@ type Locale = 'en' | 'ms'
 const SOURCE_CAP = 50
 
 /** One of the overview's reads: its value, or the status it failed with and when (shown as a named error). */
-type Read<Value> = { ok: true; value: Value } | { ok: false; status: number | null; at: string }
+export type Read<Value> = { ok: true; value: Value } | { ok: false; status: number | null; at: string }
 
 type OverviewData = {
   listItem: ProjectListItem
@@ -303,6 +304,41 @@ function ReadError({
   )
 }
 
+/**
+ * The clauses that fired for a pack, by name. Without the verdicts read (it failed, or is not available yet) there is
+ * nothing to say about clauses, so the block is left out: "No clause has fired" would claim what nobody read.
+ */
+export function FiredClauses({
+  verdicts,
+  pack,
+  locale
+}: {
+  verdicts: Read<ProjectVerdicts>
+  pack: PackState['pack']
+  locale: Locale
+}) {
+  if (!verdicts.ok) return null
+  const fired = packVerdicts(verdicts.value, pack).flatMap((verdict) =>
+    verdict.clauses
+      .filter((clause) => clause.result === 'fired')
+      .map((clause) => ({ ...clause, scope: verdict.scope.kind }))
+  )
+  return (
+    <div data-fired-clauses>
+      <h4 className="type-small text-muted-foreground">{t('overview.fired', {}, locale)}</h4>
+      {fired.length ? (
+        <ul className="overview-fired">
+          {fired.map((clause, index) => (
+            <li key={`${clause.scope}-${clause.key}-${index}`}>{clauseName(clause.key, locale)}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="type-body">{t('overview.no_fired', {}, locale)}</p>
+      )}
+    </div>
+  )
+}
+
 /** The screen's answer: each pack's mode, large, with its glyph and word, its basis, fired clauses and input ages. */
 function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewData; locale: Locale }) {
   const state = pack.no_call
@@ -317,11 +353,6 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
       : pack.basis === 'approved_call'
         ? t('data.pack.approved_call', {}, locale)
         : t('data.pack.no_basis', {}, locale)
-  const fired = packVerdicts(valueOf(data.verdicts), pack.pack).flatMap((verdict) =>
-    verdict.clauses
-      .filter((clause) => clause.result === 'fired')
-      .map((clause) => ({ ...clause, scope: verdict.scope.kind }))
-  )
   const inputs = valueOf(data.strip)?.inputs ?? []
   const blocked = pack.no_call?.inputs ?? []
   const since = blocked.map((input) => input.since).sort()[0] ?? null
@@ -344,20 +375,7 @@ function PackAnswer({ pack, data, locale }: { pack: PackState; data: OverviewDat
           ) : null}
         </div>
         <div className="overview-answer-detail">
-          <div>
-            <h4 className="type-small text-muted-foreground">{t('overview.fired', {}, locale)}</h4>
-            {fired.length ? (
-              <ul className="overview-fired">
-                {fired.map((clause, index) => (
-                  <li key={`${clause.scope}-${clause.key}-${index}`} translate="no">
-                    {clause.key}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="type-body">{t('overview.no_fired', {}, locale)}</p>
-            )}
-          </div>
+          <FiredClauses verdicts={data.verdicts} pack={pack.pack} locale={locale} />
           <div>
             <h4 className="type-small text-muted-foreground">{t('overview.input_ages', {}, locale)}</h4>
             {inputs.length ? (

@@ -66,6 +66,9 @@ export function OrgCreateForm({ locale = 'en' }: { locale?: Locale }) {
           const created = await apiFetch('createOrganisation', { body: { name: name.trim(), slug } })
           // Busy until the next page takes over, so a second click cannot create it twice.
           router.push(`/${encodeURIComponent(created.slug)}/new`)
+          // A push keeps the app layout as it was read, so the shell would still have no organisation. The refresh
+          // waits behind the push and then reads every layout again, the shell's memberships included.
+          router.refresh()
         } catch (failure) {
           if (failure instanceof ApiProblem && failure.status === 409) {
             const slugProblem = (failure.body.type as string | undefined) ?? ''
