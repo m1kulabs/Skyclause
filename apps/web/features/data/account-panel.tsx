@@ -137,7 +137,6 @@ export function AccountDataPanel({ email, locale = 'en' }: { email: string | nul
         <SettingsSummaryLine label={label('summaryExports')}>
           {loading ? label('loadingExports') : label('summaryExportCount', { count: exports.length })}
         </SettingsSummaryLine>
-        <SettingsSummaryLine label={label('summaryErase')}>{label('summaryEraseValue')}</SettingsSummaryLine>
       </SettingsAside>
       <SettingsParts>
         <SettingsPart title={label('accountTitle')} description={label('accountDescription')} id="account-data-title">

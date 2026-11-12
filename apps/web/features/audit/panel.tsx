@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { AUDIT_ACTIONS } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
 import { Button } from '../../components/ui/button'
@@ -31,6 +31,17 @@ import styles from './panel.module.css'
 import '../settings/catalogue'
 
 type Page = { data: AuditEntry[]; next_cursor: string | null }
+
+/** A slug with a break opportunity after each dot and underscore, so a long action wraps at its own joints. */
+function breakable(slug: string) {
+  const parts = slug.split(/(?<=[._])/)
+  return parts.map((part, index) => (
+    <Fragment key={index}>
+      {part}
+      {index < parts.length - 1 ? <wbr /> : null}
+    </Fragment>
+  ))
+}
 
 /**
  * The audit log: filters, then the records as a ledger, never more than one page (50) on screen. Older and newer move
@@ -125,7 +136,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
         </SettingsSummaryLine>
       </SettingsAside>
       <SettingsParts>
-        <SettingsPart title={copy('filters')} id="audit-filters-title">
+        <SettingsPart title={copy('filters')} description={copy('dateHint')} id="audit-filters-title">
           <div role="group" aria-labelledby="audit-filters-title" className={styles.filters}>
             <SettingsField label={copy('actor')}>
               {(aria) => (
@@ -206,7 +217,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                 />
               )}
             </SettingsField>
-            <SettingsField label={copy('from')} hint={copy('dateHint')}>
+            <SettingsField label={copy('from')}>
               {(aria) => (
                 <Input
                   {...aria}
@@ -219,7 +230,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                 />
               )}
             </SettingsField>
-            <SettingsField label={copy('to')} hint={copy('dateHint')}>
+            <SettingsField label={copy('to')}>
               {(aria) => (
                 <Input
                   {...aria}
@@ -285,7 +296,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                     </div>
                     <div className={styles.cell}>
                       <span className={styles.label}>{copy('action')}</span>
-                      {entry.action}
+                      {breakable(entry.action)}
                     </div>
                     <div className={styles.cell}>
                       <span className={styles.label}>{copy('object')}</span>

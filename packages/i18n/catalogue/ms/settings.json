@@ -164,7 +164,7 @@
     "summaryNoFilters": "Tiada ditetapkan",
     "emptyFiltered": "Tiada entri audit sepadan dengan penapis ini (n=0).",
     "source": "log audit",
-    "dateHint": "Satu hari penuh dalam MYT."
+    "dateHint": "Dari dan Hingga ialah hari penuh dalam MYT."
   },
   "data": {
     "exportsTitle": "Eksport data",
@@ -275,8 +275,6 @@
     "ownerOnly": "Hanya Pemilik boleh memadam organisasi ini.",
     "summaryExports": "Kerja eksport",
     "summaryExportCount": "{count} disenaraikan",
-    "summaryErase": "Pemadaman",
-    "summaryEraseValue": "Terakhir, dalam bahagiannya sendiri di bawah",
     "summaryDeletion": "Pemadaman",
     "deleteAccountConsequence": "Memadam akaun anda membuang profil, kunci laluan dan sesi anda. Rekod lejar dan audit yang memaparkan anda kekal, dengan medan peribadi anda disamarkan.",
     "deleteAccountDialog": "Ini membuang profil, kunci laluan dan sesi anda serta menyamarkan medan peribadi anda dalam rekod lejar dan audit. Taip e-mel log masuk anda untuk menjadualkannya.",

@@ -164,7 +164,7 @@
     "summaryNoFilters": "None set",
     "emptyFiltered": "No audit entries match these filters (n=0).",
     "source": "the audit log",
-    "dateHint": "A whole day in MYT."
+    "dateHint": "From and To are whole days in MYT."
   },
   "data": {
     "exportsTitle": "Data exports",
@@ -275,8 +275,6 @@
     "ownerOnly": "Only an Owner can delete this organisation.",
     "summaryExports": "Export jobs",
     "summaryExportCount": "{count} listed",
-    "summaryErase": "Erasing",
-    "summaryEraseValue": "Last, in its own part below",
     "summaryDeletion": "Deletion",
     "deleteAccountConsequence": "Deleting your account removes your profile, passkeys and sessions. Ledger and audit records you appear in stay, with your personal fields pseudonymised.",
     "deleteAccountDialog": "This removes your profile, passkeys and sessions and pseudonymises your personal fields in ledger and audit records. Type your sign-in email to schedule it.",
