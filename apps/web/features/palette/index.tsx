@@ -347,9 +347,10 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
               {(!loaded || searching) && (
                 <div className="flex flex-col gap-3 px-3 py-3" role="status" aria-live="polite">
                   <span className="sr-only">{t(searching ? 'palette.searching' : 'palette.loading', {}, locale)}</span>
-                  <Skeleton className="h-5 w-56 max-w-full rounded-full" />
-                  <Skeleton className="h-5 w-40 max-w-full rounded-full" />
-                  <Skeleton className="h-5 w-48 max-w-full rounded-full" />
+                  {/* Inside the raised dialog the skeletons step down to the ground tone, or they would not show. */}
+                  <Skeleton className="h-5 w-56 max-w-full rounded-full bg-background" />
+                  <Skeleton className="h-5 w-40 max-w-full rounded-full bg-background" />
+                  <Skeleton className="h-5 w-48 max-w-full rounded-full bg-background" />
                 </div>
               )}
               {loadFailure && (
