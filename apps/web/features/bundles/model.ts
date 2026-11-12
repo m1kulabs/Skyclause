@@ -2,6 +2,9 @@ import type { CallView } from '@skyclause/contracts'
 import type { ApprovalBody } from './operations'
 import { teachingLine } from './i18n'
 
+/** The bundle list shows the newest bundles only: lists never render more than 50 rows. */
+export const LIST_LIMIT = 50
+
 export type Decision = Partial<Omit<ApprovalBody['calls'][number], 'call_id'>>
 export type Decisions = Record<string, Decision>
 
@@ -46,4 +49,23 @@ export function teachingLineIncluded(call: CallView, decision: Decision): boolea
   return notices.some((notice) =>
     [notice.subject, notice.body].some((text) => text.includes(teachingLine(notice.language)))
   )
+}
+
+export type CallMark =
+  'hybrid_recommended' | 'commute_disruption' | 'outdoor_limited' | 'surge_night' | 'no_call' | 'storm_watch' | 'normal'
+/** Call marks from the most to the least disruptive. */
+export const markRank: CallMark[] = [
+  'hybrid_recommended',
+  'commute_disruption',
+  'outdoor_limited',
+  'surge_night',
+  'no_call',
+  'storm_watch',
+  'normal'
+]
+
+/** A call's mark: No call when a required input failed, else its mode, else Storm watch or No call. */
+export function callMark(call: Pick<CallView, 'mode' | 'watch' | 'no_call'>): CallMark {
+  if (call.no_call?.length) return 'no_call'
+  return call.mode ?? (call.watch ? 'storm_watch' : 'no_call')
 }

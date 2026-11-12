@@ -67,6 +67,9 @@ test('an approver’s page arrives with the bundle and each call read on the ser
   ])
   expect(review?.data).toMatchObject({ canApprove: true, shortcuts: true, errors: [] })
   expect(review?.now).toBeTypeOf('number')
+  // The list beside the review: the project's bundles, this one among them.
+  expect(review?.list?.status).toBe('ready')
+  if (review?.list?.status === 'ready') expect(review.list.rows.map((row) => row.id)).toContain(bundleId)
 })
 
 test('a viewer’s page arrives read on the server, without approval', async () => {
