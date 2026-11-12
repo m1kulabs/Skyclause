@@ -497,19 +497,22 @@ export function SignInPanel({
           )}
 
           {sentView && sent && (
-            <div className="sign-in-sent" role="status">
+            <div className="sign-in-sent">
               <h2 className="sign-in-sent-title" tabIndex={-1} ref={sentHeadingRef}>
                 {text('sign-in.sent_heading')}
               </h2>
-              <p className="sign-in-sent-to">
-                {sent.resent
-                  ? text('sign-in.sent_resend')
-                  : sent.email
-                    ? withParts(text('sign-in.sent'), { email: <strong>{sent.email}</strong> })
-                    : text('sign-in.sent_unknown')}
-              </p>
-              <p className="sign-in-sent-to">{withParts(text('sign-in.sent_until'), { time: clock(sent.until) })}</p>
-              {sent.again && <p className="sign-in-sent-again">{text('sign-in.resent')}</p>}
+              {/* The heading takes focus; only the sentences are live, so neither they nor the buttons are read twice. */}
+              <div className="sign-in-sent-lines" role="status">
+                <p className="sign-in-sent-to">
+                  {sent.resent
+                    ? text('sign-in.sent_resend')
+                    : sent.email
+                      ? withParts(text('sign-in.sent'), { email: <strong>{sent.email}</strong> })
+                      : text('sign-in.sent_unknown')}
+                </p>
+                <p className="sign-in-sent-to">{withParts(text('sign-in.sent_until'), { time: clock(sent.until) })}</p>
+                {sent.again && <p className="sign-in-sent-again">{text('sign-in.resent')}</p>}
+              </div>
               {sendProblem && <AuthMessage>{sendProblemText(sendProblem)}</AuthMessage>}
               <div className="sign-in-actions">
                 {sent.email && (
