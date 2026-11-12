@@ -44,14 +44,14 @@ export function RecurrenceFields({
               {WEEKDAYS.map((day) => (
                 <label
                   key={day}
-                  className="inline-flex min-h-9 cursor-pointer items-center rounded-full border-2 border-input bg-background px-3 type-body has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
+                  className="relative inline-flex min-h-9 cursor-pointer items-center rounded-full border-2 border-input bg-background px-3 type-body has-checked:border-primary has-checked:bg-primary has-checked:text-primary-foreground has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
                 >
                   <input
                     id={`window-days-${day}`}
                     type="checkbox"
                     name="days"
                     autoComplete="off"
-                    className="sr-only"
+                    className="absolute inset-0 size-full cursor-pointer opacity-0"
                     value={day}
                     checked={draft.days.includes(day)}
                     aria-invalid={!!errors.days}
@@ -139,6 +139,7 @@ export function RecurrenceFields({
               items={dates}
               label={t('windows.preview', { count: dates.length })}
               className="max-h-64 overflow-y-auto"
+              estimate={32}
               render={(date) => (
                 <p className="min-h-8 type-body">
                   <time dateTime={date}>{formatDate(`${date}T12:00:00+08:00`, 'en')}</time>

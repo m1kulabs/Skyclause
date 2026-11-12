@@ -210,11 +210,9 @@ function DayRow({
       data-day={date}
       data-today={today}
       data-weekend={weekend}
-      aria-labelledby={`day-${date}`}
       className="grid gap-x-6 gap-y-2 py-3 md:grid-cols-[7.5rem_minmax(0,1fr)]"
     >
       <h2
-        id={`day-${date}`}
         aria-current={today ? 'date' : undefined}
         className="type-body relative flex flex-wrap items-baseline gap-x-2 pb-2 font-medium current-mark md:block md:self-start md:pt-2"
       >
@@ -244,6 +242,7 @@ function DayRow({
                 items={windows}
                 label={t('windows.list_label', { date: formatDateCompact(`${date}T12:00:00+08:00`, 'en') })}
                 className="max-h-[32rem] overflow-y-auto"
+                estimate={84}
                 render={(window) => (
                   <div data-window-row className="min-h-11 py-1.5">
                     {rows(window)}

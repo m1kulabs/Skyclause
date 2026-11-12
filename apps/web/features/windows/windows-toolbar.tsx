@@ -51,7 +51,7 @@ export function WindowsToolbar({
             <ChevronLeftIcon />
           </Button>
           <label className="flex items-center gap-2 pl-2 type-small text-muted-foreground">
-            <span className="max-sm:sr-only">{t('windows.from')}</span>
+            <span className="sr-only sm:not-sr-only">{t('windows.from')}</span>
             <Input
               type="date"
               name="from"
