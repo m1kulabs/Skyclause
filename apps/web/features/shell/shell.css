@@ -79,6 +79,11 @@ body:has(.app-shell) > .skip-link {
   letter-spacing: -0.025em;
   text-decoration: none;
 }
+a.shell-wordmark:hover > span {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
 .shell-mark {
   width: 20px;
   height: 20px;

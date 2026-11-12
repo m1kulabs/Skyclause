@@ -1,5 +1,5 @@
-import type { Role } from '@skyclause/contracts'
-import { t } from './i18n'
+import { RESERVED_SLUGS, type Role } from '@skyclause/contracts'
+import { t, type Locale } from './i18n'
 import {
   coreDestinations,
   currentDestination,
@@ -10,9 +10,13 @@ import {
 } from './navigation'
 import type { ShellData, ShellMembership, ShellProject, ShellReadError } from './types'
 
+const reserved = new Set<string>(RESERVED_SLUGS)
+
 /** Where the person is and what the bar offers there, derived once for the bar, its menus and the phone sheet. */
 export interface ShellScope {
   data: ShellData
+  /** The request's language, for everything the bar and its menus say. */
+  locale: Locale
   /** The organisation the bar's links go to: the URL's, else the first membership's. */
   org?: string
   membership?: ShellMembership
@@ -35,16 +39,18 @@ export interface ShellScope {
 export function shellScope(
   data: ShellData,
   pathname: string,
-  url: { org?: string; project?: string; tab?: string }
+  url: { org?: string; project?: string; tab?: string },
+  locale: Locale = 'en'
 ): ShellScope {
   const membership = url.org ? data.memberships.find((item) => item.org_slug === url.org) : data.memberships[0]
   // The URL's organisation, while the memberships say nothing against it: one the person isn't in (a 404) gets no
-  // links, and neither does a visitor without a session.
+  // links, and neither does a visitor without a session. A first segment the product reserves (`/legal/none`) names
+  // a page, never an organisation, so a 404 under it has no organisation to link to either.
   const org = data.signedOut
     ? undefined
     : membership
       ? membership.org_slug
-      : url.org && !data.memberships.length
+      : url.org && !data.memberships.length && !reserved.has(url.org)
         ? url.org
         : undefined
   const role = membership?.role
@@ -58,6 +64,7 @@ export function shellScope(
   const projectsError = data.membershipsError ?? (membership ? data.projectsError?.[membership.org_id] : undefined)
   return {
     data,
+    locale,
     org,
     membership,
     role,
@@ -79,7 +86,9 @@ export function shellScope(
           ? 'app-shell.organisationsUnavailable'
           : data.memberships.length
             ? 'app-shell.chooseOrganisation'
-            : 'app-shell.noOrganisations'
+            : 'app-shell.noOrganisations',
+        {},
+        locale
       ),
     projectName:
       project?.name ??
@@ -88,7 +97,9 @@ export function shellScope(
           ? 'app-shell.projectsUnavailable'
           : projects.length
             ? 'app-shell.chooseProject'
-            : 'app-shell.noProjects'
+            : 'app-shell.noProjects',
+        {},
+        locale
       )
   }
 }

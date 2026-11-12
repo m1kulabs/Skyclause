@@ -22,6 +22,7 @@ import {
   type PaletteSource
 } from './sources'
 import { palettePreferencesApi } from './operations'
+import { useMedia } from '../windows/use-media'
 
 interface CommandPaletteProps {
   memberRole?: Role | null
@@ -46,6 +47,13 @@ const KIND_ORDER: readonly PaletteKind[] = ['results', 'actions', 'pages', 'plac
 /** Search results are grouped by what they are; their IDs read `search:<org>:<kind>:<id>`. */
 const RESULT_KINDS = ['project', 'source', 'window', 'bundle', 'call', 'ledger']
 
+/** The BCP 47 tag the palette lowercases and matches its labels by. */
+const localeTag = (locale: 'en' | 'ms') => (locale === 'ms' ? 'ms-MY' : 'en-MY')
+
+/**
+ * A palette destination is a document navigation, on purpose: it can sit in another root layout (the account, Connect,
+ * Create an organisation), and DSH-5 pins it as one.
+ */
 function navigate(href: string) {
   const target = new URL(href, window.location.origin)
   if (target.origin !== window.location.origin) return
@@ -63,15 +71,15 @@ function resultKind(item: PaletteItem) {
 
 /** Every word typed appears in the item's label or keywords (not its ID: "go" would match every destination). */
 function matchesItem(item: PaletteItem, words: readonly string[], locale: 'en' | 'ms') {
-  const fields = [item.label, ...(item.keywords ?? [])].map((value) =>
-    value.toLocaleLowerCase(locale === 'ms' ? 'ms-MY' : 'en-MY')
-  )
+  const fields = [item.label, ...(item.keywords ?? [])].map((value) => value.toLocaleLowerCase(localeTag(locale)))
   return words.every((word) => fields.some((field) => field.includes(word)))
 }
 
 export function CommandPalette({ memberRole, locale = 'en', sources = paletteSources }: CommandPaletteProps) {
   const pathname = usePathname() ?? '/'
   const params = useParams<{ org?: string; project?: string }>()
+  // A touch screen has no Escape key: it gets a close button and no key hints.
+  const touch = useMedia('(pointer: coarse)')
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [commandValue, setCommandValue] = useState('')
@@ -238,11 +246,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
   }, [context, loaded, open, projectChoice, query, visibleSources, searchAttempt])
 
   const groups = useMemo<Group[]>(() => {
-    const words = query
-      .trim()
-      .toLocaleLowerCase(locale === 'ms' ? 'ms-MY' : 'en-MY')
-      .split(/\s+/)
-      .filter(Boolean)
+    const words = query.trim().toLocaleLowerCase(localeTag(locale)).split(/\s+/).filter(Boolean)
     const results = visibleSources.flatMap((source) => searchItems[source.id] ?? [])
     const available = visibleSources
       .flatMap((source) => [...(source.items ?? []), ...(source.itemsFor?.(context) ?? [])])
@@ -292,7 +296,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
       >
         <DialogContent
           className="palette top-[12svh] flex max-h-[76svh] translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
-          showCloseButton={false}
+          showCloseButton={touch}
           finalFocus={previousFocus}
         >
           <DialogHeader className="sr-only">
@@ -321,7 +325,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
               className="h-10 min-w-0"
             />
             {/* One scroll area: the listbox holds only options; loading and failed reads sit after it, outside. */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <CommandList label={t('palette.results', {}, locale)} className="max-h-none overflow-visible">
                 {groups.map((group) => (
                   <CommandGroup key={group.id} heading={group.heading}>
@@ -391,6 +395,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
           <div
             className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-[13px] leading-[18px] text-muted-foreground *:inline-flex *:items-center *:gap-1.5"
             aria-hidden="true"
+            hidden={touch}
           >
             <span>
               <Kbd>
