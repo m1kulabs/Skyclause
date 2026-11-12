@@ -6,8 +6,10 @@ import { ChartContainer, ChartTooltip } from '#ui/chart'
 import { Button } from '#ui/button'
 import { formatDate, formatDateCompact, formatNumber } from '@skyclause/i18n/format'
 import { t } from './catalogue'
-import { axisTicks, rateMetrics, type LiveSeries, type Locale } from './model'
-import { EmptyBlock, metricName, metricText, Time, WilsonInterval } from './presentation'
+import { rateMetrics } from '../data-components/metrics'
+import { axisTicks, type LivePoint, type LiveSeries, type Locale } from './model'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
+import { EmptyBlock, intervalText, metricName, metricText, Time } from './presentation'
 
 export interface LiveChartProps {
   series: LiveSeries
@@ -130,38 +132,81 @@ export function LiveChart({ series, metric, from, to, locale, n, columns = false
             <p className="analysis-sub analysis-axis-note">{t('analysis.axisDays', {}, locale)}</p>
           </div>
           <div id={id} hidden={!table} className="analysis-table-frame">
-            <table>
-              <caption className="sr-only">{label}</caption>
-              <thead>
-                <tr>
-                  {['at', 'value', 'sampleSize', 'origin'].map((key) => (
-                    <th key={key} scope="col" data-figure={key === 'value' || key === 'sampleSize' ? '' : undefined}>
-                      {t(`analysis.${key}`, { n: '' }, locale)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {points.map((point, index) => (
-                  <tr key={`${point.at}-${index}`} data-origin={point.kind}>
-                    <td>
-                      <Time at={point.at} locale={locale} />
-                    </td>
-                    <td data-figure="">
-                      <span data-numeric>{metricText(point.metric, locale)}</span>
-                      <WilsonInterval metric={point.metric} locale={locale} />
-                    </td>
-                    <td data-figure="" data-numeric>
-                      {t('analysis.n', { n: formatNumber(point.metric.n, locale) }, locale)}
-                    </td>
-                    <td>{t('analysis.live', {}, locale)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Rows exist only while the table shows, 50 to a page. */}
+            {table && <PointsTable points={points} label={label} locale={locale} />}
           </div>
         </>
       )}
     </div>
+  )
+}
+
+const PAGE = 50
+
+/** The chart's points as the shared table: each day's figure, its interval in words and its n, 50 days to a page. */
+export function PointsTable({ points, label, locale }: { points: LivePoint[]; label: string; locale: Locale }) {
+  const [page, setPage] = useState(0)
+  const pages = Math.ceil(points.length / PAGE)
+  const current = Math.min(page, Math.max(0, pages - 1))
+  const shown = points.slice(current * PAGE, current * PAGE + PAGE)
+  return (
+    <>
+      <Table compact>
+        <TableCaption className="sr-only">{label}</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col">{t('analysis.at', {}, locale)}</TableHead>
+            <TableHead scope="col" numeric>
+              {t('analysis.value', {}, locale)}
+            </TableHead>
+            <TableHead scope="col">{t('analysis.interval', {}, locale)}</TableHead>
+            <TableHead scope="col" numeric>
+              {t('analysis.sampleSize', {}, locale)}
+            </TableHead>
+            <TableHead scope="col">{t('analysis.origin', {}, locale)}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {shown.map((point, index) => (
+            <TableRow key={`${point.at}-${index}`} data-origin={point.kind}>
+              <TableCell phone="primary">
+                <Time at={point.at} locale={locale} />
+              </TableCell>
+              <TableCell numeric phone="end">
+                {metricText(point.metric, locale)}
+              </TableCell>
+              <TableCell label={t('analysis.interval', {}, locale)}>
+                {intervalText(point.metric, locale) || t('analysis.missing', {}, locale)}
+              </TableCell>
+              <TableCell numeric label={t('analysis.sampleSize', {}, locale)}>
+                {t('analysis.n', { n: formatNumber(point.metric.n, locale) }, locale)}
+              </TableCell>
+              <TableCell phone="hide">{t('analysis.live', {}, locale)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {pages > 1 && (
+        <div className="analysis-pager">
+          <p role="status" className="analysis-muted" data-numeric>
+            {t(
+              'analysis.rowsShown',
+              {
+                from: formatNumber(current * PAGE + 1, locale),
+                to: formatNumber(current * PAGE + shown.length, locale),
+                n: formatNumber(points.length, locale)
+              },
+              locale
+            )}
+          </p>
+          <Button variant="outline" disabled={current === 0} onClick={() => setPage(current - 1)}>
+            {t('analysis.previousRows', {}, locale)}
+          </Button>
+          <Button variant="outline" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
+            {t('analysis.nextRows', {}, locale)}
+          </Button>
+        </div>
+      )}
+    </>
   )
 }

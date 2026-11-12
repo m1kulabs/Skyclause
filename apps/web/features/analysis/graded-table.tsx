@@ -4,10 +4,12 @@ import { useState } from 'react'
 import type { Grade } from '@skyclause/contracts'
 import { formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { ModeBadge } from '../brand/mode-badge'
 import type { Locale } from './model'
 import { t } from './catalogue'
 import { EmptyBlock, outcomeName } from './presentation'
+import { gradedName } from './review-panel'
 
 const PAGE = 50
 
@@ -23,11 +25,11 @@ export function GradedTable({ grades, locale }: { grades: Grade[]; locale: Local
         <h2 id="analysis-graded-title">
           {t('analysis.fullTable', {}, locale)}
           <span className="analysis-n" data-numeric>
-            {t('analysis.n', { n: formatNumber(grades.length, locale) }, locale)}
+            {t('analysis.gradedCount', { n: formatNumber(grades.length, locale) }, locale)}
           </span>
         </h2>
         {grades.length > PAGE && (
-          <p className="analysis-muted" data-numeric>
+          <p className="analysis-muted" data-numeric role="status">
             {t(
               'analysis.rowsShown',
               {
@@ -43,54 +45,48 @@ export function GradedTable({ grades, locale }: { grades: Grade[]; locale: Local
       {!grades.length ? (
         <EmptyBlock locale={locale} />
       ) : (
-        <div className="analysis-table-frame">
-          <table className="analysis-graded-table">
-            <caption className="sr-only">{t('analysis.fullTable', {}, locale)}</caption>
-            <thead className="sr-only md:not-sr-only">
-              <tr>
-                {['window', 'pack', 'outcome', 'proposed', 'observed', 'agreement'].map((key) => (
-                  <th key={key} scope="col">
-                    {t(`analysis.${key}`, {}, locale)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((grade) => (
-                <tr key={grade.id} data-origin="live">
-                  <th scope="row" translate="no">
-                    {grade.window_id ?? grade.night_id ?? grade.id}
-                  </th>
-                  <td data-label={t('analysis.pack', {}, locale)}>{t(`analysis.tabs.${grade.pack}`, {}, locale)}</td>
-                  <td data-label={t('analysis.outcome', {}, locale)}>
-                    {outcomeName(grade.outcome, grade.no_call, locale)}
-                  </td>
-                  <td data-label={t('analysis.proposed', {}, locale)}>
-                    {grade.proposed_mode ? (
-                      <ModeBadge mode={grade.proposed_mode} locale={locale} />
-                    ) : (
-                      <ModeBadge mode="no_call" locale={locale} />
-                    )}
-                  </td>
-                  <td data-label={t('analysis.observed', {}, locale)}>
-                    {grade.observed_mode ? (
-                      <ModeBadge mode={grade.observed_mode} locale={locale} />
-                    ) : (
-                      <span className="analysis-sub">{t('analysis.missing', {}, locale)}</span>
-                    )}
-                  </td>
-                  <td data-label={t('analysis.agreement', {}, locale)}>
-                    {t(
-                      grade.stale_inputs ? 'analysis.stale' : grade.agrees ? 'analysis.agrees' : 'analysis.disagrees',
-                      {},
-                      locale
-                    )}
-                  </td>
-                </tr>
+        <Table className="analysis-graded-table">
+          <TableCaption className="sr-only">{t('analysis.fullTable', {}, locale)}</TableCaption>
+          <TableHeader>
+            <TableRow>
+              {['window', 'pack', 'outcome', 'proposed', 'observed', 'agreement'].map((key) => (
+                <TableHead key={key} scope="col">
+                  {t(`analysis.${key}`, {}, locale)}
+                </TableHead>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {shown.map((grade) => (
+              <TableRow key={grade.id} data-origin="live">
+                <TableCell phone="primary">{gradedName(grade, locale)}</TableCell>
+                <TableCell label={t('analysis.pack', {}, locale)}>
+                  {t(`analysis.tabs.${grade.pack}`, {}, locale)}
+                </TableCell>
+                <TableCell truncate="36ch" label={t('analysis.outcome', {}, locale)}>
+                  {outcomeName(grade.outcome, grade.no_call, locale)}
+                </TableCell>
+                <TableCell phone="end">
+                  <ModeBadge mode={grade.proposed_mode ?? 'no_call'} locale={locale} />
+                </TableCell>
+                <TableCell label={t('analysis.observed', {}, locale)}>
+                  {grade.observed_mode ? (
+                    <ModeBadge mode={grade.observed_mode} locale={locale} />
+                  ) : (
+                    <span className="analysis-sub">{t('analysis.missing', {}, locale)}</span>
+                  )}
+                </TableCell>
+                <TableCell label={t('analysis.agreement', {}, locale)}>
+                  {t(
+                    grade.stale_inputs ? 'analysis.stale' : grade.agrees ? 'analysis.agrees' : 'analysis.disagrees',
+                    {},
+                    locale
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
       {pages > 1 && (
         <div className="analysis-pager">

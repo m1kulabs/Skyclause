@@ -51,14 +51,19 @@ test('ANL-6 what-if uses a named version and every live table stays live', async
   await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeEnabled()
   const request = page.waitForRequest((r) => r.method() === 'POST' && r.url().includes('/analysis/what-if'))
   await pane.getByRole('button', { name: copy('run'), exact: true }).press('Enter')
+  const result = pane.locator('.analysis-replay-result')
   const body = (await request).postDataJSON()
   expect(() => registry.evaluateWhatIf.request.body.parse(body)).not.toThrow()
   expect(body).toMatchObject({
     sheet: { pack: 'sky', clauses: [] },
     range: { from: '2026-10-31T16:00:00.000Z', to: '2026-11-04T15:59:59.000Z', step: 'reading' }
   })
-  await expect(pane.locator('[data-slot=badge]')).toContainText(sheetId)
-  await expect(pane.locator('[data-slot=badge]')).toContainText('3')
+  // P2-11: the replay is marked with the Replay tag, never the dashed No call edge; the sheet is named, not its ID.
+  const mark = pane.locator('.analysis-replay-result [data-replay-mark]')
+  await expect(mark).toContainText(copy('sheetName').replace('{pack}', tabName('sky')))
+  await expect(mark).not.toContainText(sheetId)
+  await expect(mark).toContainText('3')
+  await expect(result).toBeFocused()
   await expect(pane.locator('[data-replay-chart]')).toBeVisible()
   await expect(pane.locator('.recharts-line-curve')).toHaveAttribute('stroke-dasharray', '5 4')
   await expect(pane.locator('.recharts-dot').first()).toHaveAttribute('fill', 'var(--card)')
@@ -88,7 +93,9 @@ test('URL state restores tabs, period, pack and draft inputs with Back navigatio
   await pane.getByRole('combobox', { name: copy('draft'), exact: true }).selectOption(draftId)
   await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeEnabled()
   await pane.getByRole('button', { name: copy('run'), exact: true }).press('Enter')
-  await expect(pane.locator('[data-slot=badge]')).toContainText('4')
+  await expect(pane.locator('.analysis-replay-result [data-replay-mark]')).toContainText(
+    copy('draftLabel').replace('{n}', '3')
+  )
   await page.getByRole('tab', { name: tabName('delays'), exact: true }).press('Enter')
   await expect(page).toHaveURL(/tab=delays/)
   await page.goBack()
@@ -107,10 +114,18 @@ test('replay enforces the API 90-day range and preserves an explicit URL step', 
   )
   const pane = page.locator('[data-replay-pane]')
   await expect(pane.getByRole('combobox', { name: copy('step'), exact: true })).toHaveValue('PT15M')
-  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeDisabled()
   await expect(pane.getByRole('alert')).toHaveText(copy('invalidRange'))
+  // Run stays enabled and, pressed, takes focus to the field to fix without sending anything.
+  let posts = 0
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && r.url().includes('/analysis/what-if')) posts++
+  })
+  await pane.getByRole('button', { name: copy('run'), exact: true }).press('Enter')
+  await expect(pane.getByLabel(copy('from'), { exact: true })).toBeFocused()
+  await expect(pane.getByLabel(copy('from'), { exact: true })).toHaveAttribute('aria-invalid', 'true')
+  expect(posts).toBe(0)
   await pane.getByLabel(copy('from'), { exact: true }).fill('2026-11-01')
-  await expect(pane.getByRole('button', { name: copy('run'), exact: true })).toBeEnabled()
+  await expect(pane.getByRole('alert')).toHaveCount(0)
 })
 
 test('agreement kill line, delay columns and table views use a single scale', async ({ page }) => {
@@ -144,14 +159,16 @@ test('ANL-2 Approvers explain no call windows, including those without a review 
     { registry }
   )
   await page.goto(`${projectRoute}?tab=review`)
-  const form = page.locator('.analysis-review-item').filter({ hasText: 'window-no-call' })
+  // Windows are named by their date, never their ID: the review item comes first, the one without an item last.
+  await expect(page.locator('.analysis-review-list')).not.toContainText('window-no-call')
+  const form = page.locator('.analysis-review-item').first()
   await expect(form).toContainText('shadow')
   await form.getByRole('textbox').fill('Explained by the approver')
   const request = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/review-items/review-one'))
   await form.getByRole('button', { name: copy('save'), exact: true }).press('Enter')
   expect((await request).postDataJSON()).toEqual({ explanation: 'Explained by the approver' })
   await expect(form.getByRole('status')).toHaveText(copy('saved'))
-  const missing = page.locator('.analysis-review-item').filter({ hasText: 'window-missing' })
+  const missing = page.locator('.analysis-review-item').last()
   await expect(missing.getByRole('textbox')).toHaveAttribute('readonly', '')
   await expect(missing).toContainText(copy('reviewMissing'))
 })
@@ -162,9 +179,12 @@ test('Viewers read explanations and cannot edit or request drafts', async ({ pag
   await expect(page.locator('.analysis-review-item textarea')).toHaveAttribute('readonly', '')
   await expect(page.getByRole('button', { name: copy('save'), exact: true })).toHaveCount(0)
   await expect(page.locator('[data-replay-pane] option[value=draft]')).toHaveCount(0)
-  await expect(
-    page.locator('[data-replay-pane]').getByRole('button', { name: copy('run'), exact: true })
-  ).toBeDisabled()
+  // Run names what is missing instead of sitting disabled: a viewer has no draft to replay.
+  await page
+    .locator('[data-replay-pane]')
+    .getByRole('button', { name: copy('run'), exact: true })
+    .press('Enter')
+  await expect(page.locator('[data-replay-pane]').getByRole('alert')).toHaveText(copy('chooseVersionFirst'))
 })
 
 test('pack_crowd off removes Crowd and explains a direct feature-off URL', async ({ page }) => {
