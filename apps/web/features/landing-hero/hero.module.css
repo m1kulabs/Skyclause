@@ -8,12 +8,12 @@
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'room' 'band' 'copy' 'panel';
+  grid-template-areas: 'room' 'band' 'facts' 'copy' 'panel';
   padding: var(--m);
 }
 
 .card {
-  grid-row: 2 / 4;
+  grid-row: 2 / 5;
   grid-column: 1;
   margin-top: -24px;
   border-radius: var(--r);
@@ -39,6 +39,8 @@
   background: var(--raised);
   cursor: grab;
   touch-action: pan-y;
+  /* A drag across the strip must not select the hour labels under it. */
+  user-select: none;
 }
 .track:active {
   cursor: grabbing;
@@ -75,6 +77,52 @@
   background: var(--tone);
   color: var(--tone-ink);
   border: 2px var(--tone-edge-style) var(--tone-edge);
+}
+
+/* Now, on today's strip: the product's own mark, a capsule 3px wide standing just past the track's edges. */
+.now {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--ink);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Live facts under the strip: the time in MYT always; the gauge's age and the mode only from a real read. */
+.facts {
+  grid-area: facts;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 32px;
+  margin: 0;
+  padding: 20px 20px 0;
+}
+.facts p {
+  margin: 0;
+}
+/* The live time at the lead size, in the figures face (its letters fall back to Roundo), so the minute never jitters. */
+.factNow {
+  font-family: var(--font-figures);
+  font-size: var(--step-lead);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.factWords {
+  color: var(--ink-muted);
+}
+.fact {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: var(--step-body);
+  font-weight: 500;
 }
 
 .ticks {
@@ -236,6 +284,21 @@
   opacity: 0;
   cursor: pointer;
 }
+@media (hover: hover) and (pointer: fine) {
+  .pause:hover,
+  .date:hover,
+  .retry:hover,
+  .next:hover {
+    background: var(--overlay);
+  }
+  .date:has(input:checked):hover {
+    background: var(--ink);
+  }
+  .input a:hover,
+  .meta a:hover {
+    text-decoration-color: var(--ink);
+  }
+}
 .pause:has(.pauseInput:focus-visible) {
   outline: var(--focus-width) solid var(--focus);
   outline-offset: 2px;
@@ -277,6 +340,32 @@
   margin: 0;
   padding: 0;
   border: 0;
+}
+/*
+ * On a phone the eight dates are one strip of capsules that scrolls sideways (the legend stays above it), so the times
+ * and the verdict stay near the top. The checked date is the strip's first view where the browser supports it.
+ */
+@media (max-width: 639.98px) {
+  .dates {
+    flex-wrap: nowrap;
+    margin-inline: -20px;
+    padding: 4px 20px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 20px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .dates::-webkit-scrollbar {
+    display: none;
+  }
+  .date {
+    flex: none;
+    scroll-snap-align: start;
+  }
+  .date:has(input:checked) {
+    scroll-initial-target: nearest;
+  }
 }
 .legend {
   width: 100%;
@@ -352,6 +441,18 @@
   margin: 0 0 12px;
   color: var(--ink-muted);
 }
+.timeError {
+  flex-basis: 100%;
+  margin: 0;
+  font-weight: 600;
+}
+.timeError:empty {
+  display: none;
+}
+.field input[aria-invalid='true'] {
+  border-color: var(--ink);
+  border-style: dashed;
+}
 
 .rain {
   margin: 0;
@@ -394,6 +495,7 @@
   color: var(--ink-muted);
 }
 .retry {
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -410,8 +512,26 @@
     transform var(--t-press) var(--ease),
     opacity var(--t-hover) ease;
 }
-.retry:active {
+.retry:active,
+.next:active {
   transform: scale(0.97);
+}
+/* The way forward from a part that is not built: the labelled replay further down, as a capsule link. */
+.next {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 20px;
+  border: 2px solid var(--ink);
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--t-press) var(--ease);
 }
 .pack {
   display: grid;
@@ -463,9 +583,10 @@
 @media (min-width: 1024px) {
   .hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(20rem, 1fr) auto;
+    grid-template-rows: auto auto minmax(16rem, 1fr) auto;
     grid-template-areas:
       'band room'
+      'facts room'
       'copy room'
       'copy panel';
     column-gap: var(--gap);
@@ -473,9 +594,17 @@
     box-sizing: border-box;
   }
   .card {
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
     grid-column: 1;
     margin-top: 0;
+  }
+  /* On the card the time is a figure at the statement size, centred in the stretch between the strip and the name. */
+  .facts {
+    padding: 80px 40px 0;
+  }
+  .factNow {
+    font-size: var(--step-statement);
+    line-height: 1.1;
   }
   .band {
     padding: 40px 40px 0;
