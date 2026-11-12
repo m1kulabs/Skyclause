@@ -164,13 +164,11 @@ test('one kind failing discovery still saves every other kind, then fails naming
     },
     log
   })
-  await expect(jobs.catalogueSync()).rejects.toThrow(
-    'Catalogue sync failed for jps_rain: jps_rain: HTTP request timed out'
-  )
+  await expect(jobs.catalogueSync()).rejects.toThrow('HTTP request timed out')
   expect(catalogue).toHaveBeenCalledTimes(1)
   expect(catalogue).toHaveBeenCalledWith(expect.objectContaining({ kind: 'met_warning' }), entries)
   expect(log).toHaveBeenCalledWith('source.catalogue.failed', { adapter: 'jps_rain', error: 'HTTP request timed out' })
-  expect(log).toHaveBeenCalledWith('source.catalogue.complete', { adapters: 1 })
+  expect(log).toHaveBeenCalledWith('source.catalogue.partial', { adapters: 1, failedAdapters: ['jps_rain'] })
 })
 test('empty registry reports zero contracts and discoveries; failed probes log and reject', async () => {
   const store = new MemoryStore(),
