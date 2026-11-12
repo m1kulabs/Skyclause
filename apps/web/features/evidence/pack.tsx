@@ -1,20 +1,32 @@
 'use client'
 
 import { useCallback, useState, type ReactNode } from 'react'
+import type { BrandState } from '@skyclause/elements'
 import type { Principal, CallView } from '@skyclause/contracts'
 import { formatDateTime, formatNumber, formatTime } from '@skyclause/i18n/format'
+import { DownloadIcon, RefreshCwIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '#ui/sheet'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '#ui/hover-card'
 import { Button } from '#ui/button'
 import { InputAgeChip } from '../data-components/input-age-chip'
 import { ModeBadge } from '../brand/mode-badge'
+import { StatusMark } from '../brand/status-mark'
 import { apiFetch, type Evidence } from '../ledger/operations'
 import { useRead } from '../ledger/use-read'
 import { Failure, Loading } from '../ledger/feedback'
 import { canApproveReply, requestState } from '../ledger/model'
+import { EntryMark, Missing, SpanTimes } from '../ledger/table'
 import { saveDownload } from '../ledger/download'
 import { t } from '../ledger/i18n'
 import { problemMessage } from '../ledger/problem'
+
+/** A request's state as a status mark: the pending ring while it waits or assembles, the ring once replied. */
+const STATE_GLYPH: Record<ReturnType<typeof requestState>, BrandState> = {
+  notReviewed: 'no_call',
+  waiting: 'pending',
+  assembling: 'pending',
+  replied: 'fresh'
+}
 
 export function RequestStatus({
   request,
@@ -27,12 +39,17 @@ export function RequestStatus({
 }) {
   const state = requestState(request, guest)
   return (
-    <span>
-      {t(
-        `evidence.status.${state}`,
-        state === 'replied' && request.replied_at ? { time: formatTime(request.replied_at, locale) } : {},
-        locale
-      )}
+    <span className="evidence-status" data-state={state}>
+      <StatusMark
+        state={STATE_GLYPH[state]}
+        variant="plain"
+        locale={locale}
+        label={t(
+          `evidence.status.${state}`,
+          state === 'replied' && request.replied_at ? { time: formatTime(request.replied_at, locale) } : {},
+          locale
+        )}
+      />
     </span>
   )
 }
@@ -64,7 +81,7 @@ export function EvidenceSheet({
       <SheetContent className="ledger-sheet" lang={locale} finalFocus={finalFocus}>
         <SheetHeader>
           <SheetTitle>{t('evidence.pack', {}, locale)}</SheetTitle>
-          <SheetDescription>{t('evidence.project', { id: projectId }, locale)}</SheetDescription>
+          <SheetDescription translate="no">{t('evidence.project', { id: projectId }, locale)}</SheetDescription>
         </SheetHeader>
         {id && <PackBody key={id} id={id} projectId={projectId} principal={principal} guest={guest} locale={locale} />}
       </SheetContent>
@@ -106,39 +123,43 @@ function PackBody({
   if (!request)
     return (
       <div className="ledger-sheet-body">
-        <Failure error={resource.error} retry={resource.retry} locale={locale} />
+        <Failure source="pack" error={resource.error} at={resource.failedAt} retry={resource.retry} locale={locale} />
       </div>
     )
   const pack = request.pack
   return (
     <div className="ledger-sheet-body">
-      <p role="status">
-        <RequestStatus request={request} guest={guest} locale={locale} />
-      </p>
-      <h3>{t('evidence.packFor', { id: request.id }, locale)}</h3>
-      {pack?.window_id && <p>{t('evidence.window', { id: pack.window_id }, locale)}</p>}
-      <p>
-        <time dateTime={request.span.from}>{formatDateTime(request.span.from, locale)}</time>
-      </p>
-      <p>
-        <time dateTime={request.span.to}>{formatDateTime(request.span.to, locale)}</time>
-      </p>
-      <dl className="evidence-times">
-        {(['received', 'drafted', 'approved', 'replied'] as const).map((key) => (
-          <div key={key}>
-            <dt>{t(`evidence.${key}`, {}, locale)}</dt>
-            <dd>
-              {request[`${key}_at`] ? (
-                <time dateTime={request[`${key}_at`]!}>{formatDateTime(request[`${key}_at`]!, locale)}</time>
-              ) : (
-                t('ledger.noValue', {}, locale)
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div className="evidence-head">
+        <h3 className="evidence-span">
+          <span>{t('evidence.for', {}, locale)}</span>
+          <SpanTimes from={request.span.from} to={request.span.to} locale={locale} />
+        </h3>
+        <p role="status">
+          <RequestStatus request={request} guest={guest} locale={locale} />
+        </p>
+        <p className="ledger-sub" translate="no">
+          {t('evidence.packFor', { id: request.id }, locale)}
+        </p>
+        {pack?.window_id && (
+          <p className="ledger-sub" translate="no">
+            {t('evidence.window', { id: pack.window_id }, locale)}
+          </p>
+        )}
+      </div>
+      <ol className="evidence-times">
+        {(['received', 'drafted', 'approved', 'replied'] as const).map((key) => {
+          const at = request[`${key}_at`]
+          return (
+            <li key={key} data-done={at ? '' : undefined}>
+              <span className="evidence-step" aria-hidden="true" />
+              <span className="evidence-step-label">{t(`evidence.${key}`, {}, locale)}</span>
+              {at ? <time dateTime={at}>{formatDateTime(at, locale)}</time> : <Missing locale={locale} />}
+            </li>
+          )
+        })}
+      </ol>
       <div className="ledger-actions">
-        {canApproveReply(principal, request) ? (
+        {canApproveReply(principal, request) && (
           <Button
             disabled={busy}
             onClick={async () => {
@@ -156,24 +177,30 @@ function PackBody({
           >
             {t(busy ? 'evidence.approving' : 'evidence.approve', {}, locale)}
           </Button>
-        ) : (
-          <Button
-            onClick={() =>
-              saveDownload(
-                JSON.stringify(request, null, 2),
-                'application/json',
-                t('evidence.filename', { id: request.id }, locale)
-              )
-            }
-          >
-            {t('evidence.download', {}, locale)}
-          </Button>
         )}
-        <Button variant="outline" onClick={resource.retry}>
+        <Button
+          variant={canApproveReply(principal, request) ? 'outline' : 'default'}
+          onClick={() =>
+            saveDownload(
+              JSON.stringify(request, null, 2),
+              'application/json',
+              t('evidence.filename', { id: request.id }, locale)
+            )
+          }
+        >
+          <DownloadIcon data-icon="inline-start" aria-hidden="true" />
+          {t('evidence.download', {}, locale)}
+        </Button>
+        <Button variant="ghost" onClick={resource.retry}>
+          <RefreshCwIcon data-icon="inline-start" aria-hidden="true" />
           {t('evidence.refreshPack', {}, locale)}
         </Button>
       </div>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" className="ledger-invalid">
+          {error}
+        </p>
+      )}
       {pack ? <PackContents pack={pack} locale={locale} /> : <p>{t('evidence.pending', {}, locale)}</p>}
     </div>
   )
@@ -185,84 +212,67 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
     const ids = [
       ...new Set(call?.shadow.clauses.flatMap((clause) => clause.inputs.flatMap((input) => input.reading_ids)) ?? [])
     ]
-    return ids.length ? ids.map(readingRef) : <p>{t('evidence.provenanceMissing', {}, locale)}</p>
+    return ids.length ? (
+      <span className="evidence-refs">{ids.map(readingRef)}</span>
+    ) : (
+      <p className="ledger-sub">{t('evidence.provenanceMissing', {}, locale)}</p>
+    )
   }
   const section = (key: string, content: ReactNode[], empty?: string) => (
-    <section className="evidence-section">
-      <h3>{t(`evidence.${key}`, {}, locale)}</h3>
-      {content.length ? content : <p>{t(empty ?? 'evidence.none', {}, locale)}</p>}
+    <section className="evidence-section" aria-labelledby={`evidence-${key}`}>
+      <h3 id={`evidence-${key}`}>
+        {t(`evidence.${key}`, {}, locale)}
+        <span className="ledger-n" data-numeric>
+          {t('evidence.count', { n: formatNumber(content.length, locale) }, locale)}
+        </span>
+      </h3>
+      {content.length ? content : <p className="ledger-sub">{t(empty ?? 'evidence.none', {}, locale)}</p>}
     </section>
   )
   return (
     <>
+      {/* The answer first: the record's own entries for this span, then what they rest on. */}
       {section(
-        'readings',
-        pack.readings.map((reading) => (
-          <article key={reading.id} id={`reading-${reading.id}`}>
-            <p>{reading.metric}</p>
-            <p>
-              {t(
-                'evidence.value',
-                {
-                  value:
-                    reading.value !== null
-                      ? formatNumber(reading.value, locale)
-                      : (reading.value_text ??
-                        (reading.value_json !== null
-                          ? JSON.stringify(reading.value_json)
-                          : t('ledger.noValue', {}, locale))),
-                  unit: reading.unit ?? ''
-                },
-                locale
-              )}
+        'ledger',
+        pack.ledger.map((entry) => (
+          <article key={entry.id} className="evidence-entry">
+            <p className="evidence-entry-line">
+              <time dateTime={entry.at}>{formatDateTime(entry.at, locale)}</time>
+              <EntryMark kind={entry.kind} locale={locale} />
+              <span className="ledger-sub" data-numeric>
+                {t('ledger.seq', { n: formatNumber(entry.seq, locale) }, locale)}
+              </span>
             </p>
-            <p translate="no">
-              {t(
-                'evidence.source',
-                { station: reading.station_id ?? reading.source_id, source: reading.source_id },
-                locale
-              )}
+            <p className="ledger-sub" translate="no">
+              {t('ledger.entry', { id: entry.id }, locale)}
             </p>
-            {readingRef(reading.id)}
+            <details className="evidence-body">
+              <summary>{t('evidence.body', {}, locale)}</summary>
+              <pre>{JSON.stringify(entry.body, null, 2)}</pre>
+            </details>
+            {entry.refs.reading_id
+              ? readingRef(entry.refs.reading_id)
+              : callRefs(pack.calls.find((call) => call.id === entry.refs.call_id))}
           </article>
         ))
-      )}
-      {section(
-        'warnings',
-        pack.warnings.map((warning, index) => (
-          <article key={`${warning.reading_id}-${index}`}>
-            <blockquote lang="ms">{warning.text}</blockquote>
-            <p>{warning.gloss ?? t('evidence.noGloss', {}, locale)}</p>
-            <p>
-              {t(
-                'evidence.valid',
-                { from: formatDateTime(warning.valid_from, locale), to: formatDateTime(warning.valid_to, locale) },
-                locale
-              )}
-            </p>
-            {readingRef(warning.reading_id)}
-          </article>
-        )),
-        'evidence.noWarnings'
       )}
       {section(
         'calls',
         pack.calls.map((call) => (
           <article key={call.id}>
-            <p translate="no">{call.id}</p>
-            {call.mode && (
-              <>
-                <ModeBadge mode={call.mode} />
-                <p>{t(`ledger.modes.${call.mode}`, {}, locale)}</p>
-              </>
-            )}
+            <p className="evidence-entry-line">
+              <span translate="no">{t('ledger.callRef', { id: call.id }, locale)}</span>
+              {call.mode && <ModeBadge mode={call.mode} locale={locale} />}
+            </p>
             <p>{call.reason}</p>
             {callRefs(call)}
-            {call.shadow.clauses.flatMap((clause) =>
-              clause.inputs.map((input, index) => (
-                <InputAgeChip key={`${clause.key}-${input.name}-${index}`} input={input} />
-              ))
-            )}
+            <span className="evidence-refs">
+              {call.shadow.clauses.flatMap((clause) =>
+                clause.inputs.map((input, index) => (
+                  <InputAgeChip key={`${clause.key}-${input.name}-${index}`} input={input} />
+                ))
+              )}
+            </span>
           </article>
         ))
       )}
@@ -285,26 +295,67 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
         'grades',
         pack.grades.map((grade) => (
           <article key={grade.id}>
-            <p>{grade.id}</p>
-            <p>{grade.outcome}</p>
+            <p className="evidence-entry-line">
+              <span translate="no">{grade.id}</span>
+              <span>
+                {grade.outcome in OUTCOMES ? t(`ledger.outcomes.${grade.outcome}`, {}, locale) : grade.outcome}
+              </span>
+            </p>
             {callRefs(pack.calls.find((call) => call.id === grade.call_id))}
           </article>
         ))
       )}
       {section(
-        'ledger',
-        pack.ledger.map((entry) => (
-          <article key={entry.id}>
-            <p>{t('ledger.entry', { id: entry.id }, locale)}</p>
-            <p>
-              <time dateTime={entry.at}>{formatDateTime(entry.at, locale)}</time>
+        'readings',
+        pack.readings.map((reading) => (
+          <article key={reading.id} id={`reading-${reading.id}`}>
+            <p className="evidence-entry-line">
+              <span>{reading.metric}</span>
+              <span className="evidence-value" data-numeric>
+                {t(
+                  'evidence.value',
+                  {
+                    value:
+                      reading.value !== null
+                        ? formatNumber(reading.value, locale)
+                        : (reading.value_text ??
+                          (reading.value_json !== null
+                            ? JSON.stringify(reading.value_json)
+                            : t('ledger.noValue', {}, locale))),
+                    unit: reading.unit ?? ''
+                  },
+                  locale
+                )}
+              </span>
             </p>
-            <pre>{JSON.stringify(entry.body, null, 2)}</pre>
-            {entry.refs.reading_id
-              ? readingRef(entry.refs.reading_id)
-              : callRefs(pack.calls.find((call) => call.id === entry.refs.call_id))}
+            <p className="ledger-sub" translate="no">
+              {t(
+                'evidence.source',
+                { station: reading.station_id ?? reading.source_id, source: reading.source_id },
+                locale
+              )}
+            </p>
+            {readingRef(reading.id)}
           </article>
         ))
+      )}
+      {section(
+        'warnings',
+        pack.warnings.map((warning, index) => (
+          <article key={`${warning.reading_id}-${index}`}>
+            <blockquote lang="ms">{warning.text}</blockquote>
+            <p>{warning.gloss ?? t('evidence.noGloss', {}, locale)}</p>
+            <p className="ledger-sub">
+              {t(
+                'evidence.valid',
+                { from: formatDateTime(warning.valid_from, locale), to: formatDateTime(warning.valid_to, locale) },
+                locale
+              )}
+            </p>
+            {readingRef(warning.reading_id)}
+          </article>
+        )),
+        'evidence.noWarnings'
       )}
       {section(
         'frames',
@@ -321,6 +372,18 @@ function PackContents({ pack, locale }: { pack: NonNullable<Evidence['pack']>; l
   )
 }
 
+const OUTCOMES = new Set([
+  'hit',
+  'miss',
+  'false_alarm',
+  'correct_normal',
+  'in_band',
+  'out_of_band',
+  'unlisted_surge',
+  'no_call',
+  'pending'
+])
+
 function ReadingRef({ id, pack, locale }: { id: string; pack: NonNullable<Evidence['pack']>; locale: 'en' | 'ms' }) {
   const [open, setOpen] = useState(false)
   const reading = pack.readings.find((item) => item.id === id)
@@ -336,6 +399,7 @@ function ReadingRef({ id, pack, locale }: { id: string; pack: NonNullable<Eviden
           <a
             aria-label={label}
             href={`#reading-${id}`}
+            className="evidence-reading-ref"
             data-reading-trigger
             translate="no"
             onFocus={() => setOpen(true)}
