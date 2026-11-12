@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { useState } from 'react'
 import { DeclareWindowDialog } from '../../features/windows/declare-window-dialog'
 import type { WindowControls } from '../../features/windows/controls'
 import { resolveProject, windowsApi, type WindowView } from '../../features/windows/operations'
@@ -131,4 +132,48 @@ test('a declared window tells the first-run steps to read again, so they move on
   const [, request] = vi.mocked(windowsApi).mock.calls.find(([operation]) => operation === 'createWindow')!
   expect((request as unknown as { body: object }).body).not.toHaveProperty('recurrence')
   window.removeEventListener('onboarding:changed', changed)
+})
+
+test('a typed draft survives the viewport crossing 640px, as a phone turning does', async () => {
+  // A media query whose answer the test flips, the way a phone turned to landscape does.
+  const listeners = new Set<() => void>()
+  let narrow = false
+  window.matchMedia = ((query: string) => ({
+    get matches() {
+      return narrow && query.includes('max-width')
+    },
+    media: query,
+    addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_: string, listener: () => void) => listeners.delete(listener)
+  })) as unknown as typeof window.matchMedia
+  search = new URLSearchParams('declare=window')
+  render(<DeclareWindowDialog org="test-org" project="test-project" controls={none} />)
+  const dialog = await screen.findByRole('dialog', { name: 'Declare a window' })
+  fireEvent.change(await within(dialog).findByLabelText('Title'), { target: { value: 'Test lecture' } })
+  narrow = true
+  act(() => listeners.forEach((listener) => listener()))
+  const title = within(await screen.findByRole('dialog', { name: 'Declare a window' })).getByLabelText('Title')
+  expect((title as HTMLInputElement).value).toBe('Test lecture')
+})
+
+test('Undo cancellation takes focus while it is offered, and focus returns to Declare a window after', async () => {
+  search = new URLSearchParams('edit=window-1')
+  // The page's own Declare button, and the dialog's open state held as the windows page holds it.
+  function Page() {
+    const [open, setOpen] = useState(true)
+    return (
+      <>
+        <button type="button" data-declare-window />
+        <DeclareWindowDialog org="test-org" project="test-project" controls={all} open={open} onOpenChange={setOpen} />
+      </>
+    )
+  }
+  render(<Page />)
+  const editor = await screen.findByRole('dialog', { name: 'Edit window' })
+  fireEvent.click(await within(editor).findByRole('button', { name: 'Cancel window' }))
+  const undo = await screen.findByRole('button', { name: 'Undo cancellation' })
+  await waitFor(() => expect(document.activeElement).toBe(undo))
+  fireEvent.click(undo)
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo cancellation' })).toBeNull())
+  await waitFor(() => expect(document.activeElement).toBe(document.querySelector('[data-declare-window]')))
 })
