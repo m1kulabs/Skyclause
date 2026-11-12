@@ -42,11 +42,11 @@ const failure = (error: unknown) => ({
   status: error instanceof ApiProblem ? error.status : null,
   at: new Date().toISOString()
 })
-// A timeout has no HTTP status; say so instead of printing "HTTP null".
+// A timeout did not answer at all; an answer with an error status says so in words, never the code.
 const errorAnnouncement = (source: string, status: number | null, locale: Parameters<typeof t>[2]) =>
   status === null
     ? t('signals.announcement_error_no_status', { source }, locale)
-    : t('signals.announcement_error', { source, status }, locale)
+    : t('signals.announcement_error', { source }, locale)
 
 type PendingSourceEvent = {
   sourceId: string
@@ -440,14 +440,15 @@ export function SignalsPage({
                           >
                             {source?.external_id ?? t('signals.source_unknown', {}, locale)}
                           </TableCell>
-                          <TableCell data-numeric phone="end" className="whitespace-normal">
+                          <TableCell
+                            data-numeric
+                            data-http-status={poll.http_status ?? undefined}
+                            phone="end"
+                            className="whitespace-normal"
+                          >
                             {poll.http_status === null
                               ? t('signals.error_no_status', { time: formatDateTime(poll.started_at, locale) }, locale)
-                              : t(
-                                  'signals.error_status',
-                                  { status: poll.http_status, time: formatDateTime(poll.started_at, locale) },
-                                  locale
-                                )}
+                              : t('signals.error_status', { time: formatDateTime(poll.started_at, locale) }, locale)}
                           </TableCell>
                         </TableRow>
                       ))}
