@@ -46,6 +46,7 @@ import {
 import { localDateAt, overviewFilterState, selectTodayAtRisk, type OverviewPackFilter } from './model'
 import { t as bundleText } from '../bundles/i18n'
 import { t } from './catalogue'
+import { AskForCall } from './ask-for-call'
 import './overview.css'
 
 type Locale = 'en' | 'ms'
@@ -822,7 +823,15 @@ export function ProjectOverview({
         </Section>
       </div>
 
-      <Section id="overview-bundle" title={t('overview.bundle', {}, locale)}>
+      <Section
+        id="overview-bundle"
+        title={t('overview.bundle', {}, locale)}
+        action={
+          data.project.packs.some((item) => item.pack === 'sky' && item.enabled) && declare ? (
+            <AskForCall org={org} projectId={data.project.id} locale={locale} />
+          ) : undefined
+        }
+      >
         {!data.bundles.ok && !latestBundle ? (
           <ReadError
             read={data.bundles}
