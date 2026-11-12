@@ -339,7 +339,7 @@ One top bar on the ground, sharing the content column, and nothing at the bottom
 - **Review** is a control in the bar's end cluster that links to `/{org}#dashboard-needs-review`, the dashboard's needs-review block. Its waiting count (an inverted 24px capsule in figures) appears only once the live stream has delivered a real count; the control never prints "0".
 - **Phone (640px and below).** The bar keeps the wordmark, Review and a Menu button; the destinations, switchers, clock and tools move into the phone sheet.
 - **Palette** (⌘K or Ctrl+K) opens from the bar on every route: a search field, results grouped by kind (Suggestions while empty, then Actions, Go to, Organisations and projects, Theme, and searched Projects, Sources, Windows, Bundles, Calls and Ledger entries), each action saying what it did, a footer of key hints, and designed loading and error states. Sources add items through a `PaletteSource` and a `kind`; a command a role cannot use is not listed.
-- **States above a page.** A failed memberships read shows `SourceError` ("Couldn’t read your organisations.") above the page; a successful empty one shows "Organisations: n=0" with "Create an organisation". The page renders below either.
+- **States above a page.** A failed memberships read shows `SourceError` ("Couldn’t read your organisations just now.") above the page; a successful empty one shows "Organisations: n=0" with "Create an organisation". The page renders below either.
 - **Skip link** first, to `#shell-content`; focus and anchors land below the sticky bar.
 
 ## Screens
