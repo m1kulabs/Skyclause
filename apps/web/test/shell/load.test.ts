@@ -32,19 +32,9 @@ const project = {
   warning_area_terms: [],
   packs: []
 }
-const preferences = {
-  theme: 'dark',
-  high_contrast: false,
-  density: 'comfortable',
-  reduced_motion: false,
-  language: 'en',
-  sidebar_collapsed: true
-}
-
 function answerShell(input: string | URL) {
   const { pathname } = new URL(input)
   if (pathname === '/api/me/memberships') return Response.json({ data: [membership], next_cursor: null })
-  if (pathname === '/api/me/preferences') return Response.json(preferences)
   return Response.json({ data: [project], next_cursor: null })
 }
 
@@ -60,17 +50,14 @@ test('loads only real memberships and their scoped projects, following cursors a
         next_cursor: url.searchParams.has('cursor') ? null : 'next'
       })
     }
-    if (url.pathname === '/api/me/preferences') return new Response(null, { status: 501 })
     expect(url.pathname).toBe('/v1/projects')
     expect(headers.get('Skyclause-Organization')).toBe('test-org')
     return Response.json({ data: [project, { ...project, id: 'foreign', org_id: 'other' }], next_cursor: null })
   })
   vi.stubGlobal('fetch', fetcher)
   const data = await loadShellData(new Headers({ cookie: 'session=test' }))
-  expect(data.memberships).toEqual([membership])
-  expect(data.projects).toEqual([project])
-  expect(data.sidebarCollapsed).toBe(false)
-  expect(fetcher).toHaveBeenCalledTimes(4)
+  expect(data).toEqual({ memberships: [membership], projects: [project] })
+  expect(fetcher).toHaveBeenCalledTimes(3)
 })
 
 test('routes /api/me reads to APP_ORIGIN and /v1/projects to API_ORIGIN in multi-host mode', async () => {
@@ -82,11 +69,10 @@ test('routes /api/me reads to APP_ORIGIN and /v1/projects to API_ORIGIN in multi
 
   const data = await loadShellData(new Headers({ cookie: 'session=test' }))
 
-  expect(data).toEqual({ memberships: [membership], projects: [project], sidebarCollapsed: true })
+  expect(data).toEqual({ memberships: [membership], projects: [project] })
   expect(fetcher.mock.calls.map(([url]) => String(url)).sort()).toEqual([
     'https://api.skyclause.m1ku.tech/v1/projects',
-    'https://app.skyclause.m1ku.tech/api/me/memberships',
-    'https://app.skyclause.m1ku.tech/api/me/preferences'
+    'https://app.skyclause.m1ku.tech/api/me/memberships'
   ])
 })
 
@@ -107,7 +93,7 @@ test('sends the session and a time limit to the configured origins, never to a h
     })
   )
 
-  expect(fetcher).toHaveBeenCalledTimes(3)
+  expect(fetcher).toHaveBeenCalledTimes(2)
   for (const [input, init] of fetcher.mock.calls) {
     const headers = new Headers(init?.headers)
     expect(['https://app.skyclause.m1ku.tech', 'https://api.skyclause.m1ku.tech']).toContain(new URL(input).origin)
@@ -129,30 +115,39 @@ test('keeps every read on API_ORIGIN in single-host mode', async () => {
 
   expect(fetcher.mock.calls.map(([url]) => String(url)).sort()).toEqual([
     'http://localhost:3000/api/me/memberships',
-    'http://localhost:3000/api/me/preferences',
     'http://localhost:3000/v1/projects'
   ])
 })
 
-test('returns empty data when the origin answers a page instead of JSON', async () => {
+const at = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
+
+test('reports an unreadable memberships answer as a failed read, not as no organisations', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(
       async () => new Response('<!doctype html><title>Skyclause</title>', { headers: { 'Content-Type': 'text/html' } })
     )
   )
-  expect(await loadShellData()).toEqual({ memberships: [], projects: [], sidebarCollapsed: false })
+  expect(await loadShellData()).toEqual({ memberships: [], projects: [], membershipsError: { status: null, at } })
 })
 
-test.each([501, 500, 401])('returns empty data when memberships answer %s', async (status) => {
+test.each([501, 500, 403])('reports the status when memberships answer %s', async (status) => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => new Response(null, { status }))
   )
-  expect(await loadShellData()).toEqual({ memberships: [], projects: [], sidebarCollapsed: false })
+  expect(await loadShellData()).toEqual({ memberships: [], projects: [], membershipsError: { status, at } })
 })
 
-test('keeps memberships when project reads fail and never supplies sample projects', async () => {
+test('a 401 means no session: neither an error nor the no-organisation state', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(null, { status: 401 }))
+  )
+  expect(await loadShellData()).toEqual({ memberships: [], projects: [], signedOut: true })
+})
+
+test('keeps memberships when project reads fail, marks that organisation, and never supplies sample projects', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: string | URL) =>
@@ -161,34 +156,21 @@ test('keeps memberships when project reads fail and never supplies sample projec
         : Promise.reject(new Error('offline'))
     )
   )
-  expect(await loadShellData()).toEqual({ memberships: [membership], projects: [], sidebarCollapsed: false })
+  expect(await loadShellData()).toEqual({
+    memberships: [membership],
+    projects: [],
+    projectsError: { 'org-test': { status: null, at } }
+  })
 })
 
-test('invalid response data produces an empty result', async () => {
+test('invalid response data is a failed read', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => Response.json({ data: [{ org_name: 'incomplete' }], next_cursor: null }))
   )
-  expect((await loadShellData()).memberships).toEqual([])
-})
-
-test('reads a saved rail preference from the server', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: string | URL) =>
-      new URL(input).pathname === '/api/me/preferences'
-        ? Response.json({
-            theme: 'dark',
-            high_contrast: false,
-            density: 'comfortable',
-            reduced_motion: false,
-            language: 'en',
-            sidebar_collapsed: true
-          })
-        : Response.json({ data: [], next_cursor: null })
-    )
-  )
-  expect((await loadShellData()).sidebarCollapsed).toBe(true)
+  const data = await loadShellData()
+  expect(data.memberships).toEqual([])
+  expect(data.membershipsError).toEqual({ status: null, at })
 })
 
 test('uses the empty shell state in the test runtime without calling the API', async () => {
@@ -196,6 +178,26 @@ test('uses the empty shell state in the test runtime without calling the API', a
   const fetcher = vi.fn()
   vi.stubGlobal('fetch', fetcher)
 
-  expect(await loadShellData()).toEqual({ memberships: [], projects: [], sidebarCollapsed: false })
+  expect(await loadShellData()).toEqual({ memberships: [], projects: [] })
   expect(fetcher).not.toHaveBeenCalled()
+})
+
+test('reads the planted harness cookie in the test runtime, and only there', async () => {
+  const harness = {
+    memberships: [{ org_id: 'org-test', org_name: 'Test organisation', org_slug: 'test-org', role: 'approver' }],
+    projects: [{ id: 'project-test', org_id: 'org-test', name: 'Test project', slug: 'test-project' }]
+  }
+  const cookie = `session=test; skyclause-test-shell=${encodeURIComponent(JSON.stringify(harness))}`
+  vi.stubEnv('APP_ENV', 'test')
+  const fetcher = vi.fn()
+  vi.stubGlobal('fetch', fetcher)
+  expect(await loadShellData(new Headers({ cookie }))).toEqual(harness)
+  expect(fetcher).not.toHaveBeenCalled()
+
+  vi.stubEnv('APP_ENV', 'production')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL) => answerShell(input))
+  )
+  expect(await loadShellData(new Headers({ cookie }))).toEqual({ memberships: [membership], projects: [project] })
 })

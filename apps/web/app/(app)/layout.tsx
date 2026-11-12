@@ -5,7 +5,6 @@ import { RequestRootLayout } from '../../components/request-root-layout'
 import { headers } from 'next/headers'
 import { AppShell } from '../../features/shell'
 import { loadShellData } from '../../features/shell/load'
-import { ApprovalsCount } from '../../features/org-live'
 import { CommandPalette } from '../../features/palette'
 import { t } from '../../features/shell/i18n'
 
@@ -14,10 +13,12 @@ export const instant = false
 
 export default async function Layout({ children }: { children: ReactNode }) {
   const data = await loadShellData(new Headers(await headers()))
+  // The request has been read, so this is the request's time: the bar's clock starts from it.
+  const now = new Date().toISOString()
   return (
     <RequestRootLayout routeGroup="app">
       <Providers>
-        <AppShell data={data} approvalsCount={<ApprovalsCount />} palette={<CommandPalette />}>
+        <AppShell data={data} now={now} palette={<CommandPalette />}>
           {children}
         </AppShell>
       </Providers>

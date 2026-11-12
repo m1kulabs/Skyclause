@@ -1,35 +1,37 @@
 const listeners = new Set<() => void>()
 let currentOrg: string | undefined
-let approvalsCount = 0
+/** Null until the stream's snapshot says how many bundles wait: a count seen only since page load is not one. */
+let waitingCount: number | null = null
 
 function notify() {
   listeners.forEach((listener) => listener())
 }
 
-export function subscribeToApprovalsCount(listener: () => void) {
+export function subscribeToWaitingCount(listener: () => void) {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
 
-export function getApprovalsCount(org: string | undefined) {
-  return org && org === currentOrg ? approvalsCount : 0
+export function getWaitingCount(org: string | undefined): number | null {
+  return org && org === currentOrg ? waitingCount : null
 }
 
 export function startOrgLive(org: string) {
   currentOrg = org
-  approvalsCount = 0
+  waitingCount = null
   notify()
 }
 
-export function setApprovalsCount(org: string, count: number) {
-  if (org !== currentOrg || count === approvalsCount) return
-  approvalsCount = count
+/** Null again when the stream fails: the last count it gave may no longer hold. */
+export function setWaitingCount(org: string, count: number | null) {
+  if (org !== currentOrg || count === waitingCount) return
+  waitingCount = count
   notify()
 }
 
 export function stopOrgLive(org: string) {
   if (org !== currentOrg) return
   currentOrg = undefined
-  approvalsCount = 0
+  waitingCount = null
   notify()
 }
