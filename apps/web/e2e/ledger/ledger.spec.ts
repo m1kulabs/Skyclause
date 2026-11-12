@@ -131,8 +131,17 @@ test('LED-7 empty ledger prints n=0 and its next action; unavailable operations 
   await page.reload()
   const failed = page.locator('.ledger-page [data-source-error="501"]')
   await expect(failed).toContainText(copy('ledger.sources.entries'))
-  await expect(failed.getByRole('button', { name: copy('ledger.retry'), exact: true })).toBeVisible()
+  // Reading again cannot change a "not built" answer, so it offers no retry; a failed read does.
+  await expect(failed.getByRole('button', { name: copy('ledger.retry'), exact: true })).toHaveCount(0)
   await expect(page.getByText(copy('ledger.empty'), { exact: true })).toBeHidden()
+  await page.unroute('**/v1/projects/*/ledger?*')
+  await page.route('**/v1/projects/*/ledger?*', (r) => r.fulfill({ status: 503, json: { title: 'Unavailable' } }))
+  await page.reload()
+  await expect(
+    page
+      .locator('.ledger-page [data-source-error="503"]')
+      .getByRole('button', { name: copy('ledger.retry'), exact: true })
+  ).toBeVisible()
 })
 
 test('LED-8 pilot archive appears only with files and downloads stay outside the ledger', async ({ page }) => {

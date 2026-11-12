@@ -309,7 +309,8 @@ test('a failed memberships read names itself as an error, not as no organisation
   await expect(main.locator('[data-source-error="501"]')).toContainText(
     copy(`Couldn’t read ${copy('your organisations')}.`)
   )
-  await expect(main.getByRole('button', { name: copy('Try again') })).toBeVisible()
+  // Reading again cannot change a "not built" answer, so it offers no Try again; a failed read (below) does.
+  await expect(main.getByRole('button', { name: copy('Try again') })).toHaveCount(0)
   await expect(main.locator('[data-slot="empty"]')).toHaveCount(0)
   await expect(main).not.toContainText(copy('No organisations yet (n=0)'))
   await expect(bar(page).getByRole('button', { name: /Switch organisation:/ })).toContainText(
@@ -321,6 +322,7 @@ test('a failed memberships read names itself as an error, not as no organisation
     { memberships: [], projects: [], membershipsError: { status: 503, at: '2026-11-12T03:04:00.000Z' } },
     '?org=test-one'
   )
+  await expect(main.getByRole('button', { name: copy('Try again') })).toBeVisible()
   await expect(bar(page).getByRole('button', { name: /Switch project:/ })).toContainText(copy('Projects unavailable'))
 })
 
