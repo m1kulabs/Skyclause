@@ -3,12 +3,13 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { Bundle, CallView, Grade, InputValue, PackState, Source } from '@skyclause/contracts'
 import { Mode } from '@skyclause/contracts'
-import { brandStates, type BrandState, type StripWindow } from '@skyclause/elements'
+import { brandStates, type BrandState, type StripInput, type StripWindow } from '@skyclause/elements'
 import { Alert, AlertDescription, AlertTitle } from '#ui/alert'
 import { Badge } from '#ui/badge'
 import { Button } from '#ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#ui/card'
 import { Checkbox } from '#ui/checkbox'
+import { Combobox, ComboboxChip, ComboboxChips, ComboboxChipsInput } from '#ui/combobox'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '#ui/empty'
 import { Field, FieldDescription, FieldError, FieldLabel } from '#ui/field'
 import { Input } from '#ui/input'
@@ -30,9 +31,11 @@ import {
   GradeCard,
   InputAgeChip,
   NoCallState,
+  NotBuilt,
   PackStateNote,
   SourceError,
-  SourceHealthRow
+  SourceHealthRow,
+  WindowStrip
 } from '../../../features/data-components'
 
 const roles = [
@@ -122,6 +125,20 @@ const windows: StripWindow[] = [
     title: 'Late lab'
   }
 ]
+// A two-hour rainfall specimen at five-minute steps (06:00-08:00Z); the 60-minute totals are summed from it.
+const readingTimes = Array.from({ length: 25 }, (_, i) => new Date(Date.parse('2026-11-12T06:00:00Z') + i * 300_000))
+const rainEvery5 = [0, 0, 0, 0.5, 1, 2.5, 5, 9, 9.5, 8, 6.5, 5, 4.5, 6, 7.5, 9, 8.5, 7, 5.5, 4, 3, 2, 1, 0.5, 0]
+const strip: StripInput = {
+  from: readingTimes[0]!.toISOString(),
+  to: readingTimes.at(-1)!.toISOString(),
+  now: '2026-11-12T07:40:00Z',
+  windows: [windows[3]!],
+  rain5: readingTimes.map((at, i) => ({ at: at.toISOString(), value: rainEvery5[i]!, state: 'received' })),
+  rain60: readingTimes.map((at, i) => ({
+    at: at.toISOString(),
+    value: Math.round(rainEvery5.slice(Math.max(0, i - 11), i + 1).reduce((sum, value) => sum + value, 0))
+  }))
+}
 const source: Source = {
   id: 's1',
   kind: 'jps_rain',
@@ -464,6 +481,16 @@ export function Gallery() {
             </select>
           </Field>
           <Field>
+            <FieldLabel htmlFor="labeller-search">Labellers, chips with a remove button</FieldLabel>
+            <Combobox multiple defaultValue={['Amina Labeller', 'Haziq Approver']}>
+              <ComboboxChips>
+                <ComboboxChip>Amina Labeller</ComboboxChip>
+                <ComboboxChip>Haziq Approver</ComboboxChip>
+                <ComboboxChipsInput id="labeller-search" name="labeller-search" autoComplete="off" />
+              </ComboboxChips>
+            </Combobox>
+          </Field>
+          <Field>
             <FieldLabel htmlFor="window-notes">Notes for approvers</FieldLabel>
             <Textarea id="window-notes" name="window-notes" autoComplete="off" defaultValue="Exit through gate A." />
           </Field>
@@ -586,10 +613,29 @@ export function Gallery() {
         />
         <h3 className="type-card-title">Empty day</h3>
         <EmptyDay from={from} to={to} now={now} action={<Button variant="outline">Declare a window</Button>} />
+        <EmptyDay from={from} to={to} now={now} caption="No windows declared yet." />
+        <h3 className="type-card-title">Readings around a window</h3>
+        <p className="type-small text-muted-foreground">
+          Labels are 13px HTML at every width and the axis thins as the column narrows: the column below is 22rem, a
+          bundle's call block or a phone.
+        </p>
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_22rem]">
+          <Card>
+            <CardContent>
+              <WindowStrip windows={[]} strip={strip} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <WindowStrip windows={[]} strip={strip} list={false} />
+            </CardContent>
+          </Card>
+        </div>
         <h3 className="type-card-title">No call and source errors</h3>
         <NoCallState inputs={['JPS station 75']} since="2026-11-12T06:55:00Z" />
         <div className="grid gap-4 md:grid-cols-2">
           <SourceError source="the windows list" status={501} />
+          <NotBuilt thing="The key panel" />
           <SourceError
             source="JPS station 75"
             status={503}
