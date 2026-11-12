@@ -1,10 +1,11 @@
-import { brandMetadata } from '../features/brand/metadata'
+import { brandMetadata, brandViewport } from '../features/brand/metadata'
 import { headers } from 'next/headers'
 import { RequestRootLayout } from '../components/request-root-layout'
 import { NotFoundContent } from '../features/public-chrome/errors'
 import { PublicChrome } from '../features/public-chrome/frame'
 
 export const metadata = { ...brandMetadata, title: 'Skyclause' }
+export const viewport = brandViewport
 export const instant = false
 
 export default async function GlobalNotFound() {

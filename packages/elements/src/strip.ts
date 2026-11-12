@@ -357,7 +357,7 @@ export function layoutStrip(input: StripInput, options: StripLayoutOptions = {})
         value: p.value,
         x: xFor(p.at),
         y: rain60Y(p.value),
-        label: `Lebat at ${timeLabel}`,
+        label: t('brand.strip.crossing', { time: timeLabel }, locale),
         labelBeside: rain60Y(p.value) - 26 < labelCeiling
       })
       wasBelow = false
@@ -378,7 +378,11 @@ export function layoutStrip(input: StripInput, options: StripLayoutOptions = {})
 
   const isReplay = input.replay !== null && input.replay !== undefined
   const replayBadge = isReplay
-    ? `Replay · ${input.replay!.source} · ${formatDate(input.replay!.capturedAt, locale)}`
+    ? t(
+        'brand.strip.replay',
+        { source: input.replay!.source, date: formatDate(input.replay!.capturedAt, locale) },
+        locale
+      )
     : null
 
   const windowX1 = input.window ? xFor(input.window.from) : null

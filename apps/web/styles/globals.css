@@ -6,6 +6,20 @@
 @source '../features';
 
 @custom-variant dark (&:is(.dark *));
+/*
+ * calm: reduced motion, from the OS (unless the account says full motion) or from the account (html[data-motion]). One
+ * gate for every motion rule: `calm:animate-none` on a class, or `@variant calm { ... }` in CSS.
+ */
+@custom-variant calm {
+  @media (prefers-reduced-motion: reduce) {
+    html:not([data-motion='full']) & {
+      @slot;
+    }
+  }
+  html[data-motion='reduce'] & {
+    @slot;
+  }
+}
 
 /*
  * Skyclause Figures: Roundo's digits at one width (fonts/skyclause-figures/build.py), for the characters numbers are
@@ -677,6 +691,8 @@
     border-color: var(--border);
   }
   html {
+    /* The tap flash on iOS and Android, in the theme's ink rather than the browser's grey; controls that draw their own pressed state clear it. */
+    -webkit-tap-highlight-color: color-mix(in oklab, var(--ink) 16%, transparent);
     background: var(--background);
     color: var(--foreground);
     caret-color: var(--ink);
@@ -686,6 +702,12 @@
     scroll-padding-top: 64px;
     --density-row-height: 44px;
     --density-body-size: 14px;
+  }
+  @media (pointer: fine) {
+    /* No rubber band under the sticky bars on a desktop; the horizontal axis stays, so the trackpad's back swipe works. */
+    html {
+      overscroll-behavior-y: none;
+    }
   }
   html[data-density='compact'] {
     --density-row-height: 40px;
@@ -697,12 +719,44 @@
   }
   body {
     margin: 0;
+    /* viewport-fit=cover runs content under a landscape notch; the side insets keep it clear (the landing is full bleed). */
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
     font-family: var(--font-sans);
     font-size: var(--density-body-size);
     line-height: 20px;
   }
+  body:has([data-surface='marketing']) {
+    padding-inline: 0;
+  }
   [data-density-row] {
     min-height: var(--density-row-height);
+  }
+  /* No double-tap zoom delay on anything that takes a tap. */
+  a,
+  button,
+  summary,
+  label,
+  input,
+  select,
+  textarea,
+  [role='button'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='option'] {
+    touch-action: manipulation;
+  }
+  button,
+  [role='button'],
+  [role='tab'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* A scroll container that ends does not hand the scroll to the page behind it. */
+  [role='dialog'],
+  [role='alertdialog'],
+  [role='menu'],
+  [role='listbox'],
+  [data-scroll-contain] {
+    overscroll-behavior: contain;
   }
   h1,
   h2,
@@ -1063,7 +1117,8 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
   }
   [data-slot='table'][data-phone='list'] > :is(tbody, tfoot) > tr > :is(td, th)[data-phone='end'] {
     order: 1;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    max-width: 60%;
     margin-top: 0;
     margin-inline-start: auto;
     font-size: 14px;
@@ -1119,24 +1174,42 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
+/*
+ * Reduced motion (the OS, or the account's Reduced motion) takes the movement out and leaves the state changes: what
+ * spins stops and says "Loading…", what slides or scales appears with a 120ms fade, a thumb or a bar jumps to its place.
+ * There is no blanket rule: a new animation chooses its own calm rule (or gates itself on no-preference, as the landing
+ * does).
+ */
+.animate-spin {
+  @variant calm {
+    animation: none;
   }
 }
-html[data-motion='reduce'],
-html[data-motion='reduce']::before,
-html[data-motion='reduce']::after,
-html[data-motion='reduce'] *,
-html[data-motion='reduce'] *::before,
-html[data-motion='reduce'] *::after {
-  animation: none !important;
-  transition: none !important;
-  scroll-behavior: auto !important;
+/* A popup, sheet, drawer or toast: no slide or zoom, a short fade in and out. */
+:is([data-open], [data-closed], [data-starting-style], [data-ending-style]) {
+  @variant calm {
+    transition: opacity 120ms linear;
+  }
+}
+:is([data-starting-style], [data-ending-style]) {
+  @variant calm {
+    transform: none;
+    opacity: 0;
+  }
+}
+:is([data-slot='switch-thumb'], [data-slot='progress-indicator']),
+.native-switch::before {
+  @variant calm {
+    transition: none;
+  }
+}
+/* The landing's own timings (--t-press, --t-ui, --t-hover) go to zero. */
+* {
+  @variant calm {
+    --t-press: 0ms;
+    --t-hover: 0ms;
+    --t-ui: 0ms;
+  }
 }
 
 @media (forced-colors: active) {

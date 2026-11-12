@@ -145,6 +145,7 @@ function CodeBlockContent({
       data-wrap={wrap || undefined}
       data-numbered={lineNumbers || undefined}
       dir="ltr"
+      translate="no"
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- A scrollable code block must support keyboard scrolling.
       tabIndex={0}
       style={{ counterReset: `line ${startLine - 1}`, ...style }}
