@@ -18,8 +18,8 @@ export async function RequestRootLayout({ children, routeGroup, locale }: Props)
   // These roots set instant=false so request hints resolve before their document starts streaming.
   const requestHeaders = await headers()
   let preferences: PreferenceValues = DEFAULT_PREFERENCES
-  // Public pages follow the visitor's system colour scheme until stored preferences say otherwise.
-  let appearance = routeGroup === 'public' ? { ...DEFAULT_APPEARANCE, theme: 'system' as const } : DEFAULT_APPEARANCE
+  // Every page, public ones included, is Dusk until a signed-in account's stored appearance says otherwise.
+  let appearance = DEFAULT_APPEARANCE
   const testOverride =
     process.env.APP_ENV === 'test' ? (await cookies()).get('skyclause-test-appearance')?.value : undefined
   if (testOverride) {
