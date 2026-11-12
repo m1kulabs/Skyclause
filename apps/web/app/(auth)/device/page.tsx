@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPrincipal } from '../../../lib/principal'
 import { prefersMalay } from '../../../lib/preferred-language'
 import { DeviceApproval } from '../../../features/device/device-approval'
+import { marketingHref } from '../../../features/sign-in/links'
 import { normalizeDeviceCode, parseCliUserAgent } from '../../../features/device/model'
 
 export default async function DevicePage({
@@ -32,6 +33,7 @@ export default async function DevicePage({
       initialState={state}
       device={device}
       memberships={memberships}
+      homeHref={marketingHref('/')}
       locale={locale}
     />
   )

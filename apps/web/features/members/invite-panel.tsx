@@ -27,6 +27,8 @@ interface InvitePanelProps {
   token: string
   locale: Locale
   signedIn: boolean
+  /** The wordmark's target: the landing, absolute when another host serves it. */
+  homeHref?: string
 }
 
 function organisationName(info: TokenInfo | null, locale: Locale): string {
@@ -53,7 +55,7 @@ function statusIs(error: unknown, status: number): boolean {
   return typeof error === 'object' && error !== null && 'status' in error && error.status === status
 }
 
-export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
+export function InvitePanel({ token, locale, signedIn, homeHref }: InvitePanelProps) {
   const [info, setInfo] = useState<TokenInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -162,7 +164,12 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
   return (
     <main className="auth-page" lang={locale}>
       <section className="auth-page" aria-labelledby="invite-heading">
-        <AuthHeader title={t('members.invite_page_title', {}, locale)} titleId="invite-heading" locale={locale} />
+        <AuthHeader
+          title={t('members.invite_page_title', {}, locale)}
+          titleId="invite-heading"
+          homeHref={homeHref}
+          locale={locale}
+        />
         {loading && <p role="status">{t('members.invite_loading', {}, locale)}</p>}
         {loadError && (
           <Alert variant="destructive" role="alert" className="text-base leading-6">
