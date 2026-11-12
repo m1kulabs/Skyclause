@@ -209,6 +209,9 @@ describe('safeFetch and fetchPinned against a local server', () => {
     if (url.pathname === '/ok') {
       response.writeHead(200, { 'Content-Type': 'application/json' })
       response.end(JSON.stringify({ ok: true }))
+    } else if (url.pathname === '/unchanged') {
+      response.writeHead(304, { ETag: '"abc"' })
+      response.end()
     } else if (url.pathname === '/redir-private') {
       response.writeHead(302, { Location: 'http://169.254.169.254/' })
       response.end()
@@ -265,6 +268,13 @@ describe('safeFetch and fetchPinned against a local server', () => {
     // answers 203.0.113.99; the Host header keeps the original name.
     expect(seenHost).toBe(`guarded.test:${port}`)
     expect(lookups).toEqual([])
+  })
+
+  test('a 304 response is returned as a bodyless response', async () => {
+    const response = await fetchPinned(pin('/unchanged'))
+    expect(response.status).toBe(304)
+    expect(response.headers.get('etag')).toBe('"abc"')
+    expect(await response.text()).toBe('')
   })
 
   test('a relative redirect is followed; a redirect to a private address fails with unsafe-url', async () => {
