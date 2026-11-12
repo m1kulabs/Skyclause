@@ -53,6 +53,9 @@
 .details p {
   margin: 4px 0;
 }
+.panel .status {
+  margin: 0 0 0 8px;
+}
 .status {
   display: inline-block;
   min-height: 24px;

@@ -97,7 +97,7 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
         </SettingsAside>
       )}
       <form noValidate onSubmit={save} aria-label={copy('title')}>
-        <SettingsParts>
+        <SettingsParts className="gap-6">
           <div className="grid gap-5">
             <SettingsField
               label={organisations('organisations.general.name', {}, locale)}

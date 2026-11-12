@@ -101,7 +101,7 @@ export default function Panel({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
         </SettingsAside>
       )}
       <form onSubmit={save} aria-label={copy('title')} noValidate>
-        <SettingsParts>
+        <SettingsParts className="gap-6">
           <div className="grid gap-5">
             <SettingsField label={copy('name')} hint={copy('nameHint', { limit: NAME_LIMIT })} error={error}>
               {(aria) =>
