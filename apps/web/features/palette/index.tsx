@@ -56,14 +56,6 @@ function failure(error: unknown): ReadFailure {
   return { status: error instanceof ApiProblem ? error.status : null, at: new Date().toISOString() }
 }
 
-function kindOf(item: PaletteItem): PaletteKind {
-  if (item.kind) return item.kind
-  if (item.id.startsWith('search:')) return 'results'
-  if (item.id.startsWith('theme:')) return 'appearance'
-  if (/^(organisation|project|choose-\w+):/.test(item.id)) return 'places'
-  return 'actions'
-}
-
 function resultKind(item: PaletteItem) {
   const kind = item.id.split(':')[2] ?? ''
   return RESULT_KINDS.includes(kind) ? kind : 'project'
@@ -76,8 +68,6 @@ function matchesItem(item: PaletteItem, words: readonly string[], locale: 'en' |
   )
   return words.every((word) => fields.some((field) => field.includes(word)))
 }
-
-const SUGGESTED_ACTIONS = new Set(['declare-window', 'search-ledger'])
 
 export function CommandPalette({ memberRole, locale = 'en', sources = paletteSources }: CommandPaletteProps) {
   const pathname = usePathname() ?? '/'
@@ -260,8 +250,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
       .filter((item) => matchesItem(item, words, locale))
     if (projectChoice) return [{ id: 'choose', heading: t('palette.groups.choose', {}, locale), items: available }]
 
-    const suggested =
-      words.length === 0 ? available.filter((item) => item.suggested || SUGGESTED_ACTIONS.has(item.id)) : []
+    const suggested = words.length === 0 ? available.filter((item) => item.suggested) : []
     const rest = available.filter((item) => !suggested.includes(item))
     const grouped: Group[] = [
       { id: 'suggestions', heading: t('palette.groups.suggestions', {}, locale), items: suggested }
@@ -278,7 +267,7 @@ export function CommandPalette({ memberRole, locale = 'en', sources = paletteSou
       grouped.push({
         id: kind,
         heading: t(`palette.groups.${kind}`, {}, locale),
-        items: rest.filter((item) => kindOf(item) === kind)
+        items: rest.filter((item) => item.kind === kind)
       })
     }
     return grouped.filter((group) => group.items.length > 0)

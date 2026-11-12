@@ -44,8 +44,8 @@ export interface PaletteItem {
   keywords?: string[]
   translateNo?: boolean
   keepOpen?: boolean
-  /** The group it shows in; inferred from the ID's prefix when unset. */
-  kind?: PaletteKind
+  /** The group it shows in. */
+  kind: PaletteKind
   /** Offered under Suggestions while the search is empty. */
   suggested?: boolean
   onSelect: () => void
