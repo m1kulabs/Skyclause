@@ -846,7 +846,7 @@ export function ProjectOverview({
         title={t('overview.bundle', {}, locale)}
         action={
           data.project.packs.some((item) => item.pack === 'sky' && item.enabled) && declare ? (
-            <AskForCall org={org} projectId={data.project.id} locale={locale} />
+            <AskForCall org={org} projectId={data.project.id} drafted={refresh} locale={locale} />
           ) : undefined
         }
       >
