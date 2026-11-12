@@ -32,6 +32,8 @@
   "bind_source": "Pautkan sumber",
   "view_windows": "Lihat waktu",
   "retry": "Cuba lagi",
+  "first_run_next_ask": "Seterusnya, minta keputusan: Skyclause mendrafkan himpunan untuk disemak oleh pelulus.",
+  "first_run_next_declare": "Seterusnya, isytiharkan waktu yang anda mahukan keputusan.",
   "ask_call": "Minta keputusan",
   "ask_call_pending": "Sedang meminta…",
   "ask_call_done": "Sudah diminta. Himpunan dipaparkan di sini selepas didrafkan.",

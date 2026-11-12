@@ -32,6 +32,8 @@
   "bind_source": "Bind a source",
   "view_windows": "View windows",
   "retry": "Retry",
+  "first_run_next_ask": "Next, ask for a call: Skyclause drafts a bundle for an approver to review.",
+  "first_run_next_declare": "Next, declare the windows you want a call for.",
   "ask_call": "Ask for a call",
   "ask_call_pending": "Asking…",
   "ask_call_done": "Asked. The bundle shows here once it is drafted.",

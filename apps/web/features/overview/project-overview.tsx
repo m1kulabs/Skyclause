@@ -56,6 +56,7 @@ import { t as bundleText } from '../bundles/i18n'
 import { clauseName } from '../bundles/clause-name'
 import { t } from './catalogue'
 import { AskForCall } from './ask-for-call'
+import { FirstRunProgress } from '../onboarding/first-run-progress'
 import './overview.css'
 
 type Locale = 'en' | 'ms'
@@ -600,6 +601,30 @@ export function ProjectOverview({
   const windowsAction = declare ? declareLink : windowsLink
   /** What an empty block about sources offers: binding one, which only owners and admins can do. */
   const sourcesAction = bind ? bindLink : undefined
+  const askable = data.project.packs.some((item) => item.pack === 'sky' && item.enabled) && declare
+  // The finished first run lands here (an Owner's or Admin's): its steps show every one done, and what comes next.
+  const firstRun =
+    searchParams.get('first-run') === 'done' && (data.role === 'owner' || data.role === 'admin') ? (
+      <FirstRunProgress
+        org={org}
+        locale={locale}
+        next={
+          askable
+            ? {
+                sentence: t('overview.first_run_next_ask', {}, locale),
+                action: <AskForCall org={org} projectId={data.project.id} drafted={refresh} locale={locale} />
+              }
+            : {
+                sentence: t('overview.first_run_next_declare', {}, locale),
+                action: (
+                  <Link href={declareHref} className={buttonVariants()}>
+                    {t('overview.declare_window', {}, locale)}
+                  </Link>
+                )
+              }
+        }
+      />
+    ) : null
   const summary = data.listItem.summary
   const strip = valueOf(data.strip)
   const running = packs ?? []
@@ -655,6 +680,8 @@ export function ProjectOverview({
           ) : null}
         </div>
       </header>
+
+      {firstRun}
 
       <Section id="overview-packs" title={t('overview.packs', {}, locale)}>
         {visiblePacks.length ? (
@@ -869,9 +896,7 @@ export function ProjectOverview({
         id="overview-bundle"
         title={t('overview.bundle', {}, locale)}
         action={
-          data.project.packs.some((item) => item.pack === 'sky' && item.enabled) && declare ? (
-            <AskForCall org={org} projectId={data.project.id} drafted={refresh} locale={locale} />
-          ) : undefined
+          askable ? <AskForCall org={org} projectId={data.project.id} drafted={refresh} locale={locale} /> : undefined
         }
       >
         {!data.bundles.ok && !latestBundle ? (

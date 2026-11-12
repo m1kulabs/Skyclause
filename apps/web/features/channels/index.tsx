@@ -75,6 +75,8 @@ export function Channels({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
       })
       setChannels((previous) => previous?.map((item) => (item.channel === next.channel ? next : item)))
       setSaved(t('channels.saved', { channel: t(`subscribe.${channel.channel}_channel`, {}, locale) }, locale))
+      // A channel turned on can complete the first run's channel step: the steps on this page read again.
+      window.dispatchEvent(new Event('onboarding:changed'))
     } catch (reason) {
       setError(reason)
     } finally {
