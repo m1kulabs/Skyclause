@@ -1,0 +1,13 @@
+/* The search field draws the focus ring on its capsule, not on the bare input inside it. */
+.palette [data-slot='input-group']:has([data-slot='command-input']:focus-visible) {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+.palette [data-slot='command-input']:focus-visible {
+  outline: none;
+}
+/* cmdk writes data-selected="false" on every other row: only the selected row takes the hover fill. */
+.palette [data-slot='command-item'][data-selected='false'] {
+  background: transparent;
+  color: var(--foreground);
+}

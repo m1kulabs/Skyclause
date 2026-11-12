@@ -34,7 +34,7 @@ test('CAL-13 GET-safe links, tabs and reads never submit decisions', async ({ pa
     await trigger.press('Enter')
   }
   const links = await page
-    .locator('.bundle-detail a, .shell-project-tabs a')
+    .locator('.bundle-detail a, .shell-destinations a')
     .evaluateAll((items) => items.map((item) => (item as HTMLAnchorElement).href))
   for (const href of links) {
     await page.route(href, (route) =>

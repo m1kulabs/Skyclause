@@ -1,175 +1,191 @@
 'use client'
 
-import { t } from './i18n'
-import { ChevronDownIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { ChevronDownIcon, CircleUserRoundIcon } from 'lucide-react'
 import { Button } from '#ui/button'
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuItem
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from '#ui/dropdown-menu'
-import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '#ui/sheet'
-import type { ShellData, ShellMembership, ShellProject } from './types'
+import { t } from './i18n'
+import type { Destination, DestinationKey } from './navigation'
+import type { ShellScope } from './scope'
 
-function OrgChoices({ data }: { data: ShellData }) {
-  return data.memberships.map((membership) => (
+const ACCOUNT_KEYS: readonly DestinationKey[] = ['connect', 'account', 'appearance']
+
+function MenuLink({ href, current, label }: { href: string; current?: boolean; label: string }) {
+  return (
     <DropdownMenuItem
-      key={membership.org_id}
-      render={
-        <a
-          href={`/${encodeURIComponent(membership.org_slug)}`}
-          aria-label={t('app-shell.membershipLabel', {
-            name: membership.org_name,
-            role: t(`app-shell.roles.${membership.role}`)
-          })}
-        />
-      }
+      className="shell-menu-item"
+      render={<a href={href} aria-current={current ? 'page' : undefined} aria-label={label} />}
     >
-      <span>{membership.org_name}</span>
-      <span className="text-muted-foreground">{t(`app-shell.roles.${membership.role}`)}</span>
+      {label}
     </DropdownMenuItem>
+  )
+}
+
+function DestinationLinks({ destinations, current }: { destinations: Destination[]; current?: DestinationKey }) {
+  return destinations.map((destination) => (
+    <MenuLink
+      key={destination.key}
+      href={destination.href}
+      current={destination.key === current}
+      label={t(`app-shell.${destination.key}`)}
+    />
   ))
 }
 
-export function OrganisationSwitcher({ data, membership }: { data: ShellData; membership?: ShellMembership }) {
+/** A state inside a menu (n=0, a failed read): announced with the items, not one of them to choose. */
+function Note({ children }: { children: ReactNode }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="ghost" className="shell-switcher" />}
-        aria-label={t('app-shell.organisationLabel', { name: membership?.org_name ?? t('app-shell.noOrganisations') })}
-      >
-        <span>{membership?.org_name ?? t('app-shell.noOrganisations')}</span>
-        <ChevronDownIcon data-icon="inline-end" aria-hidden="true" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="shell-menu">
-        <DropdownMenuGroup>
-          <OrgChoices data={data} />
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Next's greedy dynamic-route regexp mistakes the camera path for this unbuilt route. */}
-          <DropdownMenuItem render={<a href="/new" aria-label={t('app-shell.createOrganisation')} />}>
-            {t('app-shell.createOrganisation')}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-function ProjectNextAction({ membership, menu = false }: { membership?: ShellMembership; menu?: boolean }) {
-  if (!membership || !['admin', 'owner'].includes(membership.role)) return <p>{t('app-shell.askProject')}</p>
-  const href = `/${encodeURIComponent(membership.org_slug)}/new`
-  return menu ? (
-    <DropdownMenuItem render={<a href={href} aria-label={t('app-shell.createProject')} />}>
-      {t('app-shell.createProject')}
+    <DropdownMenuItem disabled className="shell-menu-note">
+      {children}
     </DropdownMenuItem>
-  ) : (
-    <a href={href}>{t('app-shell.createProject')}</a>
   )
 }
 
-export function ProjectSwitcher({
-  data,
-  membership,
-  project
-}: {
-  data: ShellData
-  membership?: ShellMembership
-  project?: ShellProject
-}) {
-  const projects = data.projects.filter((item) => item.org_id === membership?.org_id)
+function SwitcherTrigger({ label, name }: { label: string; name: string }) {
+  return (
+    <DropdownMenuTrigger render={<Button variant="ghost" className="shell-switcher" />} aria-label={label}>
+      <span>{name}</span>
+      <ChevronDownIcon data-icon="inline-end" aria-hidden="true" />
+    </DropdownMenuTrigger>
+  )
+}
+
+export function OrganisationSwitcher({ scope }: { scope: ShellScope }) {
+  const { data, membership } = scope
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button variant="ghost" className="shell-switcher" />}
-        aria-label={t('app-shell.projectLabel', { name: project?.name ?? t('app-shell.noProjects') })}
-      >
-        <span>{project?.name ?? t('app-shell.noProjects')}</span>
-        <ChevronDownIcon data-icon="inline-end" aria-hidden="true" />
-      </DropdownMenuTrigger>
+      <SwitcherTrigger label={t('app-shell.organisationLabel', { name: scope.orgName })} name={scope.orgName} />
       <DropdownMenuContent className="shell-menu">
         <DropdownMenuGroup>
-          {projects.map((item) => (
+          <DropdownMenuLabel>{t('app-shell.switchOrganisation')}</DropdownMenuLabel>
+          {data.membershipsError && <Note>{t('app-shell.organisationsUnavailable')}</Note>}
+          {data.memberships.map((item) => (
             <DropdownMenuItem
-              key={item.id}
+              key={item.org_id}
+              className="shell-menu-item"
               render={
                 <a
-                  href={`/${encodeURIComponent(membership!.org_slug)}/${encodeURIComponent(item.slug)}`}
-                  aria-label={item.name}
+                  href={`/${encodeURIComponent(item.org_slug)}`}
+                  aria-current={item.org_id === membership?.org_id ? 'true' : undefined}
+                  aria-label={t('app-shell.membershipLabel', {
+                    name: item.org_name,
+                    role: t(`app-shell.roles.${item.role}`)
+                  })}
                 />
               }
             >
-              {item.name}
+              <span>{item.org_name}</span>
+              <span className="shell-menu-meta" aria-hidden="true" data-role={t(`app-shell.roles.${item.role}`)} />
             </DropdownMenuItem>
           ))}
-          {!projects.length && (
-            <div className="p-3">
-              <p>{t('app-shell.noProjects')}</p>
-              <ProjectNextAction membership={membership} menu />
-            </div>
-          )}
         </DropdownMenuGroup>
+        {!scope.guestAccount && (
+          <>
+            <DropdownMenuSeparator />
+            <MenuLink href="/new" label={t('app-shell.createOrganisation')} />
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
 
-export function ScopeSheet({
-  data,
-  membership,
-  project
-}: {
-  data: ShellData
-  membership?: ShellMembership
-  project?: ShellProject
-}) {
+/** The next step when an organisation has no project: create one, or ask an admin to. */
+export function canCreateProject(scope: ShellScope) {
+  return scope.role === 'owner' || scope.role === 'admin'
+}
+
+export function ProjectSwitcher({ scope }: { scope: ShellScope }) {
+  const { org, project, projects, projectsError } = scope
   return (
-    <Sheet>
-      <SheetTrigger
-        render={<Button variant="ghost" className="shell-switcher" />}
-        aria-label={t('app-shell.scopeLabel', {
-          name: project?.name ?? membership?.org_name ?? t('app-shell.noOrganisations')
-        })}
+    <DropdownMenu>
+      <SwitcherTrigger label={t('app-shell.projectLabel', { name: scope.projectName })} name={scope.projectName} />
+      <DropdownMenuContent className="shell-menu">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t('app-shell.switchProject')}</DropdownMenuLabel>
+          {projectsError ? (
+            <Note>{t('app-shell.projectsUnavailable')}</Note>
+          ) : (
+            !projects.length && <Note>{t('app-shell.noProjects')}</Note>
+          )}
+          {org &&
+            projects.map((item) => (
+              <MenuLink
+                key={item.id}
+                href={`/${encodeURIComponent(org)}/${encodeURIComponent(item.slug)}`}
+                current={item.id === project?.id}
+                label={item.name}
+              />
+            ))}
+        </DropdownMenuGroup>
+        {org && canCreateProject(scope) ? (
+          <>
+            <DropdownMenuSeparator />
+            <MenuLink href={`/${encodeURIComponent(org)}/new`} label={t('app-shell.createProject')} />
+          </>
+        ) : (
+          !projects.length && !projectsError && <Note>{t('app-shell.askProject')}</Note>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** Overview, Analysis, Subscribers and Project settings: the project's pages beyond the four in the bar. */
+export function ProjectMenu({ scope }: { scope: ShellScope }) {
+  const current = scope.projectMenu.some((item) => item.key === scope.current)
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<button type="button" className="shell-destination current-mark" />}
+        aria-label={t('app-shell.moreLabel')}
+        data-current={current ? '' : undefined}
       >
-        <span>{project?.name ?? membership?.org_name ?? t('app-shell.noOrganisations')}</span>
-        <ChevronDownIcon data-icon="inline-end" aria-hidden="true" />
-      </SheetTrigger>
-      <SheetContent side="bottom" className="shell-scope-sheet">
-        <SheetHeader>
-          <SheetTitle>{t('app-shell.switchScope')}</SheetTitle>
-          <SheetDescription>{t('app-shell.scopeDescription')}</SheetDescription>
-        </SheetHeader>
-        <nav aria-label={t('app-shell.organisations')} className="shell-scope-list">
-          {!data.memberships.length && <p>{t('app-shell.noOrganisations')}</p>}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Next's greedy dynamic-route regexp mistakes the camera path for this unbuilt route. */}
-          <a href="/new">{t('app-shell.createOrganisation')}</a>
-          {data.memberships.map((item) => {
-            const projects = data.projects.filter((candidate) => candidate.org_id === item.org_id)
-            return (
-              <section key={item.org_id}>
-                <a href={`/${encodeURIComponent(item.org_slug)}`}>
-                  {item.org_name}
-                  <span>{t(`app-shell.roles.${item.role}`)}</span>
-                </a>
-                {projects.map((candidate) => (
-                  <a
-                    key={candidate.id}
-                    href={`/${encodeURIComponent(item.org_slug)}/${encodeURIComponent(candidate.slug)}`}
-                  >
-                    {candidate.name}
-                  </a>
-                ))}
-                {!projects.length && (
-                  <>
-                    <p>{t('app-shell.noProjects')}</p>
-                    <ProjectNextAction membership={item} />
-                  </>
-                )}
-              </section>
-            )
-          })}
-        </nav>
-      </SheetContent>
-    </Sheet>
+        <span>{t('app-shell.more')}</span>
+        <ChevronDownIcon aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="shell-menu">
+        <DestinationLinks destinations={scope.projectMenu} current={scope.current} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** The organisation's pages and the account's, behind one control at the bar's right end. */
+export function AccountMenu({ scope }: { scope: ShellScope }) {
+  const organisation = scope.organisationMenu.filter((item) => !ACCOUNT_KEYS.includes(item.key))
+  const account = scope.organisationMenu.filter((item) => ACCOUNT_KEYS.includes(item.key))
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon" className="shell-account" />}
+        aria-label={t('app-shell.accountMenu')}
+      >
+        <CircleUserRoundIcon aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="shell-menu" align="end">
+        {organisation.length > 0 && (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{scope.orgName}</DropdownMenuLabel>
+              <DestinationLinks destinations={organisation} current={scope.current} />
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t('app-shell.accountGroup')}</DropdownMenuLabel>
+          <DestinationLinks destinations={account} current={scope.current} />
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
