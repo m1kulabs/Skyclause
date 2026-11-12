@@ -299,22 +299,11 @@
   align-items: center;
   gap: 8px 12px;
 }
-.linkValue > a,
+.linkValue > span,
 .linkValue > code {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 13px;
-}
-.linkValue > a {
-  display: inline-flex;
-  min-height: 24px;
-  align-items: center;
-  text-decoration: underline;
-  text-decoration-color: var(--control-edge);
-  text-underline-offset: 3px;
-}
-.linkValue > a:hover {
-  text-decoration-color: currentColor;
 }
 
 @media (max-width: 1023px) {

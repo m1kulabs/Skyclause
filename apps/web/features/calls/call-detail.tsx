@@ -555,14 +555,11 @@ export function CallDetailPage({
                   </section>
                   <section className={styles.recordItem}>
                     <h3>{t('calls.permalink', {}, locale)}</h3>
+                    {/* Text to copy, not a link: no public page answers it yet (getPublicCall has no handler). */}
                     <div className={styles.linkValue}>
-                      <a
-                        href={call.permalink}
-                        translate="no"
-                        aria-label={`${t('calls.permalink', {}, locale)}: ${call.permalink}`}
-                      >
+                      <span translate="no" data-permalink>
                         {call.permalink}
-                      </a>
+                      </span>
                       <CopyButton
                         value={call.permalink}
                         label={t('calls.copy_permalink', {}, locale)}

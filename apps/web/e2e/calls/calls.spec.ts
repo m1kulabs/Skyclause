@@ -125,7 +125,10 @@ test('CAL-12 detail renders the strip, trace ages, role, delay, grade, version a
   // The clause sheet is named; its page isn't built, so nothing links to it.
   await expect(detail).toContainText('Sheet version test-sheet')
   await expect(detail.locator('a[href*="/clauses"]')).toHaveCount(0)
-  await expect(detail.getByRole('link', { name: /permalink/i })).toHaveAttribute('href', call.permalink)
+  // No public page answers the permalink yet: it is text to copy, never a link that ends on "Page not found".
+  await expect(detail.locator('[data-permalink]')).toHaveText(call.permalink)
+  await expect(detail.getByRole('link', { name: /permalink/i })).toHaveCount(0)
+  await expect(detail.locator(`a[href="${call.permalink}"]`)).toHaveCount(0)
   await expect(detail).not.toContainText('private-account-must-not-render')
   const copy = detail.getByRole('button', { name: 'Copy permalink' })
   await copy.focus()
