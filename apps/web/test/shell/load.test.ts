@@ -1,7 +1,13 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { loadShellData } from '../../features/shell/load'
 
+// Server-side reads have no default origin, so each test names the API's.
+beforeEach(() => {
+  vi.stubEnv('API_ORIGIN', 'http://localhost:3000')
+})
+
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
 })
@@ -132,6 +138,41 @@ test('keeps every read on API_ORIGIN in single-host mode', async () => {
     'http://localhost:3000/api/me/preferences',
     'http://localhost:3000/v1/projects'
   ])
+})
+
+test('sends no request when no API origin resolves, and logs that once however many reads it stops', async () => {
+  vi.stubEnv('API_ORIGIN', undefined)
+  vi.stubEnv('APP_ORIGIN', undefined)
+  vi.stubEnv('HOST_MODE', undefined)
+  const errorLines = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const fetcher = vi.fn(async (input: string | URL) => answerShell(input))
+  vi.stubGlobal('fetch', fetcher)
+
+  expect(await loadShellData(new Headers({ cookie: 'session=test' }))).toEqual({
+    memberships: [],
+    projects: [],
+    sidebarCollapsed: false
+  })
+
+  expect(fetcher).not.toHaveBeenCalled()
+  expect(errorLines).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(String(errorLines.mock.calls[0]?.[0]))).toMatchObject({
+    severity: 'ERROR',
+    message: 'shell cannot read the API',
+    error: expect.stringContaining('API_ORIGIN')
+  })
+})
+
+test('logs nothing when the API answers a read with an error, as it does a signed-out visitor', async () => {
+  const errorLines = vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(null, { status: 401 }))
+  )
+
+  await loadShellData(new Headers({ cookie: 'session=test' }))
+
+  expect(errorLines).not.toHaveBeenCalled()
 })
 
 test('returns empty data when the origin answers a page instead of JSON', async () => {

@@ -1,8 +1,16 @@
 /* eslint-disable @next/next/no-img-element -- the mark is a 40px inline brand SVG; plain <img> keeps the landing island light. */
+import { log } from '@skyclause/config'
 import { t } from './catalogue'
 import { HeroActivator } from './activator'
 import { HeroStatic } from './hero-static'
-import { calendarPath, fetchEvaluateServer, fetchLatestCallServer, pilotRefOf } from './evaluate'
+import {
+  calendarPath,
+  fetchEvaluateServer,
+  fetchLatestCallServer,
+  pilotRefOf,
+  type EvaluateResult,
+  type LatestCallRead
+} from './evaluate'
 import { heroStripSvg } from './strip-html'
 import { datesTodayPlusSeven, nextHourWindow, parseWindowFromSearch, stripOf } from './window-model'
 import styles from './hero.module.css'
@@ -19,7 +27,16 @@ export async function LandingHero({ searchParams }: { searchParams: Promise<Sear
   }).toString()
   const win = parseWindowFromSearch(serialized, now) ?? nextHourWindow(now)
   const pilot = pilotRefOf(process.env.PILOT_PROJECT)
-  const [result, latestCall] = await Promise.all([fetchEvaluateServer(win), fetchLatestCallServer(pilot)])
+  let result: EvaluateResult
+  let latestCall: LatestCallRead
+  try {
+    ;[result, latestCall] = await Promise.all([fetchEvaluateServer(win), fetchLatestCallServer(pilot)])
+  } catch (error) {
+    // No API origin to call: the honest error state, never a value (a hero with no pilot still reads n=0).
+    log.error('landing hero cannot read the API', { error: String(error) })
+    result = { kind: 'error', status: null }
+    latestCall = pilot ? 'error' : null
+  }
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
   const stripSvg = heroStripSvg(strip)
   const appOrigin = process.env.APP_ORIGIN

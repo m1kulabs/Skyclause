@@ -169,7 +169,8 @@ test('no-JS GET form returns a new window and renders the server verdict', async
   await expect(form.getByLabel('Window start')).toHaveValue('22:00')
   await expect(form.getByLabel('Window end')).toHaveValue('23:00')
   await expect(form.locator('input[name="date"][value="' + tomorrow + '"]')).toBeChecked()
-  // The server read targets the unreachable API in this harness, so it renders the honest error, never a value.
+  // The server read goes to this server's own /v1 (APP_ORIGIN, one host), where the evaluate operation has no
+  // handler yet and answers 501, so it renders the honest error, never a value.
   await expect(form.getByText(/Couldn't reach the live verdict at .* MYT/)).toBeVisible()
   await expect(form.getByRole('button', { name: 'Retry' })).toBeVisible()
   await context.close()

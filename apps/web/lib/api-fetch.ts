@@ -1,3 +1,5 @@
+import { serverApiOrigin } from './api-origin'
+
 export interface ApiProblemBody {
   type?: string
   title?: string
@@ -111,7 +113,7 @@ function defaultBaseUrl(path: string): string | undefined {
     if (process.env.HOST_MODE === 'multi') return process.env.APP_ORIGIN
   }
   if (typeof window !== 'undefined') return process.env.NEXT_PUBLIC_API_ORIGIN
-  return process.env.API_ORIGIN ?? 'https://api.skyclause.m1ku.tech'
+  return serverApiOrigin()
 }
 
 /** Bind an operation registry once; the returned apiFetch is typed by its operation IDs. */

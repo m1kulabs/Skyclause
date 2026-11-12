@@ -1,4 +1,6 @@
+import { log } from '@skyclause/config'
 import { createApiFetch } from '../../lib/api-fetch'
+import { ApiOriginError } from '../../lib/api-origin'
 import type { ShellData } from './types'
 import { shellOperations } from './operations'
 
@@ -34,11 +36,22 @@ export async function loadShellData(requestHeaders = new Headers()): Promise<She
   if (process.env.APP_ENV === 'test') return { memberships: [], projects: [], sidebarCollapsed: false }
 
   const headers = forwardedHeaders(requestHeaders)
+  // A read that fails leaves the shell empty. A missing API origin is configuration, so it is logged, once per load.
+  let logged = false
+  const dropped =
+    <Empty>(empty: Empty) =>
+    (error: unknown) => {
+      if (error instanceof ApiOriginError && !logged) {
+        logged = true
+        log.error('shell cannot read the API', { error: error.message })
+      }
+      return empty
+    }
   const preferenceRead = apiFetch('getMyPreferences', {
     headers,
     cache: 'no-store',
     signal: AbortSignal.timeout(5000)
-  }).catch(() => undefined)
+  }).catch(dropped(undefined))
   const memberships = await readPages((cursor) =>
     apiFetch('listMyMemberships', {
       headers,
@@ -46,7 +59,7 @@ export async function loadShellData(requestHeaders = new Headers()): Promise<She
       cache: 'no-store',
       signal: AbortSignal.timeout(5000)
     })
-  ).catch(() => [])
+  ).catch(dropped([]))
   const projectLists = await Promise.all(
     memberships.map(async (membership) => {
       const projects = await readPages((cursor) =>
@@ -57,7 +70,7 @@ export async function loadShellData(requestHeaders = new Headers()): Promise<She
           cache: 'no-store',
           signal: AbortSignal.timeout(5000)
         })
-      ).catch(() => [])
+      ).catch(dropped([]))
       return projects.filter((project) => project.org_id === membership.org_id)
     })
   )
