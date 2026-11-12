@@ -87,8 +87,9 @@ for (const [letter, char] of Object.entries(SMALL_CAPITALS)) {
   if (!CONFUSABLE.has(char)) CONFUSABLE.set(char, letter === 'm' ? 'rn' : letter)
 }
 // Spelled-out numbers from eleven up, English and Malay; "one window" stays fine.
-const NUMBER_WORD =
-  /\b(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|sebelas|belas|puluh|(?:se)?ratus|(?:se)?ribu|(?:se)?juta)\b/gi
+const NUMBER_WORDS =
+  'eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million sebelas belas puluh ratus seratus ribu seribu juta sejuta'
+const NUMBER_WORD = new RegExp(String.raw`\b(?:${NUMBER_WORDS.replaceAll(' ', '|')})\b`, 'gi')
 
 // Punctuation a reader takes for a separator inside a figure: any non-ASCII punctuation or symbol (a comma look-alike,
 // U+2800, a Tibetan tsheg, an ideographic comma) directly between digits. The en and em dash stay: they write ranges.
