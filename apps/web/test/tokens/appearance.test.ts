@@ -12,7 +12,7 @@ describe('server appearance', () => {
     expect(resolveAppearance(undefined, { colorScheme: 'light', contrast: 'more', motion: 'reduce' })).toEqual({
       mode: 'dark',
       className: 'dark hc',
-      color: '#000000',
+      color: '#0b0e1f',
       motion: 'reduce'
     })
   })
@@ -40,7 +40,7 @@ describe('server appearance', () => {
           motion: 'reduce'
         }
       )
-    ).toEqual({ mode: 'light', className: 'light', color: '#f6f6f7', motion: 'full' })
+    ).toEqual({ mode: 'light', className: 'light', color: '#fdeef3', motion: 'full' })
   })
 })
 

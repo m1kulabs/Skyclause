@@ -9,10 +9,10 @@ async function appearance(page: Page, baseURL: string, preferences: Partial<Appe
 }
 
 const modes = [
-  { theme: 'dark', contrast: 'standard', className: 'dark', ground: '#171719' },
-  { theme: 'light', contrast: 'standard', className: 'light', ground: '#f6f6f7' },
-  { theme: 'dark', contrast: 'more', className: 'dark hc', ground: '#000000' },
-  { theme: 'light', contrast: 'more', className: 'light hc', ground: '#ffffff' }
+  { theme: 'dark', contrast: 'standard', className: 'dark', ground: '#1a2039', ink: 'rgb(249, 163, 192)' },
+  { theme: 'light', contrast: 'standard', className: 'light', ground: '#fdeef3', ink: 'rgb(26, 32, 57)' },
+  { theme: 'dark', contrast: 'more', className: 'dark hc', ground: '#0b0e1f', ink: 'rgb(255, 255, 255)' },
+  { theme: 'light', contrast: 'more', className: 'light hc', ground: '#ffffff', ink: 'rgb(11, 14, 31)' }
 ] as const
 
 for (const mode of modes) {
@@ -41,11 +41,11 @@ for (const mode of modes) {
         type: style.outlineStyle
       }
     })
+    // The ring is the theme's ink, 2px (3px in high contrast) with a 2px offset.
     expect(ring).toEqual({
       width: mode.contrast === 'more' ? '3px' : '2px',
       offset: '2px',
-      color:
-        mode.theme === 'dark' ? 'rgb(255, 255, 255)' : mode.contrast === 'more' ? 'rgb(0, 0, 0)' : 'rgb(17, 17, 19)',
+      color: mode.ink,
       type: 'solid'
     })
     await page.keyboard.press('Enter')
@@ -69,7 +69,7 @@ test('system follows colour, contrast and motion changes without reloading', asy
   await expect(page.locator('html')).toHaveClass('dark')
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(page.locator('html')).toHaveClass('light')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#f6f6f7')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#fdeef3')
   await page.emulateMedia({ contrast: 'more' })
   await expect(page.locator('html')).toHaveClass('light hc')
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#ffffff')
@@ -135,27 +135,29 @@ test('marketing stays dark when the viewer selects light', async ({ page, baseUR
   const response = await page.goto('/')
   const html = await response!.text()
   expect(html).toContain('class="dark" style="color-scheme:dark"')
-  expect(html).toContain('<meta name="theme-color" content="#171719"')
+  expect(html).toContain('<meta name="theme-color" content="#1a2039"')
   await expect(page.locator('html')).toHaveClass('dark')
-  await expect(page.locator('body')).toHaveCSS('font-family', /Work Sans/)
-  await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('background-color', 'rgb(10, 10, 10)')
+  // next/font names the face in lower case; CSS family names match without regard to case.
+  await expect(page.locator('body')).toHaveCSS('font-family', /^roundo, "roundo Fallback"/i)
+  await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('background-color', 'rgb(26, 32, 57)')
   await expect(page.locator('[data-surface="marketing"]')).toHaveCSS('color-scheme', 'dark')
   expect(
     await page
       .locator('[data-surface="marketing"]')
       .evaluate((element) => getComputedStyle(element).getPropertyValue('--card').trim())
-  ).toBe('#131217')
+  ).toBe('#212846')
 })
 
 test('marketing follows OS contrast and motion while keeping a dark document', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light', contrast: 'more', reducedMotion: 'reduce' })
   const response = await page.goto('/')
   const html = await response!.text()
-  expect(html.indexOf('prefers-contrast: more')).toBeLessThan(html.indexOf('<body>'))
-  expect(html.indexOf('prefers-reduced-motion: reduce')).toBeLessThan(html.indexOf('<body>'))
+  // The body carries the font's class, so find the tag by its opening.
+  expect(html.indexOf('prefers-contrast: more')).toBeLessThan(html.indexOf('<body'))
+  expect(html.indexOf('prefers-reduced-motion: reduce')).toBeLessThan(html.indexOf('<body'))
   await expect(page.locator('html')).toHaveClass('dark hc')
   await expect(page.locator('html')).toHaveAttribute('data-motion', 'reduce')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#000000')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0b0e1f')
   await page.keyboard.press('Tab')
   await expect(page.locator('.skip-link')).toBeFocused()
   await page.keyboard.press('Enter')

@@ -8,37 +8,39 @@ import {
   glyphPaths,
   glyphSvg,
   markSvg,
+  modeColours,
   projectFaviconSvg,
   statusColours,
   tabBadgeSvg,
+  toneColours,
   wordmarkSvg
 } from '../src/index'
 
 const expected = {
-  normal: ['ring', 'Normal', 'neutral'],
-  storm_watch: ['hollow_triangle', 'Storm watch', 'neutral'],
-  outdoor_limited: ['half_disc', 'Outdoor-limited', 'warning'],
-  commute_disruption: ['filled_triangle', 'Commute disruption', 'critical'],
-  hybrid_recommended: ['filled_square', 'Hybrid recommended', 'critical'],
-  surge_night: ['rising_bars', 'Surge night', 'warning'],
-  no_call: ['dashed_ring', 'No call', 'no-call'],
-  fresh: ['ring', 'Fresh input', 'neutral'],
-  stale: ['clock', 'Stale input', 'warning'],
-  error: ['cross', 'Input error', 'critical'],
-  recovered: ['ring', 'Recovered input', 'neutral'],
-  pending: ['dashed_ring', 'Pending input', 'no-call'],
-  probation: ['dashed_ring', 'Input on probation', 'no-call'],
-  off_hours: ['dashed_ring', 'Outside input hours', 'no-call']
+  normal: ['ring', 'Normal', 'neutral', 'normal'],
+  storm_watch: ['hollow_triangle', 'Storm watch', 'neutral', 'watch'],
+  outdoor_limited: ['half_disc', 'Outdoor-limited', 'warning', 'outdoor-limited'],
+  commute_disruption: ['filled_triangle', 'Commute disruption', 'critical', 'commute-disruption'],
+  hybrid_recommended: ['filled_square', 'Hybrid recommended', 'critical', 'hybrid-recommended'],
+  surge_night: ['rising_bars', 'Surge night', 'warning', 'surge-night'],
+  no_call: ['dashed_ring', 'No call', 'no-call', 'no-call'],
+  fresh: ['ring', 'Fresh input', 'neutral', 'normal'],
+  stale: ['clock', 'Stale input', 'warning', 'watch'],
+  error: ['cross', 'Input error', 'critical', 'no-call'],
+  recovered: ['ring', 'Recovered input', 'neutral', 'normal'],
+  pending: ['dashed_ring', 'Pending input', 'no-call', 'no-call'],
+  probation: ['dashed_ring', 'Input on probation', 'no-call', 'no-call'],
+  off_hours: ['dashed_ring', 'Outside input hours', 'no-call', 'no-call']
 } as const
 
-test('every domain mode and input state has exactly one glyph, word and status level', () => {
+test('every domain mode and input state has exactly one glyph, word, status level and tone', () => {
   expect(Object.keys(brandStates).sort()).toEqual(
     [...Mode.options, ...InputState.options, 'storm_watch', 'no_call'].sort()
   )
   expect(Object.keys(glyphPaths)).toHaveLength(9)
   for (const [state, mapping] of Object.entries(brandStates)) {
-    const [glyph, word, level] = expected[state as keyof typeof expected]
-    expect([mapping.glyph, t(mapping.word), mapping.level], state).toEqual([glyph, word, level])
+    const [glyph, word, level, tone] = expected[state as keyof typeof expected]
+    expect([mapping.glyph, t(mapping.word), mapping.level, mapping.tone], state).toEqual([glyph, word, level, tone])
     expect(glyphSvg(state as keyof typeof brandStates)).toContain(glyphPaths[glyph])
     expect(glyphSvg(state as keyof typeof brandStates)).toContain('viewBox="0 0 12 12"')
     expect(glyphSvg(state as keyof typeof brandStates)).toContain('stroke-width="1.5"')
@@ -59,15 +61,40 @@ test('mark and wordmark follow the window geometry and protected Work Sans ident
   expect(wordmarkSvg).not.toContain('crimson')
 })
 
-test('standalone SVG colours are exactly the existing f-ui status tokens', () => {
+test('standalone SVG colours are exactly the Dusk and Day tokens of the same names', () => {
   const css = readFileSync(new URL('../../../apps/web/styles/globals.css', import.meta.url), 'utf8')
-  for (const [theme, colours] of Object.entries(statusColours)) {
-    const selector = theme === 'light' ? '.light' : ':root,\n.dark'
-    const block = css.slice(css.indexOf(`${selector} {`)).split('}')[0]!
-    for (const [level, colour] of Object.entries(colours)) {
-      expect(block).toContain(`--status-${level}-foreground: ${colour};`)
+  for (const [theme, colours] of Object.entries(modeColours)) {
+    const selector =
+      theme === 'light' ? '.light {' : ":root,\n.dark,\n[data-surface='marketing'],\n[data-surface='auth'] {"
+    const block = css.slice(css.indexOf(selector)).split('}')[0]!
+    for (const [name, colour] of Object.entries(colours)) {
+      // Day sets only what differs from Dusk; a token Day leaves alone must equal Dusk's.
+      if (theme === 'light' && !block.includes(`--${name}:`))
+        expect(colour, name).toBe(modeColours.dark[name as keyof typeof modeColours.dark])
+      else expect(block, name).toContain(`--${name}: ${colour};`)
     }
   }
+  for (const [theme, colours] of Object.entries(statusColours)) {
+    const scheme = modeColours[theme as keyof typeof modeColours]
+    expect(colours).toEqual({
+      neutral: scheme.ink,
+      warning: scheme['mode-outdoor-limited'],
+      critical: scheme['mode-hybrid-recommended'],
+      'no-call': scheme['ink-muted']
+    })
+  }
+})
+
+test('a tone names its capsule: a hue fill with its own ink, or an edge with no fill', () => {
+  const dusk = modeColours.dark
+  expect(toneColours('commute-disruption', dusk)).toEqual({
+    fill: dusk['mode-commute-disruption'],
+    edge: null,
+    ink: dusk['mode-commute-disruption-ink']
+  })
+  expect(toneColours('normal', dusk)).toEqual({ fill: dusk['mode-normal'], edge: dusk['ink-muted'], ink: dusk.ink })
+  expect(toneColours('watch', dusk)).toEqual({ fill: null, edge: dusk.ink, ink: dusk.ink })
+  expect(toneColours('no-call', dusk)).toEqual({ fill: null, edge: dusk['ink-muted'], ink: dusk.ink })
 })
 
 describe('tabBadgeSvg', () => {

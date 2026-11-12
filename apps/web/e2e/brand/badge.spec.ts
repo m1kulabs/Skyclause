@@ -68,7 +68,8 @@ for (const theme of ['dark', 'light', 'dark-hc', 'light-hc'] as const) {
           expect(measured.glyph, measured.word!).toBeGreaterThanOrEqual(3)
           expect(measured.transform).toBe('none')
         }
-        expect(measurements[0]!.pill).toBe(20)
+        // The text-size capsule: 13px type on a 16px line in a 22px capsule with its 2px edge.
+        expect(measurements[0]!.pill).toBe(22)
         await expectAxeClean(page)
         await expectUnclippedText(page)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
