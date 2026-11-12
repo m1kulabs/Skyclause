@@ -39,7 +39,7 @@ export interface SourceErrorProps {
   status?: number | null
   /** When it failed. */
   at?: string | null
-  /** A retry control, such as a Button that refetches. */
+  /** A retry control, such as a Button that refetches; never shown on a 501, which no retry can change. */
   retry?: ReactNode
   locale?: 'en' | 'ms'
 }
@@ -78,7 +78,7 @@ export function SourceError({ source, status = null, at = null, retry = null, lo
           <p className="text-muted-foreground">{detail}</p>
         )
       ) : null}
-      {retry}
+      {status === 501 ? null : retry}
     </div>
   )
 }
