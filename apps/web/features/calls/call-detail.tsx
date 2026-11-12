@@ -33,6 +33,7 @@ import {
   type StripView
 } from './operations'
 import { t } from './i18n'
+import { clauseName } from '../bundles/clause-name'
 import styles from './calls.module.css'
 import { cn } from '#lib/utils'
 
@@ -418,7 +419,7 @@ export function CallDetailPage({
                       <ul className={styles.clauseList}>
                         {explanation.clauses.map((clause) => (
                           <li key={clause.key}>
-                            <h3>{clause.wording[locale] ?? clause.key}</h3>
+                            <h3>{clause.wording[locale] ?? clauseName(clause.key, locale)}</h3>
                             <code translate="no">{clause.cel}</code>
                             {clause.inputs.length ? (
                               <ul className={styles.clauseInputs}>
