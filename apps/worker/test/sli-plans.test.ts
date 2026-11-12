@@ -36,28 +36,30 @@ vi.mock('@skyclause/db', async (importOriginal) => {
 
 const nodes = (plan: Plan): Plan[] => [plan, ...(plan.Plans ?? []).flatMap(nodes)]
 
-/** Each organisation's plan of `read`, as each scanned table's alias → its index conditions ('' for a scan). */
-async function indexConditions(read: () => Promise<unknown>) {
+/** Each organisation's plan of `read`. */
+async function explain(read: () => Promise<unknown>) {
   explained.plans = []
   try {
     await read()
     expect(explained.plans).toHaveLength(ORGANISATIONS)
-    return explained.plans.map((plan) =>
-      Object.fromEntries(
-        nodes(plan)
-          .filter((node) => node['Relation Name'])
-          .map((scan) => [
-            scan.Alias,
-            nodes(scan)
-              .map((node) => node['Index Cond'] ?? '')
-              .join(' ')
-          ])
-      )
-    )
+    return explained.plans
   } finally {
     explained.plans = undefined
   }
 }
+
+/** Each table `plan` scans, as its alias → its index conditions ('' for a scan). */
+const indexConditions = (plan: Plan) =>
+  Object.fromEntries(
+    nodes(plan)
+      .filter((node) => node['Relation Name'])
+      .map((scan) => [
+        scan.Alias,
+        nodes(scan)
+          .map((node) => node['Index Cond'] ?? '')
+          .join(' ')
+      ])
+  )
 
 const ORGANISATIONS = 2
 const window = { from: new Date('2026-05-06T09:30:00Z'), to: new Date('2026-05-06T09:45:00Z') }
@@ -119,24 +121,24 @@ beforeAll(async () => {
 }, 60_000)
 
 test('approver alerted finds bundles by needs_review_at and their alerts by bundle', async () => {
-  for (const plan of await indexConditions(() => reads.approverAlerts(window, 60)))
-    expect(plan).toEqual({
+  for (const plan of await explain(() => reads.approverAlerts(window, 60)))
+    expect(indexConditions(plan)).toEqual({
       bundle: expect.stringContaining('needs_review_at'),
       bundle_alert: expect.stringContaining('bundle_id = bundle.id')
     })
 })
 
 test('approval to provider finds calls by approved_at and their notices by call', async () => {
-  for (const plan of await indexConditions(() => reads.handovers(hour)))
-    expect(plan).toEqual({
+  for (const plan of await explain(() => reads.handovers(hour)))
+    expect(indexConditions(plan)).toEqual({
       call: expect.stringContaining('approved_at'),
       notice: expect.stringContaining('call_id = call.id')
     })
 })
 
 test('approval SLA finds bundles by sla_due_at, their approvals by bundle and successors by ID', async () => {
-  for (const plan of await indexConditions(() => reads.slaDue(window)))
-    expect(plan).toEqual({
+  for (const plan of await explain(() => reads.slaDue(window)))
+    expect(indexConditions(plan)).toEqual({
       bundle: expect.stringContaining('sla_due_at'),
       approval: expect.stringContaining('bundle_id = bundle.id'),
       successor: expect.stringContaining('id = bundle.superseded_by')
@@ -144,10 +146,21 @@ test('approval SLA finds bundles by sla_due_at, their approvals by bundle and su
 })
 
 test('crossing to needs review finds bundles by needs_review_at and the crossings their runs serve by ID', async () => {
-  for (const plan of await indexConditions(() => reads.reviews(hour)))
-    expect(plan).toEqual({
+  for (const plan of await explain(() => reads.reviews(hour)))
+    expect(indexConditions(plan)).toEqual({
       bundle: expect.stringContaining('needs_review_at'),
       run: expect.stringContaining('id = bundle.run_id'),
       crossing: expect.stringMatching(/^\(id = /)
     })
+})
+
+test('the latest approver alerts read bundles newest first, by needs_review_at, and their alerts by bundle', async () => {
+  for (const plan of await explain(() => reads.latestApproverAlerts(window.to, 2, 60))) {
+    expect(indexConditions(plan)).toEqual({
+      bundle: expect.stringContaining('needs_review_at'),
+      bundle_alert: expect.stringContaining('bundle_id = bundle.id')
+    })
+    // It stops at the latest bundles, rather than sorting the organisation's whole history.
+    expect(nodes(plan).map((node) => node['Node Type'])).not.toContain('Sort')
+  }
 })
