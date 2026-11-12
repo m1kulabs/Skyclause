@@ -319,7 +319,7 @@ test('real discovery catalogue transaction retains metadata and preserves all ro
     lat: null,
     lon: null,
     cadenceS: 300,
-    staleAfterS: 600,
+    staleAfterS: 2400,
     licenceId: null
   })
   body = html.replace('id="Online-rainfalldata"', 'id="renamed-table"')
