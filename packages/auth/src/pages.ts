@@ -88,6 +88,9 @@ export async function deviceAuthorizationPageData(
   return { state, userAgent, memberships }
 }
 
+/** The URL of the in-process request a page resolves its principal from: never the request's own host. */
+export const IN_PROCESS_URL = 'https://in-process.invalid/'
+
 /**
  * For a server component: the request's principal (as on `/api`, from its cookies) and the URL's organisation by slug
  * or ID, null when none exists. A member's session gets that organisation's `orgId` and `role`, as `requireOrg` fills
@@ -97,9 +100,8 @@ export async function pagePrincipal(
   headers: Headers,
   o: { org?: string } = {}
 ): Promise<{ principal: Principal | null; org: { id: string; slug: string; plan: string } | null }> {
-  const host = headers.get('x-forwarded-host') ?? headers.get('host') ?? 'localhost'
-  const scheme = headers.get('x-forwarded-proto') ?? 'https'
-  const principal = await resolvePrincipal(new Request(`${scheme}://${host}/`, { headers }), { surface: 'api' })
+  // The principal is read from the headers alone; a fixed URL means a malformed forwarded host can't break the request.
+  const principal = await resolvePrincipal(new Request(IN_PROCESS_URL, { headers }), { surface: 'api' })
   const org = o.org ? await findOrganisation(o.org) : null
   if (principal?.kind !== 'session' || !org) return { principal, org }
   const role = await currentRole(principal.accountId, org.id)

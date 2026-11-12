@@ -29,6 +29,21 @@ test('a member’s session takes the URL organisation’s ID and role, by slug o
   }
 })
 
+test('a malformed forwarded host or scheme never breaks reading the principal', async () => {
+  const malformedForwards: Array<Record<string, string>> = [
+    { 'X-Forwarded-Host': 'user@evil.com' },
+    { 'X-Forwarded-Host': 'bad:port' },
+    { 'X-Forwarded-Host': '' },
+    { 'X-Forwarded-Proto': 'bad:port' },
+    { 'X-Forwarded-Proto': '' }
+  ]
+  for (const forwarded of malformedForwards) {
+    const malformed = new Headers({ Cookie: cookie, Host: 'app.skyclause.m1ku.tech', ...forwarded })
+    const { principal } = await pagePrincipal(malformed, { org: org.slug })
+    expect(principal, JSON.stringify(forwarded)).toMatchObject({ kind: 'session', accountId, orgId: org.id })
+  }
+})
+
 test('server-rendered account settings can read the signed-in email without adding it to Principal', async () => {
   expect(await pageAccountEmail(headers(cookie))).toBe(accountEmail)
   expect(await pageAccountEmail(new Headers())).toBeNull()

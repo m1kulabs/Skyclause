@@ -135,3 +135,47 @@ test('a resend lands on the sent page with the new link’s end, or back on the 
   const failed = await resendLinkFromForm(post('/sign-in/resend', { resend: 'handle' }), failing.deps)
   expect(failed.headers.get('location')).toBe('/sign-in?state=link-expired&resend=handle&failed=resend')
 })
+
+test('every answer of the four form routes is kept by no cache: each depends on the visitor or sets a cookie', async () => {
+  const { deps } = fake(
+    () =>
+      new Response(null, {
+        status: 303,
+        headers: { location: '/api/auth/continue', 'set-cookie': 'session=s; Path=/; HttpOnly' }
+      })
+  )
+  const answers = [
+    await sendLinkFromForm(post('/sign-in/link', { email: 'not-an-email' }), deps),
+    await sendLinkFromForm(
+      post('/sign-in/link', { email: 'reader@example.org' }, { origin: 'https://evil.example' }),
+      deps
+    ),
+    await startGoogleFromForm(post('/sign-in/google', {}), deps),
+    await confirmLinkFromForm(post('/sign-in/confirm', { link: 'l' }), deps),
+    await resendLinkFromForm(post('/sign-in/resend', { resend: 'r' }), deps)
+  ]
+  for (const answer of answers) expect(answer.headers.get('cache-control')).toBe('no-store')
+  // The confirmation passes Better Auth's answer on, its session cookie kept.
+  expect(answers[3]!.headers.getSetCookie()).toEqual(['session=s; Path=/; HttpOnly'])
+})
+
+test('a post with neither Origin nor Sec-Fetch-Site fails closed; a same-origin browser post still works', async () => {
+  const { deps, calls } = fake(() => Response.json({ status: true }))
+  const routes = [
+    () => sendLinkFromForm(post('/sign-in/link', { email: 'reader@example.org' }, {}), deps),
+    () => startGoogleFromForm(post('/sign-in/google', {}, { referer: `${APP}/sign-in` }), deps),
+    () => confirmLinkFromForm(post('/sign-in/confirm', { link: 'l' }, {}), deps),
+    () => resendLinkFromForm(post('/sign-in/resend', { resend: 'r' }, {}), deps)
+  ]
+  for (const route of routes) expect((await route()).status).toBe(403)
+  expect(calls).toHaveLength(0)
+  // A browser without JavaScript posts the form with Origin, or at least Sec-Fetch-Site: same-origin.
+  const withOrigin = await sendLinkFromForm(post('/sign-in/link', { email: 'reader@example.org' }), deps)
+  expect(withOrigin.headers.get('location')).toMatch(/^\/sign-in\?state=link-sent/)
+  const fetchMetadata = await sendLinkFromForm(
+    post('/sign-in/link', { email: 'reader@example.org' }, { 'sec-fetch-site': 'same-origin' }),
+    deps
+  )
+  expect(fetchMetadata.headers.get('location')).toMatch(/^\/sign-in\?state=link-sent/)
+  expect(calls).toHaveLength(2)
+})

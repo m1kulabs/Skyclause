@@ -16,8 +16,6 @@ const cors = (response: Response): Response => {
   return response
 }
 
-const textEncoder = new TextEncoder()
-
 /** The RFC 9457 body `problems.ts` serves, with `instance` `/e` and the CORS origin. */
 function problem(request: Request, error: ApiError): Response {
   const title = error.slug[0]!.toUpperCase() + error.slug.slice(1).replaceAll('-', ' ')
@@ -92,6 +90,42 @@ function parseIngestBodyOrThrow(value: unknown) {
   }
 }
 
+function tooLarge(): ApiError {
+  return validationFailed(`The body must be at most ${MAX_BODY_BYTES} bytes.`, [
+    { in: 'body', pointer: '', detail: `body is larger than ${MAX_BODY_BYTES} bytes` }
+  ])
+}
+
+/**
+ * The body as text, never holding more than `limit` bytes of it: a declared Content-Length over the limit is refused
+ * before reading, and a body that runs past it is refused as soon as it does, its stream cancelled.
+ */
+async function readBodyWithin(request: Request, limit: number): Promise<string> {
+  const declared = Number(request.headers.get('Content-Length'))
+  if (Number.isFinite(declared) && declared > limit) throw tooLarge()
+  if (!request.body) return ''
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > limit) {
+      await reader.cancel().catch(() => undefined)
+      throw tooLarge()
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return new TextDecoder().decode(bytes)
+}
+
 /** Serves `POST /e` and its preflight; `apps/web/app/e/route.ts` is the only caller in production. */
 export async function handleAnalyticsIngest(request: Request, deps: ApiDeps): Promise<Response> {
   if (request.method === 'OPTIONS') return preflight()
@@ -106,12 +140,7 @@ export async function handleAnalyticsIngest(request: Request, deps: ApiDeps): Pr
         { in: 'body', pointer: '', detail: `content type ${type} is not application/json or text/plain` }
       ])
     }
-    const raw = await request.text()
-    if (textEncoder.encode(raw).length > MAX_BODY_BYTES) {
-      throw validationFailed(`The body must be at most ${MAX_BODY_BYTES} bytes.`, [
-        { in: 'body', pointer: '', detail: `body is larger than ${MAX_BODY_BYTES} bytes` }
-      ])
-    }
+    const raw = await readBodyWithin(request, MAX_BODY_BYTES)
     let parsed: unknown
     try {
       parsed = JSON.parse(raw)

@@ -129,3 +129,49 @@ test('a real failure (503) is still retried with backoff', async () => {
     vi.unstubAllGlobals()
   }
 })
+
+test('a stream refused for good (401, 403, 404, 501) is asked once, reported once and never retried', async () => {
+  for (const status of [401, 403, 404, 501]) {
+    const fetchMock = vi.fn(async () => new Response(null, { status }))
+    const errors: unknown[] = []
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await readSse('/v1/events/stream', { onError: (error) => errors.push(error), onEvent: () => undefined })
+      expect(fetchMock, String(status)).toHaveBeenCalledTimes(1)
+      expect(errors).toEqual([expect.objectContaining({ status })])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  }
+})
+
+test('a rate-limited stream (429) waits for Retry-After, in seconds or as a date, and at least 30 seconds without it', async () => {
+  const now = Date.parse('2026-11-13T04:00:00Z')
+  const cases: Array<[Record<string, string>, number]> = [
+    [{ 'Retry-After': '45' }, 45_000],
+    [{ 'Retry-After': new Date(now + 90_000).toUTCString() }, 90_000],
+    [{}, 30_000],
+    [{ 'Retry-After': '1' }, 1_000],
+    [{ 'Retry-After': '0' }, 1_000],
+    [{ 'Retry-After': 'soon' }, 30_000]
+  ]
+  for (const [headers, wait] of cases) {
+    const controller = new AbortController()
+    const fetchMock = vi.fn(async () => new Response(null, { status: 429, headers }))
+    const timers = vi.spyOn(globalThis, 'setTimeout')
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+    vi.stubGlobal('fetch', fetchMock)
+    const reading = readSse('/v1/events/stream', { signal: controller.signal, onEvent: () => undefined })
+    try {
+      await vi.waitFor(() => expect(timers.mock.calls.length).toBeGreaterThan(0))
+      expect(timers.mock.calls.at(-1)?.[1], JSON.stringify(headers)).toBe(wait)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally {
+      controller.abort()
+      await reading
+      timers.mockRestore()
+      clock.mockRestore()
+      vi.unstubAllGlobals()
+    }
+  }
+})
