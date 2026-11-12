@@ -103,7 +103,9 @@ export function OrganisationSwitcher({ scope }: { scope: ShellScope }) {
         {!scope.guestAccount && (
           <>
             <DropdownMenuSeparator />
-            <MenuLink href="/new" label={t('app-shell.createOrganisation', {}, locale)} />
+            <DropdownMenuGroup>
+              <MenuLink href="/new" label={t('app-shell.createOrganisation', {}, locale)} />
+            </DropdownMenuGroup>
           </>
         )}
       </DropdownMenuContent>
@@ -145,10 +147,17 @@ export function ProjectSwitcher({ scope }: { scope: ShellScope }) {
         {org && canCreateProject(scope) ? (
           <>
             <DropdownMenuSeparator />
-            <MenuLink href={`/${encodeURIComponent(org)}/new`} label={t('app-shell.createProject', {}, locale)} />
+            <DropdownMenuGroup>
+              <MenuLink href={`/${encodeURIComponent(org)}/new`} label={t('app-shell.createProject', {}, locale)} />
+            </DropdownMenuGroup>
           </>
         ) : (
-          !projects.length && !projectsError && <Note>{t('app-shell.askProject', {}, locale)}</Note>
+          !projects.length &&
+          !projectsError && (
+            <DropdownMenuGroup>
+              <Note>{t('app-shell.askProject', {}, locale)}</Note>
+            </DropdownMenuGroup>
+          )
         )}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -169,7 +178,9 @@ export function ProjectMenu({ scope }: { scope: ShellScope }) {
         <ChevronDownIcon aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="shell-menu">
-        <DestinationLinks destinations={scope.projectMenu} current={scope.current} locale={scope.locale} />
+        <DropdownMenuGroup>
+          <DestinationLinks destinations={scope.projectMenu} current={scope.current} locale={scope.locale} />
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

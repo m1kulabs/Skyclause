@@ -1,5 +1,12 @@
 import type { Handlers } from '..'
-import { listProjectSources, listSourceReadings, listSourcePolls } from '../../services/signals'
+import { productionEvaluatorProviders } from '../../services/evaluator/production'
+import {
+  getProjectStrip,
+  listProjectDays,
+  listProjectSources,
+  listSourceReadings,
+  listSourcePolls
+} from '../../services/signals'
 import { inTenant } from '../../tenancy'
 
 export const signalHandlers: Handlers = {
@@ -32,6 +39,31 @@ export const signalHandlers: Handlers = {
       const result = await inTenant(c, (ctx) =>
         listProjectSources(ctx, { projectId, query }, { can, now: requestTime })
       )
+      return c.json(result, 200)
+    }
+  },
+  getProjectStrip: {
+    handler: async (c) => {
+      const { id: projectId } = c.req.valid('param')
+      const { can, now } = c.get('deps')
+      const requestTime = now()
+      const result = await inTenant(c, (ctx) =>
+        getProjectStrip(
+          ctx,
+          { projectId },
+          { can, now: requestTime, snapshots: productionEvaluatorProviders().snapshots }
+        )
+      )
+      return c.json(result, 200)
+    }
+  },
+  listProjectDays: {
+    handler: async (c) => {
+      const { id: projectId } = c.req.valid('param')
+      const query = c.req.valid('query')
+      const { can, now } = c.get('deps')
+      const requestTime = now()
+      const result = await inTenant(c, (ctx) => listProjectDays(ctx, { projectId, query }, { can, now: requestTime }))
       return c.json(result, 200)
     }
   }

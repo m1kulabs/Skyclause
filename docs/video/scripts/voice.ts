@@ -17,25 +17,30 @@ type ScriptSection = { id: string; title: string; lines: string[]; open: string[
 type VoiceIndex = { segments: Record<string, { audio: string; words: string }> }
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const script = await readFile(resolve(root, 'director-script.md'), 'utf8')
+const script = await readFile(resolve(root, '../demo/prelim/director-script.md'), 'utf8')
 const sections = new Map<string, ScriptSection>()
 let active: ScriptSection | undefined
+// Slides are `## Slide N, title` (id SN); demo beats are `### DN, title` (id DN). Only `> ` lines are spoken.
 for (const line of script.split(/\r?\n/)) {
-  const heading = /^### ([VD]\d): (.+)$/.exec(line)
-  if (heading) {
-    active = { id: heading[1]!, title: heading[2]!, lines: [], open: [] }
+  const slide = /^## Slide (\d+), (.+)$/.exec(line)
+  const beat = /^### (D\d+),? (.+)$/.exec(line)
+  if (slide || beat) {
+    active = slide
+      ? { id: `S${slide[1]!}`, title: slide[2]!, lines: [], open: [] }
+      : { id: beat![1]!, title: beat![2]!, lines: [], open: [] }
     sections.set(active.id, active)
     continue
   }
-  if (/^## /.test(line)) {
+  if (/^#{2,3} /.test(line)) {
     active = undefined
     continue
   }
   if (!active) continue
-  const content = line.trim()
+  const spoken = /^>\s?(.*)$/.exec(line.trim())
+  if (!spoken) continue
+  const content = spoken[1]!.trim()
   if (!content) continue
-  if (/^`\[.*\]`$/.test(content)) continue
-  if (/^\{.*\}$/.test(content)) {
+  if (/\{[^}]*\}/.test(content)) {
     active.open.push(content)
     continue
   }

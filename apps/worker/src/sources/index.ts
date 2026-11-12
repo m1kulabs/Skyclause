@@ -50,7 +50,11 @@ function live() {
     scratch = gcsObjectStore(config.scratch)
   const resultPublisher = pubsubPublisher(config.project, 'poll-results')
   const sourceLog = (message: string, fields?: Record<string, unknown>) =>
-    log(message === 'source.contract.failed' ? 'ERROR' : 'INFO', message, fields)
+    log(
+      message === 'source.contract.failed' || message === 'source.catalogue.failed' ? 'ERROR' : 'INFO',
+      message,
+      fields
+    )
   const configuredAdapters = configureMetDiscovery(adapters, {
     store,
     scratch,

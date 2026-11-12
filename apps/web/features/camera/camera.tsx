@@ -10,6 +10,7 @@ import { maskedCanvas, measure } from './frame'
 import { validHours, validRegion, type Reference, type Region, type Setup } from './model'
 import { useCamera } from './use-camera'
 import { t, type Locale } from './i18n'
+import { cn } from '#lib/utils'
 
 const emptyRegion = (): Region => ({ x: 0, y: 0, width: 0, height: 0 })
 
@@ -522,7 +523,7 @@ function RegionFields({
               aria-describedby={error ? `${name}-error` : undefined}
               data-numeric
               // Once the reference is captured the regions are fixed: they read as values, not as dimmed fields.
-              className={`${FIELD} disabled:border-transparent disabled:bg-transparent disabled:opacity-100`}
+              className={cn(FIELD, 'disabled:border-transparent disabled:bg-transparent disabled:opacity-100')}
             />
           </Field>
         ))}

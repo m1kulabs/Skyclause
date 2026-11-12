@@ -38,6 +38,7 @@ import {
 } from './model'
 import { t, type Locale } from './i18n'
 import styles from './members.module.css'
+import { FieldGroup } from '#ui/field'
 
 type Page<T> = { data: T[]; next_cursor: string | null }
 
@@ -591,61 +592,63 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
 
         {loaded ? (
           <SettingsPart title={t('members.invite_form', {}, locale)} id="invite-form-heading">
-            <form className={styles.form} noValidate onSubmit={(event) => void createInvite(event)}>
-              <div className={styles.fields}>
-                <SettingsField
-                  label={t('members.invite_email', {}, locale)}
-                  hint={t('members.invite_hint', {}, locale)}
-                  error={emailError || undefined}
-                >
-                  {(aria) => (
-                    <Input
-                      {...aria}
-                      ref={emailField}
-                      name="email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="off"
-                      spellCheck={false}
-                      required
-                      value={inviteEmail}
-                      onChange={(event) => setInviteEmail(event.currentTarget.value)}
-                      disabled={inviteBusy}
-                    />
-                  )}
-                </SettingsField>
-                <SettingsField
-                  label={t('members.invite_role', {}, locale)}
-                  hint={viewerRole === 'admin' ? t('members.owner_transfer_hint', {}, locale) : undefined}
-                  error={inviteError || undefined}
-                >
-                  {(aria) => (
-                    <Select
-                      value={inviteRole}
-                      onValueChange={(value) => value && setInviteRole(value as ManagedRole)}
-                      disabled={inviteBusy}
-                    >
-                      <SelectTrigger {...aria} className="w-full" aria-label={t('members.invite_role', {}, locale)}>
-                        <SelectValue>{roleName(inviteRole, locale)}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {roles.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {roleName(option, locale)}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </SettingsField>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={inviteBusy}>
-                  {inviteBusy ? t('members.sending_invite', {}, locale) : t('members.send_invite', {}, locale)}
-                </Button>
-              </div>
+            <form noValidate onSubmit={(event) => void createInvite(event)}>
+              <FieldGroup className={styles.form}>
+                <FieldGroup className={styles.fields}>
+                  <SettingsField
+                    label={t('members.invite_email', {}, locale)}
+                    hint={t('members.invite_hint', {}, locale)}
+                    error={emailError || undefined}
+                  >
+                    {(aria) => (
+                      <Input
+                        {...aria}
+                        ref={emailField}
+                        name="email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="off"
+                        spellCheck={false}
+                        required
+                        value={inviteEmail}
+                        onChange={(event) => setInviteEmail(event.currentTarget.value)}
+                        disabled={inviteBusy}
+                      />
+                    )}
+                  </SettingsField>
+                  <SettingsField
+                    label={t('members.invite_role', {}, locale)}
+                    hint={viewerRole === 'admin' ? t('members.owner_transfer_hint', {}, locale) : undefined}
+                    error={inviteError || undefined}
+                  >
+                    {(aria) => (
+                      <Select
+                        value={inviteRole}
+                        onValueChange={(value) => value && setInviteRole(value as ManagedRole)}
+                        disabled={inviteBusy}
+                      >
+                        <SelectTrigger {...aria} className="w-full" aria-label={t('members.invite_role', {}, locale)}>
+                          <SelectValue>{roleName(inviteRole, locale)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {roles.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {roleName(option, locale)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </SettingsField>
+                </FieldGroup>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button type="submit" disabled={inviteBusy}>
+                    {inviteBusy ? t('members.sending_invite', {}, locale) : t('members.send_invite', {}, locale)}
+                  </Button>
+                </div>
+              </FieldGroup>
             </form>
           </SettingsPart>
         ) : null}
@@ -667,49 +670,51 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                 </Button>
               </div>
             ) : (
-              <form className={styles.form} onSubmit={(event) => void startTransfer(event)}>
-                <SettingsField
-                  label={t('members.transfer_to', {}, locale)}
-                  hint={t('members.transfer_hint', {}, locale)}
-                >
-                  {(aria) => (
-                    <Select value={transferTarget} onValueChange={(value) => setTransferTarget(value ?? '')}>
-                      <SelectTrigger
-                        {...aria}
-                        className="w-full"
-                        aria-label={t('members.transfer_to', {}, locale)}
-                        disabled={!transferCandidates.length}
-                      >
-                        <SelectValue placeholder={t('members.choose_member', {}, locale)}>
-                          {transferCandidates.find((member) => member.id === transferTarget)
-                            ? t(
-                                'members.name_email',
-                                {
-                                  name: transferCandidates.find((member) => member.id === transferTarget)!.name,
-                                  email: transferCandidates.find((member) => member.id === transferTarget)!.email
-                                },
-                                locale
-                              )
-                            : null}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {transferCandidates.map((member) => (
-                            <SelectItem key={member.id} value={member.id}>
-                              {t('members.name_email', { name: member.name, email: member.email }, locale)}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </SettingsField>
-                <div>
-                  <Button type="submit" disabled={!transferTarget || activeAction === 'transfer'}>
-                    {t('members.transfer_start', {}, locale)}
-                  </Button>
-                </div>
+              <form onSubmit={(event) => void startTransfer(event)}>
+                <FieldGroup className={styles.form}>
+                  <SettingsField
+                    label={t('members.transfer_to', {}, locale)}
+                    hint={t('members.transfer_hint', {}, locale)}
+                  >
+                    {(aria) => (
+                      <Select value={transferTarget} onValueChange={(value) => setTransferTarget(value ?? '')}>
+                        <SelectTrigger
+                          {...aria}
+                          className="w-full"
+                          aria-label={t('members.transfer_to', {}, locale)}
+                          disabled={!transferCandidates.length}
+                        >
+                          <SelectValue placeholder={t('members.choose_member', {}, locale)}>
+                            {transferCandidates.find((member) => member.id === transferTarget)
+                              ? t(
+                                  'members.name_email',
+                                  {
+                                    name: transferCandidates.find((member) => member.id === transferTarget)!.name,
+                                    email: transferCandidates.find((member) => member.id === transferTarget)!.email
+                                  },
+                                  locale
+                                )
+                              : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {transferCandidates.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {t('members.name_email', { name: member.name, email: member.email }, locale)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </SettingsField>
+                  <div>
+                    <Button type="submit" disabled={!transferTarget || activeAction === 'transfer'}>
+                      {t('members.transfer_start', {}, locale)}
+                    </Button>
+                  </div>
+                </FieldGroup>
               </form>
             )}
           </SettingsPart>

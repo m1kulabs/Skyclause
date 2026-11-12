@@ -494,7 +494,8 @@ describe('session and scope rules', () => {
       idempotencyKey: 'k-1',
       body: {}
     })
-    expect(allowed.status).toBe(501)
+    // Past the scope check, the built handler validates the empty body.
+    expect(allowed.status).toBe(422)
   })
 
   it('answers 403 to a non-staff session on a staff route', async () => {

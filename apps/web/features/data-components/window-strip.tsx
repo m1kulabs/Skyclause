@@ -192,7 +192,7 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
       {input.ages && input.ages.length ? (
         <div className="md:hidden">
           <p className="type-small font-medium">{t('data.strip.ages_title', {}, locale)}</p>
-          <ul className="mt-1 space-y-1 type-small tabular-nums">
+          <ul className="mt-1 flex flex-col gap-1 type-small tabular-nums">
             {input.ages.map((age) => (
               <li key={age.name} className="flex flex-wrap items-center gap-1">
                 <span>{indicatorName(age.name, locale)}</span>

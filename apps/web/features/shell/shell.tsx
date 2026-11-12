@@ -191,7 +191,7 @@ export function AppShell({ data, children, palette, now, locale = 'en', scope: e
               aria-label={t('app-shell.paletteShortcut', { hint: paletteHint }, locale)}
               aria-keyshortcuts="Meta+K Control+K"
             >
-              <SearchIcon aria-hidden="true" />
+              <SearchIcon data-icon="inline-start" aria-hidden="true" />
               <Kbd aria-hidden="true">{paletteHint}</Kbd>
             </Button>
             <div className="shell-account-wrap current-mark" data-current={accountCurrent ? '' : undefined}>

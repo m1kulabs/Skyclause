@@ -63,7 +63,7 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
         </span>
         <span className="mt-1 block text-[13px] text-muted-foreground md:hidden">
           {firedItems.length ? (
-            <ul className="space-y-1">
+            <ul className="flex flex-col gap-1">
               {firedItems.map((item, index) => (
                 <li key={index}>{item}</li>
               ))}
@@ -75,7 +75,7 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
       </td>
       <td className="hidden p-2 text-[13px] text-muted-foreground md:table-cell">
         {firedItems.length ? (
-          <ul className="space-y-1">
+          <ul className="flex flex-col gap-1">
             {firedItems.map((item, index) => (
               <li key={index}>{item}</li>
             ))}

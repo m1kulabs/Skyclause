@@ -292,3 +292,78 @@ test('the picker keyboard path fires the same evaluate request', async ({ page }
   expect(body.start_time).toMatch(/^\d{2}:\d{2}$/)
   await expectZonedTimes(page)
 })
+
+// The day strip under touch at 390px, with gestures synthesized through CDP (Chromium's touch emulation): a scroll
+// that starts on the strip changes nothing, a cancelled drag puts the window back, and the capsule as drawn (28px at
+// least, wider than a short window's span) is what a press moves.
+test.describe('the day strip under touch', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 })
+
+  const frame = (page: Page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+
+  async function swipe(
+    page: Page,
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    end: 'touchEnd' | 'touchCancel' = 'touchEnd'
+  ) {
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] })
+    for (let step = 1; step <= 12; step++) {
+      const point = { x: from.x + ((to.x - from.x) * step) / 12, y: from.y + ((to.y - from.y) * step) / 12 }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point] })
+      await frame(page)
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: end, touchPoints: [] })
+    await frame(page)
+    await cdp.detach()
+  }
+
+  /** Loads the picker island by keyboard and sets the window to 06:00–07:00, an hour drawn narrower than 28px. */
+  async function windowAtSix(page: Page) {
+    await stubLanding(page, false)
+    await page.goto('/')
+    const strip = band(page)
+    await strip.scrollIntoViewIfNeeded()
+    await strip.press('End')
+    await expect(strip).toHaveAttribute('aria-valuenow', '1365')
+    await strip.press('Home')
+    for (let hour = 0; hour < 6; hour++) await strip.press('PageUp')
+    await expect(strip).toHaveAttribute('aria-valuenow', '360')
+    await expect(strip).toHaveAttribute('aria-valuetext', '06:00 MYT to 07:00 MYT')
+    const track = (await strip.boundingBox())!
+    const capsule = (await strip.locator('[data-state]').boundingBox())!
+    expect(capsule.width).toBeGreaterThan((track.width / 24) * 1.5)
+    return { strip, track, capsule, y: track.y + track.height / 2 }
+  }
+
+  test('dragging the capsule by its drawn centre moves the window and keeps its length', async ({ page }) => {
+    const { strip, capsule, y } = await windowAtSix(page)
+    const centre = capsule.x + capsule.width / 2
+    await swipe(page, { x: centre, y }, { x: centre + 80, y })
+    await expect(strip).not.toHaveAttribute('aria-valuenow', '360')
+    const [start, end] = ((await strip.getAttribute('aria-valuetext'))!.match(/\d\d:\d\d/g) ?? []).map((time) => {
+      const [hours, minutes] = time.split(':').map(Number)
+      return hours! * 60 + minutes!
+    })
+    expect(start).toBeGreaterThan(360)
+    expect(end! - start!).toBe(60)
+  })
+
+  test('a vertical swipe that starts on the strip scrolls the page and leaves the window alone', async ({ page }) => {
+    const { strip, track, y } = await windowAtSix(page)
+    const scrolled = await page.evaluate(() => window.scrollY)
+    // 18:00 on the strip: far from the 06:00 capsule, where a press would anchor a new window.
+    const x = track.x + track.width * 0.75
+    await swipe(page, { x, y }, { x, y: y - 220 })
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(scrolled)
+    await expect(strip).toHaveAttribute('aria-valuetext', '06:00 MYT to 07:00 MYT')
+  })
+
+  test('a cancelled drag restores the window held at the press', async ({ page }) => {
+    const { strip, capsule, y } = await windowAtSix(page)
+    const centre = capsule.x + capsule.width / 2
+    await swipe(page, { x: centre, y }, { x: centre - 50, y }, 'touchCancel')
+    await expect(strip).toHaveAttribute('aria-valuetext', '06:00 MYT to 07:00 MYT')
+  })
+})

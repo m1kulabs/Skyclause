@@ -5,6 +5,7 @@ import type { RotaShift } from '@skyclause/contracts'
 import { formatDateTime, formatList, formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Checkbox } from '#ui/checkbox'
+import { FieldGroup } from '#ui/field'
 import { Input } from '#ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '#ui/select'
 import { Skeleton } from '#ui/skeleton'
@@ -685,162 +686,172 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
                 title={t(editor.key ? 'rota.edit_heading' : 'rota.add_heading', {}, locale)}
                 id="rota-add-heading"
               >
-                <form className={styles.editor} onSubmit={applyEditor} noValidate>
-                  <div className={styles.editorFields}>
-                    <SettingsField
-                      label={t('rota.person', {}, locale)}
-                      hint={!eligible.length ? t('rota.no_approvers', {}, locale) : undefined}
-                      error={errors.person}
-                    >
-                      {(aria) => (
-                        <Select
-                          value={editor.accountId}
-                          onValueChange={(value) =>
-                            setEditor((current) => current && { ...current, accountId: value ?? '' })
-                          }
-                          disabled={viewer.role === 'approver'}
-                        >
-                          <SelectTrigger
-                            {...aria}
-                            id="rota-person"
-                            className="w-full"
-                            aria-label={t('rota.person', {}, locale)}
+                <form onSubmit={applyEditor} noValidate>
+                  <FieldGroup className={styles.editor}>
+                    <FieldGroup className={styles.editorFields}>
+                      <SettingsField
+                        label={t('rota.person', {}, locale)}
+                        hint={!eligible.length ? t('rota.no_approvers', {}, locale) : undefined}
+                        error={errors.person}
+                      >
+                        {(aria) => (
+                          <Select
+                            value={editor.accountId}
+                            onValueChange={(value) =>
+                              setEditor((current) => current && { ...current, accountId: value ?? '' })
+                            }
+                            disabled={viewer.role === 'approver'}
                           >
-                            <SelectValue placeholder={t('rota.person_placeholder', {}, locale)}>
-                              {editor.accountId ? displayName(editor.accountId, members, viewer, locale) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {(viewer.role === 'approver'
-                                ? eligible.filter((member) => member.account_id === viewer.accountId)
-                                : eligible
-                              ).map((member) => (
-                                <SelectItem key={member.account_id} value={member.account_id}>
-                                  {displayName(member.account_id, members, viewer, locale)}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </SettingsField>
-                    <SettingsField label={t('rota.template', {}, locale)}>
-                      {(aria) => (
-                        <Select
-                          value={editor.template}
-                          onValueChange={(value) => value && chooseTemplate(value as TemplateName)}
-                        >
-                          <SelectTrigger {...aria} className="w-full" aria-label={t('rota.template', {}, locale)}>
-                            <SelectValue>{templateName(editor.template, locale)}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {rota.templates.map((template) => (
-                                <SelectItem key={template.template} value={template.template}>
-                                  {templateName(template.template, locale)}
-                                </SelectItem>
-                              ))}
-                              {!rota.templates.some((template) => template.template === 'custom') && (
-                                <SelectItem value="custom">{templateName('custom', locale)}</SelectItem>
-                              )}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </SettingsField>
-                    <SettingsField
-                      label={t('rota.time_start', {}, locale)}
-                      hint={t(editor.template === 'custom' ? 'rota.time_hint' : 'rota.time_hint_template', {}, locale)}
-                      error={errors.time}
+                            <SelectTrigger
+                              {...aria}
+                              id="rota-person"
+                              className="w-full"
+                              aria-label={t('rota.person', {}, locale)}
+                            >
+                              <SelectValue placeholder={t('rota.person_placeholder', {}, locale)}>
+                                {editor.accountId ? displayName(editor.accountId, members, viewer, locale) : null}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {(viewer.role === 'approver'
+                                  ? eligible.filter((member) => member.account_id === viewer.accountId)
+                                  : eligible
+                                ).map((member) => (
+                                  <SelectItem key={member.account_id} value={member.account_id}>
+                                    {displayName(member.account_id, members, viewer, locale)}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </SettingsField>
+                      <SettingsField label={t('rota.template', {}, locale)}>
+                        {(aria) => (
+                          <Select
+                            value={editor.template}
+                            onValueChange={(value) => value && chooseTemplate(value as TemplateName)}
+                          >
+                            <SelectTrigger {...aria} className="w-full" aria-label={t('rota.template', {}, locale)}>
+                              <SelectValue>{templateName(editor.template, locale)}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {rota.templates.map((template) => (
+                                  <SelectItem key={template.template} value={template.template}>
+                                    {templateName(template.template, locale)}
+                                  </SelectItem>
+                                ))}
+                                {!rota.templates.some((template) => template.template === 'custom') && (
+                                  <SelectItem value="custom">{templateName('custom', locale)}</SelectItem>
+                                )}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </SettingsField>
+                      <SettingsField
+                        label={t('rota.time_start', {}, locale)}
+                        hint={t(
+                          editor.template === 'custom' ? 'rota.time_hint' : 'rota.time_hint_template',
+                          {},
+                          locale
+                        )}
+                        error={errors.time}
+                      >
+                        {(aria) => (
+                          <Input
+                            {...aria}
+                            name="local_start"
+                            type="time"
+                            autoComplete="off"
+                            value={editor.localStart}
+                            onChange={(event) => {
+                              const localStart = event.currentTarget.value
+                              setEditor((current) => current && { ...current, localStart })
+                            }}
+                            disabled={editor.template !== 'custom'}
+                          />
+                        )}
+                      </SettingsField>
+                      <SettingsField
+                        label={t('rota.time_end', {}, locale)}
+                        hint={t(
+                          editor.template === 'custom' ? 'rota.time_hint' : 'rota.time_hint_template',
+                          {},
+                          locale
+                        )}
+                      >
+                        {(aria) => (
+                          <Input
+                            {...aria}
+                            name="local_end"
+                            type="time"
+                            autoComplete="off"
+                            value={editor.localEnd}
+                            onChange={(event) => {
+                              const localEnd = event.currentTarget.value
+                              setEditor((current) => current && { ...current, localEnd })
+                            }}
+                            disabled={editor.template !== 'custom'}
+                          />
+                        )}
+                      </SettingsField>
+                    </FieldGroup>
+                    <fieldset
+                      className={styles.dayChoices}
+                      data-rota-days
+                      aria-describedby={errors.days ? 'rota-days-error' : undefined}
                     >
-                      {(aria) => (
-                        <Input
-                          {...aria}
-                          name="local_start"
-                          type="time"
-                          autoComplete="off"
-                          value={editor.localStart}
-                          onChange={(event) => {
-                            const localStart = event.currentTarget.value
-                            setEditor((current) => current && { ...current, localStart })
-                          }}
-                          disabled={editor.template !== 'custom'}
-                        />
-                      )}
-                    </SettingsField>
-                    <SettingsField
-                      label={t('rota.time_end', {}, locale)}
-                      hint={t(editor.template === 'custom' ? 'rota.time_hint' : 'rota.time_hint_template', {}, locale)}
-                    >
-                      {(aria) => (
-                        <Input
-                          {...aria}
-                          name="local_end"
-                          type="time"
-                          autoComplete="off"
-                          value={editor.localEnd}
-                          onChange={(event) => {
-                            const localEnd = event.currentTarget.value
-                            setEditor((current) => current && { ...current, localEnd })
-                          }}
-                          disabled={editor.template !== 'custom'}
-                        />
-                      )}
-                    </SettingsField>
-                  </div>
-                  <fieldset
-                    className={styles.dayChoices}
-                    data-rota-days
-                    aria-describedby={errors.days ? 'rota-days-error' : undefined}
-                  >
-                    <legend>{t('rota.days', {}, locale)}</legend>
-                    <div className={styles.dayOptions}>
-                      {dayKeys.map((key, index) => {
-                        const weekday = index + 1
-                        const checked = editor.days.includes(weekday)
-                        return (
-                          <label className={styles.dayChoice} key={key}>
-                            <Checkbox
-                              checked={checked}
-                              name="days"
-                              value={String(weekday)}
-                              aria-label={dayName(weekday, locale)}
-                              onCheckedChange={(value) =>
-                                setEditor(
-                                  (current) =>
-                                    current && {
-                                      ...current,
-                                      days: value
-                                        ? [...new Set([...current.days, weekday])].sort((a, b) => a - b)
-                                        : current.days.filter((day) => day !== weekday)
-                                    }
-                                )
-                              }
-                            />
-                            <span>{dayName(weekday, locale)}</span>
-                          </label>
-                        )
-                      })}
+                      <legend>{t('rota.days', {}, locale)}</legend>
+                      <div className={styles.dayOptions}>
+                        {dayKeys.map((key, index) => {
+                          const weekday = index + 1
+                          const checked = editor.days.includes(weekday)
+                          return (
+                            <label className={styles.dayChoice} key={key}>
+                              <Checkbox
+                                checked={checked}
+                                name="days"
+                                value={String(weekday)}
+                                aria-label={dayName(weekday, locale)}
+                                onCheckedChange={(value) =>
+                                  setEditor(
+                                    (current) =>
+                                      current && {
+                                        ...current,
+                                        days: value
+                                          ? [...new Set([...current.days, weekday])].sort((a, b) => a - b)
+                                          : current.days.filter((day) => day !== weekday)
+                                      }
+                                  )
+                                }
+                              />
+                              <span>{dayName(weekday, locale)}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </fieldset>
+                    {errors.days ? <SettingsError id="rota-days-error">{errors.days}</SettingsError> : null}
+                    <div className={styles.editorActions}>
+                      <Button type="submit" variant="outline">
+                        {t(editor.key ? 'rota.update_shift' : 'rota.apply_shift', {}, locale)}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setShowEditor(false)
+                          setEditor(null)
+                          setErrors({})
+                        }}
+                      >
+                        {t('rota.cancel_edit', {}, locale)}
+                      </Button>
                     </div>
-                  </fieldset>
-                  {errors.days ? <SettingsError id="rota-days-error">{errors.days}</SettingsError> : null}
-                  <div className={styles.editorActions}>
-                    <Button type="submit" variant="outline">
-                      {t(editor.key ? 'rota.update_shift' : 'rota.apply_shift', {}, locale)}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setShowEditor(false)
-                        setEditor(null)
-                        setErrors({})
-                      }}
-                    >
-                      {t('rota.cancel_edit', {}, locale)}
-                    </Button>
-                  </div>
+                  </FieldGroup>
                 </form>
               </SettingsPart>
             )}

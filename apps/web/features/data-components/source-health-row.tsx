@@ -126,7 +126,7 @@ export function SourceHealthRow({
                       ? 'inline-block h-3 w-1 rounded-full bg-foreground'
                       : tick === 'missed'
                         ? 'inline-block h-3 w-1 rounded-full bg-overlay'
-                        : 'inline-block h-1 w-1 self-end rounded-full bg-foreground'
+                        : 'inline-block size-1 self-end rounded-full bg-foreground'
                   }
                 />
               ))}

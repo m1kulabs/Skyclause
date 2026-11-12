@@ -61,8 +61,9 @@ function ChartContainer({
         data-slot="chart"
         data-chart={chartId}
         className={cn(
-          // Drawn in ink with one emphasised series (--chart-1); grid lines in --grid replace Recharts' default greys.
-          'flex aspect-video justify-center text-[13px] [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-grid [&_.recharts-curve.recharts-tooltip-cursor]:stroke-muted-foreground [&_.recharts-dot]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_*]:stroke-grid [&_.recharts-radial-bar-background-sector]:fill-raised [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_line]:stroke-muted-foreground [&_.recharts-sector]:stroke-transparent [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden',
+          // Drawn in ink with one emphasised series (--chart-1); grid lines in --grid replace Recharts' default greys. Axis
+          // labels are Recharts 3's `.recharts-cartesian-axis-tick-value`, whose own #666 fill this inks with --chart-ink.
+          'flex aspect-video justify-center text-[13px] [&_.recharts-cartesian-axis-tick-value]:fill-chart-ink [&_.recharts-cartesian-grid_line]:stroke-grid [&_.recharts-curve.recharts-tooltip-cursor]:stroke-muted-foreground [&_.recharts-dot]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_*]:stroke-grid [&_.recharts-radial-bar-background-sector]:fill-raised [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_line]:stroke-muted-foreground [&_.recharts-sector]:stroke-transparent [&_.recharts-sector]:outline-hidden [&_.recharts-surface]:outline-hidden',
           className
         )}
         {...props}
@@ -180,7 +181,7 @@ function ChartTooltipContent({
               <div
                 key={index}
                 className={cn(
-                  'flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground',
+                  'flex w-full flex-wrap items-stretch gap-2 [&>svg]:size-2.5 [&>svg]:text-muted-foreground',
                   indicator === 'dot' && 'items-center'
                 )}
               >
@@ -194,7 +195,7 @@ function ChartTooltipContent({
                       !hideIndicator && (
                         <div
                           className={cn('shrink-0 rounded-full border-(--color-border) bg-(--color-bg)', {
-                            'h-2.5 w-2.5': indicator === 'dot',
+                            'size-2.5': indicator === 'dot',
                             'w-1': indicator === 'line',
                             'w-0 border-[1.5px] border-dashed bg-transparent': indicator === 'dashed',
                             'my-0.5': nestLabel && indicator === 'dashed'
@@ -267,15 +268,12 @@ function ChartLegendContent({
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
           return (
-            <div
-              key={index}
-              className={cn('flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground')}
-            >
+            <div key={index} className={cn('flex items-center gap-1.5 [&>svg]:size-3 [&>svg]:text-muted-foreground')}>
               {itemConfig?.icon && !hideIcon ? (
                 <itemConfig.icon />
               ) : (
                 <div
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  className="size-2.5 shrink-0 rounded-full"
                   style={{
                     backgroundColor: item.color
                   }}

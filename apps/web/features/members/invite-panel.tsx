@@ -10,6 +10,7 @@ import { AuthHeader, AuthMessage } from '../public-chrome/auth'
 import { errorMessageKey, maskEmail, problemCode } from './model'
 import { inviteApiFetch } from './operations'
 import { t, type Locale } from './i18n'
+import { cn } from '#lib/utils'
 
 type TokenInfo = {
   kind: 'invitation' | 'ownership_transfer'
@@ -194,7 +195,7 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
                 </p>
                 {info.org_slug && (
                   <Link
-                    className={`${buttonVariants({ size: 'lg' })} w-full`}
+                    className={cn(buttonVariants({ size: 'lg' }), 'w-full')}
                     href={`/${encodeURIComponent(info.org_slug)}`}
                   >
                     {t('members.continue_to_org', {}, locale)}
@@ -232,11 +233,11 @@ export function InvitePanel({ token, locale, signedIn }: InvitePanelProps) {
                   </Button>
                 ) : (
                   <div className="auth-stack">
-                    <Link className={`${buttonVariants({ size: 'lg' })} w-full`} href={`/sign-in${authQuery}`}>
+                    <Link className={cn(buttonVariants({ size: 'lg' }), 'w-full')} href={`/sign-in${authQuery}`}>
                       {t('members.sign_in', {}, locale)}
                     </Link>
                     <Link
-                      className={`${buttonVariants({ size: 'lg', variant: 'outline' })} w-full`}
+                      className={cn(buttonVariants({ size: 'lg', variant: 'outline' }), 'w-full')}
                       href={`/sign-up${authQuery}`}
                     >
                       {t('members.create_account', {}, locale)}

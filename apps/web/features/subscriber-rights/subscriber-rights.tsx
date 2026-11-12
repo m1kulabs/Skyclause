@@ -11,6 +11,7 @@ import { AuthHeader, AuthMessage } from '../public-chrome/auth'
 import { SubscribeColumn } from '../subscribe/column'
 import { t } from './i18n'
 import styles from './subscriber-rights.module.css'
+import { cn } from '#lib/utils'
 
 type Locale = 'en' | 'ms'
 
@@ -225,7 +226,7 @@ export function SubscriberRights({ initialData, token }: { initialData: Subscrib
         <h2 id="rights-correct" className="auth-h2">
           {label('correct', locale)}
         </h2>
-        <form className={`auth-form ${styles.form}`} onSubmit={save}>
+        <form className={cn('auth-form', styles.form)} onSubmit={save}>
           <div className="auth-field">
             <label htmlFor="rights-email">{column('email')}</label>
             <Input
