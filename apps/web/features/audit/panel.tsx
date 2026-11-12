@@ -245,7 +245,13 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
             </SettingsField>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" onClick={exportCsv} disabled={!hydrated || exporting}>
+            <Button
+              type="button"
+              variant="outline"
+              className="disabled:opacity-100"
+              onClick={exportCsv}
+              disabled={!hydrated || exporting}
+            >
               {exporting ? copy('exporting') : copy('export')}
             </Button>
             {exportError ? <SettingsError>{copy('exportError')}</SettingsError> : null}
@@ -315,6 +321,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
               <Button
                 type="button"
                 variant="outline"
+                className="disabled:text-muted-foreground disabled:opacity-100"
                 disabled={loading || cursors.length < 2}
                 onClick={() => setCursors((current) => current.slice(0, -1))}
               >
@@ -323,6 +330,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
               <Button
                 type="button"
                 variant="outline"
+                className="disabled:text-muted-foreground disabled:opacity-100"
                 disabled={loading || !nextCursor}
                 onClick={() => nextCursor && setCursors((current) => [...current, nextCursor])}
               >
