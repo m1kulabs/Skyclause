@@ -13,6 +13,13 @@ import { SourceError } from '../../data-components/states'
  * surface step); these separate the panel's parts by space and by tone, never by rules.
  */
 
+/**
+ * A native date or time input keeps no :focus-visible ring of its own in every browser: its field draws the ring
+ * round the label and the input together (the crawl accepts a [data-focus-ring] owner).
+ */
+export const dateFieldRing =
+  'rounded-sm focus-within:outline-solid focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring'
+
 /** The panel's parts in one column with the space between them. */
 export function Parts({ className, ...props }: ComponentProps<'div'>) {
   return <div className={cn('grid min-w-0 gap-10', className)} {...props} />

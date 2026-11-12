@@ -10,7 +10,7 @@ import { Skeleton } from '#ui/skeleton'
 import { useRead } from '../../../analysis/use-read'
 import { useUnsavedChangesGuard } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
-import { Notice, Part, Parts, Problem, ReadFailed, Row, Rows } from '../parts'
+import { Notice, Part, Parts, Problem, ReadFailed, Row, Rows, dateFieldRing } from '../parts'
 import {
   projectSettingsApi,
   resolveProject,
@@ -336,7 +336,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
           </fieldset>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
+            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="rota-start">{t('project-settings.start', {}, locale)}</Label>
               <Input
                 id="rota-start"
@@ -348,7 +348,7 @@ export function ProjectRotaPanel({ locale = 'en' }: { locale?: Locale }) {
                 required
               />
             </div>
-            <div className="grid gap-2">
+            <div className={`grid gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="rota-end">{t('project-settings.end', {}, locale)}</Label>
               <Input
                 id="rota-end"

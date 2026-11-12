@@ -13,7 +13,7 @@ import { Textarea } from '#ui/textarea'
 import { Skeleton } from '#ui/skeleton'
 import { ConfirmDialog, useUndoableAction } from '../../set-7'
 import { t } from '../../../project-settings/catalogue'
-import { Danger, Notice, Part, Parts, Problem, ReadFailed, Row, Rows } from '../parts'
+import { Danger, Notice, Part, Parts, Problem, ReadFailed, Row, Rows, dateFieldRing } from '../parts'
 
 type Locale = 'en' | 'ms'
 type ProjectForm = {
@@ -276,7 +276,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 required
               />
             </div>
-            <div className="grid min-w-0 gap-2">
+            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="semester-end">{t('project-settings.semester_end', {}, locale)}</Label>
               <Input
                 id="semester-end"
@@ -315,7 +315,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
           )}
         >
           <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-            <div className="grid min-w-0 gap-2">
+            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="camera-start">{t('project-settings.camera_start', {}, locale)}</Label>
               <Input
                 id="camera-start"
@@ -326,7 +326,7 @@ export function ProjectGeneralPanel({ locale = 'en' }: { locale?: Locale }) {
                 onChange={(event) => field('cameraStart', event.target.value)}
               />
             </div>
-            <div className="grid min-w-0 gap-2">
+            <div className={`grid min-w-0 gap-2 ${dateFieldRing}`} data-focus-ring>
               <Label htmlFor="camera-end">{t('project-settings.camera_end', {}, locale)}</Label>
               <Input
                 id="camera-end"
