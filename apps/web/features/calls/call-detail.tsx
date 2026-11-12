@@ -330,7 +330,12 @@ export function CallDetailPage({
               <div className={styles.recordGrid}>
                 <div className={styles.recordMain}>
                   <section className={styles.stripLead} aria-label={t('calls.window', {}, locale)}>
-                    <WindowStrip windows={call.window ? [call.window] : []} strip={strip} locale={locale} />
+                    <WindowStrip
+                      windows={call.window ? [call.window] : []}
+                      strip={strip}
+                      list={false}
+                      locale={locale}
+                    />
                   </section>
 
                   {call.no_call?.length ? (

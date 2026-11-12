@@ -351,12 +351,9 @@
   min-width: 0;
 }
 
-/* The strip leads on the ground, where its track reads one tone up; the header already names the window. */
+/* The strip leads on the ground, where its track reads one tone up. */
 .stripLead {
   min-width: 0;
-}
-.stripLead :global(.day-strip > ol) {
-  display: none;
 }
 
 /* The record: one panel of facts on a 28-32px pitch, the delay drawn as one bar. */

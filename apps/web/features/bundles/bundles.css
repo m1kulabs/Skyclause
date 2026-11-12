@@ -274,10 +274,6 @@ html:has(.bundle-detail) {
 .bundle-call-strip {
   min-width: 0;
 }
-/* The call's header already names its window, time and mode: the strip's own row for the one window would repeat it. */
-.bundle-call-strip .day-strip > ol {
-  display: none;
-}
 /* With several calls, the one the bar's Edit and Reject act on carries a capsule mark at its edge. */
 .bundle-call-list:has(> li + li) > li[data-current] {
   position: relative;

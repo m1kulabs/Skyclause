@@ -84,7 +84,7 @@ export const CallReview = memo(function CallReview({
       </p>
       {call.window && (
         <div className="bundle-call-strip">
-          <WindowStrip windows={[call.window]} strip={callStrip(call, strip, at)} />
+          <WindowStrip windows={[call.window]} strip={callStrip(call, strip, at)} list={false} />
         </div>
       )}
       {call.recommendations.length > 0 && (
