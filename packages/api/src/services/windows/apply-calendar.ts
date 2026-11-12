@@ -111,29 +111,6 @@ export async function applyCalendar(
       }
       if (!parsed) throw new MissingCalendarDocumentError('Calendar document unavailable.')
       const desired = []
-      const protectedIdentities = [...parsed.protectedIdentities]
-      // A shifted effective date near the frontier does not prove that the source identity was covered.
-      for (const row of members) {
-        if (row.startsAt < input.now || row.startsAt > through) continue
-        const seriesRow = row.icsUid ? byUid.get(row.icsUid) : undefined
-        const definition = seriesRow ? readWindowSeriesDefinition(seriesRow) : null
-        if (!definition || definition.source !== 'ics' || row.icsUid === null || row.icsRecurrenceId === null) continue
-        const defaults = definition.manualDefaults
-        if (
-          defaults.dateOffsetDays === undefined &&
-          defaults.tz === undefined &&
-          defaults.localStart === undefined &&
-          defaults.localEnd === undefined &&
-          defaults.endDayOffset === undefined
-        )
-          continue
-        const margin = (Math.abs(defaults.dateOffsetDays ?? 0) + 2) * 86_400_000
-        if (
-          row.startsAt.getTime() < input.now.getTime() + margin ||
-          row.startsAt.getTime() > through.getTime() - margin
-        )
-          protectedIdentities.push({ uid: row.icsUid, recurrenceId: row.icsRecurrenceId })
-      }
       for (const occurrence of parsed.occurrences) {
         const row = byUid.get(occurrence.uid)
         const definition = row ? readWindowSeriesDefinition(row) : null
@@ -157,7 +134,7 @@ export async function applyCalendar(
         through,
         members: [...members],
         occurrences: desired,
-        protectedIdentities,
+        protectedIdentities: parsed.protectedIdentities,
         stoppedSeriesIds: stopped.map((row) => row.id),
         stoppedUids: stopped.flatMap((row) => (row.icsUid ? [row.icsUid] : []))
       })

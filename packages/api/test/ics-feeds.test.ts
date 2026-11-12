@@ -793,3 +793,174 @@ test('304 without an authoritative document fails without cancelling existing wi
   const [stored] = await tenant((tx) => tx.select().from(window).where(eq(window.id, managed.id)))
   expect(stored?.cancelledAt).toBeNull()
 })
+
+const shiftedBoundaries = [
+  {
+    label: 'positive shift near now',
+    editedDate: '2026-11-19',
+    sourceDate: '20261123',
+    effective: '2026-11-26T10:00:00.000Z',
+    movedDate: '20261124',
+    movedEffective: '2026-11-27T10:00:00.000Z',
+    at: '2026-11-25T13:13:00Z'
+  },
+  {
+    label: 'negative shift near now',
+    editedDate: '2026-11-13',
+    sourceDate: '20261130',
+    effective: '2026-11-27T10:00:00.000Z',
+    movedDate: '20261201',
+    movedEffective: '2026-11-28T10:00:00.000Z',
+    at: '2026-11-26T13:13:00Z'
+  },
+  {
+    label: 'positive shift near through',
+    editedDate: '2026-11-19',
+    sourceDate: '20270207',
+    effective: '2027-02-10T10:00:00.000Z',
+    movedDate: '20270206',
+    movedEffective: '2027-02-09T10:00:00.000Z',
+    at: '2026-11-12T13:13:00Z'
+  },
+  {
+    label: 'negative shift near through',
+    editedDate: '2026-11-13',
+    sourceDate: '20270213',
+    effective: '2027-02-10T10:00:00.000Z',
+    movedDate: '20270212',
+    movedEffective: '2027-02-09T10:00:00.000Z',
+    at: '2026-11-12T13:13:00Z'
+  }
+]
+
+async function shiftedSourceMember(boundary: (typeof shiftedBoundaries)[number]) {
+  const p = await project()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, provenance: { version: 1, declaredBy: 'account', via: 'app' } })
+  )
+  const doc = (options: { target?: boolean; title?: string; extra?: string[]; absent?: boolean } = {}) =>
+    [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      ...(!options.absent
+        ? [
+            'BEGIN:VEVENT',
+            'UID:shifted',
+            'DTSTART:20261116T090000Z',
+            'DTEND:20261116T100000Z',
+            `SUMMARY:${options.title ?? 'Lecture'}`,
+            'RRULE:FREQ=WEEKLY;COUNT=1',
+            ...(options.target ? [`RDATE:${boundary.sourceDate}T090000Z`] : []),
+            ...(options.extra ?? []),
+            'END:VEVENT'
+          ]
+        : []),
+      'END:VCALENDAR',
+      ''
+    ].join('\r\n')
+  const apply = (text: string, at = now) =>
+    tenant((tx) =>
+      applyCalendar(
+        { tx, principal: viewer },
+        { feedId: feed.id, now: at, result: { status: 'changed', text, etag: null, lastModified: null } }
+      )
+    )
+  await apply(doc())
+  const [anchor] = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  const response = await apiRequest(v1, {
+    as: asSession({ org: ORG, role: 'editor' }),
+    org: ORG,
+    method: 'PATCH',
+    path: `/v1/windows/${anchor!.id}`,
+    query: { scope: 'series' },
+    idempotencyKey: randomUUID(),
+    body: {
+      starts_at: `${boundary.editedDate}T10:00:00Z`,
+      ends_at: `${boundary.editedDate}T11:00:00Z`,
+      tz: 'UTC'
+    }
+  })
+  expect(response.status).toBe(200)
+  await apply(doc({ target: true }))
+  const rows = await tenant((tx) => tx.select().from(window).where(eq(window.icsFeedId, feed.id)))
+  const member = rows.find((row) => row.id !== anchor!.id)!
+  expect(member).toMatchObject({ startsAt: new Date(boundary.effective), localOverride: false })
+  const read = async () => (await tenant((tx) => tx.select().from(window).where(eq(window.id, member.id))))[0]!
+  return { apply, doc, read, member, at: new Date(boundary.at) }
+}
+
+describe.each(shiftedBoundaries)('source-managed defaults: $label', (boundary) => {
+  test('a parsed title update remains authoritative', async () => {
+    const { apply, doc, read, member, at } = await shiftedSourceMember(boundary)
+    await apply(doc({ target: true, title: 'Revised lecture' }), at)
+    expect(await read()).toMatchObject({ id: member.id, title: 'Revised lecture', cancelledAt: null })
+  })
+
+  test('a source exception date change updates the original identity', async () => {
+    const { apply, doc, read, member, at } = await shiftedSourceMember(boundary)
+    const moved = [
+      'BEGIN:VEVENT',
+      'UID:shifted',
+      `RECURRENCE-ID:${boundary.sourceDate}T090000Z`,
+      `DTSTART:${boundary.movedDate}T090000Z`,
+      `DTEND:${boundary.movedDate}T100000Z`,
+      'SUMMARY:Moved lecture',
+      'END:VEVENT'
+    ].join('\r\n')
+    await apply(doc({ target: true }).replace('END:VCALENDAR', `${moved}\r\nEND:VCALENDAR`), at)
+    expect(await read()).toMatchObject({
+      id: member.id,
+      icsRecurrenceId: member.icsRecurrenceId,
+      seriesId: member.seriesId,
+      title: 'Moved lecture',
+      startsAt: new Date(boundary.movedEffective),
+      cancelledAt: null
+    })
+  })
+
+  test.each(['EXDATE', 'master cancellation', 'disappearance'])(
+    '%s cancels and restores the later-created identity',
+    async (change) => {
+      const { apply, doc, read, member, at } = await shiftedSourceMember(boundary)
+      await apply(
+        doc({
+          target: true,
+          absent: change === 'disappearance',
+          extra: change === 'EXDATE' ? [`EXDATE:${boundary.sourceDate}T090000Z`] : ['STATUS:CANCELLED']
+        }),
+        at
+      )
+      expect(await read()).toMatchObject({ id: member.id, cancelledAt: at, cancellationOrigin: 'source' })
+      await apply(doc({ target: true, title: 'Restored lecture' }), at)
+      expect(await read()).toMatchObject({
+        id: member.id,
+        title: 'Restored lecture',
+        cancelledAt: null,
+        startsAt: new Date(boundary.effective)
+      })
+    }
+  )
+
+  test.each(['20271101', '20251101'])(
+    'a source exception moved outside the horizon (%s) preserves its existing identity',
+    async (date) => {
+      const { apply, doc, read, member, at } = await shiftedSourceMember(boundary)
+      const moved = [
+        'BEGIN:VEVENT',
+        'UID:shifted',
+        `RECURRENCE-ID:${boundary.sourceDate}T090000Z`,
+        `DTSTART:${date}T090000Z`,
+        `DTEND:${date}T100000Z`,
+        'SUMMARY:Outside horizon',
+        'END:VEVENT'
+      ].join('\r\n')
+      await apply(doc({ target: true }).replace('END:VCALENDAR', `${moved}\r\nEND:VCALENDAR`), at)
+      expect(await read()).toMatchObject({
+        id: member.id,
+        title: 'Lecture',
+        startsAt: new Date(boundary.effective),
+        cancelledAt: null
+      })
+    }
+  )
+})
