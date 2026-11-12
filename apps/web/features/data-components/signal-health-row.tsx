@@ -80,7 +80,7 @@ export function SignalHealthRow({
     </>
   )
   return (
-    <TableRow selected={selected} data-source={source.id} className="align-top">
+    <TableRow selected={selected} data-source={source.id} data-phone-row className="align-top">
       <TableCell className="py-2 whitespace-normal">
         {href ? (
           <Link

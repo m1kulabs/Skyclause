@@ -5,7 +5,7 @@ import { DEFAULT_PREFERENCES, type Preferences } from '@skyclause/contracts'
 import { t } from '@skyclause/i18n'
 import { Announcer } from '../lib/announce'
 import { WebVitals } from '../features/quality/web-vitals'
-import { roundo } from '../lib/fonts'
+import { figures, roundo } from '../lib/fonts'
 import { APPEARANCE_SCRIPT, DEFAULT_APPEARANCE, resolveAppearance, type Appearance } from '../lib/theme'
 import '../styles/globals.css'
 
@@ -58,9 +58,9 @@ export async function RootDocument({
         <noscript dangerouslySetInnerHTML={{ __html: `<meta name="theme-color" content="${resolved.color}">` }} />
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: APPEARANCE_SCRIPT }} />
       </head>
-      <body className={roundo.className}>
+      <body className={`${roundo.className} ${figures.variable}`}>
         <a className="skip-link" href={`#${skipTarget}`}>
-          {t('shell.skip_to_content', {}, locale)}
+          {t('shell.skip_to_content', {}, locale ?? preferences.language)}
         </a>
         <div id="main-content" tabIndex={-1}>
           {children}

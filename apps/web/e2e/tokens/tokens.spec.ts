@@ -182,6 +182,118 @@ test('full motion in the account wins over a reduced OS setting', async ({ page 
   expect(result.popup.transition).toBe('transform, color')
 })
 
+test('the page runs edge to edge so the safe-area insets take effect', async ({ page }) => {
+  const response = await page.goto('/_test/tokens')
+  expect(await response!.text()).toMatch(/<meta name="viewport" content="[^"]*viewport-fit=cover/)
+})
+
+test('the figures face is preloaded with Roundo and sets figures', async ({ page, request }) => {
+  // The static shell announces its fonts in the Link header (a streamed page keeps them out of the head).
+  const preload = (await request.get('/')).headers().link ?? ''
+  expect(preload).toMatch(/Roundo_Variable[^>]*\.woff2>; rel=preload; as="font"/)
+  for (const face of ['Regular', 'Medium', 'SemiBold'])
+    expect(preload).toMatch(new RegExp(`SkyclauseFigures_${face}[^>]*\\.woff2>; rel=preload; as="font"`))
+  await page.goto('/_test/tokens')
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.ready
+    return document.fonts.check('14px "Skyclause Figures"', '12:30')
+  })
+  expect(loaded).toBe(true)
+})
+
+test('buttons, links and fields take no double-tap zoom, and dialogs and menus keep their scroll', async ({ page }) => {
+  await page.goto('/_test/tokens')
+  await expect(page.locator('button').first()).toHaveCSS('touch-action', 'manipulation')
+  await expect(page.locator('a').first()).toHaveCSS('touch-action', 'manipulation')
+  await expect(page.locator('input').first()).toHaveCSS('touch-action', 'manipulation')
+  const contained = await page.evaluate(() => {
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    document.body.append(dialog)
+    const value = getComputedStyle(dialog).overscrollBehaviorY
+    dialog.remove()
+    return value
+  })
+  expect(contained).toBe('contain')
+})
+
+test.describe('the shared table', () => {
+  test('rows sit on a 44px pitch (40px compact), the header is a quiet strip, names truncate with a title', async ({
+    page
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/_test/tokens')
+    const tables = page.locator('section[aria-labelledby="tables"] [data-slot="table"]')
+    const rows = tables.first().locator('tbody tr')
+    await expect(rows.first()).toHaveCSS('height', '44px')
+    await expect(tables.nth(1).locator('tbody tr').first()).toHaveCSS('height', '40px')
+    const head = tables.first().locator('th').first()
+    await expect(head).toHaveCSS('font-size', '13px')
+    await expect(head).toHaveCSS('text-transform', 'none')
+    // No rule between rows: tone and space only.
+    await expect(rows.first().locator('td').first()).toHaveCSS('border-bottom-width', '0px')
+    const name = page.locator('section[aria-labelledby="tables"] [data-truncate]').nth(2)
+    await expect(name).toHaveAttribute('title', /Release wave at the stadium gate/)
+    expect(await name.locator('[data-slot="table-truncate"]').evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+      true
+    )
+    // Numeric columns align right in figures; the selected row is current with a mark and a tone.
+    await expect(tables.first().locator('td[data-numeric]').first()).toHaveCSS('text-align', 'right')
+    const selected = tables.first().locator('tbody tr[data-state="selected"]')
+    await expect(selected).toHaveAttribute('aria-current', 'true')
+    expect(
+      await selected
+        .locator('td')
+        .first()
+        .evaluate((el) => getComputedStyle(el, '::before').content)
+    ).toBe('""')
+    // The measure's fill is a capsule at least as wide as it is tall.
+    const fill = tables.first().locator('[data-slot="table-measure-fill"]').first()
+    const box = (await fill.boundingBox())!
+    expect(box.width).toBeGreaterThanOrEqual(box.height)
+    await expect(fill).toHaveCSS('border-top-left-radius', '9999px')
+  })
+
+  test('the sticky header stays under the bar while the page scrolls', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 500 })
+    await page.goto('/_test/tokens')
+    const head = page.locator('section[aria-labelledby="tables"] [data-slot="table"][data-sticky] th').first()
+    await head.scrollIntoViewIfNeeded()
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty('--shell-bar-height', '48px')
+      const table = document.querySelector('section[aria-labelledby="tables"] [data-slot="table"][data-sticky]')!
+      window.scrollTo(0, table.getBoundingClientRect().top + window.scrollY + 120)
+    })
+    await expect.poll(async () => Math.round((await head.boundingBox())!.y)).toBe(48)
+  })
+
+  test('below 640px every row is a two-line item with the header kept for assistive technology', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await page.goto('/_test/tokens')
+    const table = page.locator('section[aria-labelledby="tables"] [data-slot="table"]').first()
+    const row = table.locator('tbody tr').first()
+    await expect(row).toHaveCSS('display', 'flex')
+    // The header is out of sight but still in the accessibility tree.
+    const header = table.locator('thead')
+    expect((await header.boundingBox())!.width).toBeLessThanOrEqual(1)
+    await expect(table.getByRole('columnheader', { name: 'Window' })).toHaveCount(1)
+    // Line one: the name and the call; line two: the figures, each led by its label.
+    const [name, crossed, call] = await row
+      .locator('td')
+      .evaluateAll((cells) => cells.map((cell) => Math.round(cell.getBoundingClientRect().top)))
+    expect(Math.abs(call! - name!)).toBeLessThan(12)
+    expect(crossed!).toBeGreaterThan(name!)
+    expect(
+      await row
+        .locator('td')
+        .nth(1)
+        .evaluate((el) => getComputedStyle(el, '::before').content)
+    ).toContain('Crossed')
+    // No horizontal scroll at the phone width.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  })
+})
+
 test('marketing stays dark when the viewer selects light', async ({ page, baseURL }) => {
   await appearance(page, baseURL!, { theme: 'light' })
   await page.emulateMedia({ colorScheme: 'light', contrast: 'no-preference' })
