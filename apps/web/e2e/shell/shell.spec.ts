@@ -110,7 +110,8 @@ test('1440 is one 48px row on the 1200px column, with the wordmark and the page 
   await openShell(page)
   const row = (await page.locator('.shell-bar-row').boundingBox())!
   expect(row.width).toBe(1248)
-  expect(row.height).toBe(48)
+  // Copy 30% longer may wrap the switchers' names onto a second line; it must never clip or scroll (tested below).
+  if (process.env.I18N_PSEUDO !== '1') expect(row.height).toBe(48)
   const wordmark = (await page.locator('.shell-wordmark').boundingBox())!
   const heading = (await page.getByRole('heading', { level: 1 }).boundingBox())!
   expect(wordmark.x).toBe(120)
@@ -130,7 +131,7 @@ test('laptop and tablet widths move the project links and the time to a second r
     const time = (await bar(page).locator('time').boundingBox())!
     expect(links.y).toBeGreaterThanOrEqual(wordmark.y + wordmark.height)
     expect(Math.abs(time.y + time.height / 2 - (links.y + links.height / 2))).toBeLessThan(4)
-    await expect(bar(page).locator('time')).toHaveText(/^\d{2}:\d{2} MYT$/)
+    await expect(bar(page).locator('time')).toHaveText(/^\d{2}:\d{2} MYT/)
     expect(await bar(page).locator('time').getAttribute('datetime')).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$/)
   }
 })
@@ -171,7 +172,7 @@ test('390px keeps the wordmark, Review and Menu; the sheet holds every destinati
   await expect(sheet.getByRole('link', { name: membership('Test organisation two', 'Viewer') })).toBeAttached()
   for (const link of await sheet.locator('[data-slot="phone-sheet-item"]').all())
     expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-  await expect(sheet.locator('time')).toHaveText(/^\d{2}:\d{2} MYT$/)
+  await expect(sheet.locator('time')).toHaveText(/^\d{2}:\d{2} MYT/)
   await expectAxeClean(page)
   await page.keyboard.press('Escape')
   await expect(bar(page).getByRole('button', { name: copy('Menu') })).toBeFocused()
@@ -292,7 +293,9 @@ test('a failed memberships read names itself as an error, not as no organisation
     ''
   )
   const main = page.locator('main')
-  await expect(main.locator('[data-source-error="501"]')).toContainText(copy('Couldn’t read your organisations.'))
+  await expect(main.locator('[data-source-error="501"]')).toContainText(
+    copy(`Couldn’t read ${copy('your organisations')}.`)
+  )
   await expect(main.getByRole('button', { name: copy('Try again') })).toBeVisible()
   await expect(main.locator('[data-slot="empty"]')).toHaveCount(0)
   await expect(main).not.toContainText(copy('Organisations: n=0'))
