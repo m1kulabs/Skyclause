@@ -33,16 +33,16 @@
 }
 
 .landing-inverted {
-  background: #efefef;
-  color: #0a0a0a;
+  background: var(--ink);
+  color: var(--ground);
 }
 
 .landing-inverted .landing-soft {
-  color: #595959;
+  color: var(--surface);
 }
 
 .landing-soft {
-  color: #8c8c8c;
+  color: var(--ink-muted);
   transition: opacity 150ms ease;
 }
 
@@ -147,28 +147,28 @@
 }
 
 .landing-slip-final {
-  background: #efefef;
-  color: #0a0a0a;
+  background: var(--ink);
+  color: var(--ground);
 }
 
-/* Inverted slip rows keep contrast: #0a0a0a on #efefef. */
+/* Inverted slip rows keep contrast: the ground on the ink, swapped. */
 .landing-inverted .landing-slip-final {
-  background: #0a0a0a;
-  color: #efefef;
+  background: var(--ground);
+  color: var(--ink);
 }
 
-/* The marketing ground: the frame paints DESIGN's #0a0a0a ground with #efefef ink so every section
-   (and axe) resolves text against a solid background. Inverted sections repaint their own ground. */
+/* The marketing ground: the frame paints the ground with the ink so every section (and axe) resolves text against a
+   solid background. Inverted sections repaint their own ground. */
 [data-surface='marketing'] {
-  background: #0a0a0a;
-  color: #efefef;
+  background: var(--ground);
+  color: var(--ink);
 }
 
 /* Crimson marks: one per screen. Showcase window line, features selection line, FAQ dot, CTA button.
    How it works, proof and pricing carry none. */
 .landing-crimson-line {
   height: 1px;
-  background: #b11226;
+  background: var(--ink);
   border-radius: 0;
 }
 
@@ -176,7 +176,7 @@
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background: #b11226;
+  background: var(--ink);
   flex: none;
 }
 
@@ -185,8 +185,8 @@
   align-items: center;
   min-height: 40px;
   padding: 0 18px;
-  background: #b11226;
-  color: #ffffff;
+  background: var(--ink);
+  color: var(--ground);
   border-radius: 0;
   transition:
     transform 100ms ease,

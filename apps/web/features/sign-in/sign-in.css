@@ -112,7 +112,7 @@
   display: grid;
   gap: 8px;
   padding: 20px;
-  background: var(--landing-surface, #151515);
+  background: var(--landing-surface);
   color: var(--landing-foreground);
 }
 

@@ -208,7 +208,7 @@
   padding: 0 12px;
   background: transparent;
   color: var(--landing-foreground);
-  border: 1px solid #6a6c72;
+  border: 1px solid var(--input);
   border-radius: 6px;
   font: inherit;
   font-variant-numeric: tabular-nums;
