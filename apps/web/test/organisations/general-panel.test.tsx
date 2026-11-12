@@ -49,7 +49,7 @@ test('renames the organisation while the slug stays read-only', async () => {
   render(<Panel org="test-org" />)
   const name = (await screen.findByLabelText('Organisation name')) as HTMLInputElement
   expect(name.value).toBe('Old name')
-  const slug = screen.getByLabelText(/Slug/) as HTMLInputElement
+  const slug = screen.getByLabelText(/Web address name/) as HTMLInputElement
   expect(slug.value).toBe('test-org')
   expect(slug.readOnly).toBe(true)
   expect(slug.getAttribute('spellcheck')).toBe('false')
