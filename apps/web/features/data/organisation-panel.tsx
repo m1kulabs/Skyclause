@@ -210,7 +210,7 @@ export function OrganisationDataPanel({
 
         <SettingsPart title={label('retentionTitle')} description={label('retentionDescription')} id="retention-title">
           <table aria-label={label('retentionTitle')} className={retentionStyles.table}>
-            <thead>
+            <thead className="sr-only sm:not-sr-only">
               <tr>
                 <th scope="col">{label('retentionItem')}</th>
                 <th scope="col">{label('retentionPeriod')}</th>

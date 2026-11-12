@@ -85,6 +85,7 @@
   background: var(--card);
   color: var(--card-foreground);
   padding: 20px;
+  overflow-wrap: anywhere;
 }
 
 @media (width >= 860px) {

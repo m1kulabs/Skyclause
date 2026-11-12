@@ -369,7 +369,9 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                       </span>
                     </div>
                     <div className={styles.roleCell}>
-                      <span className={styles.cellLabel}>{t('members.role', {}, locale)}</span>
+                      <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
+                        {t('members.role', {}, locale)}
+                      </span>
                       {editable ? (
                         <>
                           <Select
@@ -415,7 +417,9 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                       )}
                     </div>
                     <div className={styles.active} data-numeric>
-                      <span className={styles.cellLabel}>{t('members.last_active', {}, locale)}</span>
+                      <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
+                        {t('members.last_active', {}, locale)}
+                      </span>
                       {member.last_active_at ? (
                         <time dateTime={member.last_active_at} title={formatDateTime(member.last_active_at, locale)}>
                           {activeWords(member.last_active_at, locale)}
@@ -425,7 +429,9 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                       )}
                     </div>
                     <div className={styles.switchCell}>
-                      <span className={styles.cellLabel}>{t('members.malay_reader', {}, locale)}</span>
+                      <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
+                        {t('members.malay_reader', {}, locale)}
+                      </span>
                       <Switch
                         checked={member.reads_malay}
                         aria-label={`${member.name}: ${t('members.malay_reader', {}, locale)}`}
@@ -480,7 +486,9 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                           <span>{t('members.invited_as', { role: roleName(invite.role, locale) }, locale)}</span>
                         </div>
                         <div className={styles.roleCell}>
-                          <span className={styles.cellLabel}>{t('members.sent', {}, locale)}</span>
+                          <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
+                            {t('members.sent', {}, locale)}
+                          </span>
                           <span className={styles.roleWord}>
                             {invite.sent_at ? (
                               <time dateTime={invite.sent_at}>{formatDateTime(invite.sent_at, locale)}</time>
@@ -490,7 +498,9 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                           </span>
                         </div>
                         <div className={styles.active} data-numeric>
-                          <span className={styles.cellLabel}>{t('members.expires', {}, locale)}</span>
+                          <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
+                            {t('members.expires', {}, locale)}
+                          </span>
                           <time dateTime={invite.expires_at}>{formatDateCompact(invite.expires_at, locale)}</time>
                         </div>
                         <div className={styles.actions}>

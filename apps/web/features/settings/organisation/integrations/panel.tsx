@@ -223,7 +223,12 @@ export default function Panel({ org, locale = 'en' }: { org: string; locale?: 'e
               ))}
             </fieldset>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" disabled={saving || scopes.length === 0 || !name.trim()} aria-busy={saving}>
+              <Button
+                type="submit"
+                className="h-auto min-h-9 max-w-full shrink py-1.5 whitespace-normal"
+                disabled={saving || scopes.length === 0 || !name.trim()}
+                aria-busy={saving}
+              >
                 {t('oauth.settings.create', {}, locale)}
               </Button>
               {notice ? <SettingsStatus>{notice}</SettingsStatus> : null}

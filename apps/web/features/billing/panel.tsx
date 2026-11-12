@@ -43,7 +43,7 @@ export default function BillingPanel({
       </section>
 
       <table aria-label={cell('tableLabel')} className={styles.table}>
-        <thead>
+        <thead className="sr-only sm:not-sr-only">
           <tr>
             <th scope="col">{cell('planColumn')}</th>
             <th scope="col">{cell('priceColumn')}</th>

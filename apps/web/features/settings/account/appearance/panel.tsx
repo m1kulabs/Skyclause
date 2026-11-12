@@ -75,7 +75,7 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
       <SettingsParts>
         <SettingsPart title={copy('theme')} description={copy('themeDescription')}>
           <fieldset className={styles.choices}>
-            <legend>{copy('theme')}</legend>
+            <legend className="sr-only">{copy('theme')}</legend>
             {themes.map((item) => (
               <Tile
                 key={item.value}
@@ -103,7 +103,7 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
 
         <SettingsPart title={copy('contrast')} description={copy('contrastDescription')}>
           <fieldset className={styles.choices}>
-            <legend>{copy('contrast')}</legend>
+            <legend className="sr-only">{copy('contrast')}</legend>
             {contrasts.map((item) => (
               <Tile
                 key={item.key}
@@ -123,7 +123,7 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
 
         <SettingsPart title={copy('motion')} description={copy('motionDescription')}>
           <fieldset className={styles.choices}>
-            <legend>{copy('motion')}</legend>
+            <legend className="sr-only">{copy('motion')}</legend>
             {motions.map((item) => (
               <Tile
                 key={item.key}
@@ -147,7 +147,7 @@ export default function Panel({ locale = 'en' }: { locale?: Locale }) {
 
         <SettingsPart title={copy('density')} description={copy('densityDescription')}>
           <fieldset className={styles.choices}>
-            <legend>{copy('density')}</legend>
+            <legend className="sr-only">{copy('density')}</legend>
             {densities.map((density) => (
               <Tile
                 key={density}

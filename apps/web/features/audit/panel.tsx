@@ -292,20 +292,20 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                     key={entry.id}
                   >
                     <div className={styles.cell}>
-                      <span className={styles.label}>{copy('time')}</span>
+                      <span className={`${styles.label} sr-only max-sm:not-sr-only`}>{copy('time')}</span>
                       <time dateTime={entry.created_at}>{formatAuditTime(entry.created_at, locale)}</time>
                     </div>
                     <div className={styles.cell}>
-                      <span className={styles.label}>{copy('actorColumn')}</span>
+                      <span className={`${styles.label} sr-only max-sm:not-sr-only`}>{copy('actorColumn')}</span>
                       {entry.actor_name ?? entry.actor_id ?? copy('actorUnknown')}
                       <span className={styles.sub}>{entry.actor_role ?? entry.actor_type}</span>
                     </div>
                     <div className={styles.cell}>
-                      <span className={styles.label}>{copy('action')}</span>
+                      <span className={`${styles.label} sr-only max-sm:not-sr-only`}>{copy('action')}</span>
                       {breakable(entry.action)}
                     </div>
                     <div className={styles.cell}>
-                      <span className={styles.label}>{copy('object')}</span>
+                      <span className={`${styles.label} sr-only max-sm:not-sr-only`}>{copy('object')}</span>
                       {entry.target_type && entry.target_id
                         ? `${entry.target_type} · ${entry.target_id}`
                         : (entry.target_id ?? entry.target_type ?? copy('objectUnknown'))}
