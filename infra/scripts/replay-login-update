@@ -7,7 +7,7 @@
 # Usage: replay-login-update [<git ref>]
 # The logins are created from database.tf at <ref>, then the working tree's is applied, so `origin/main` replays the
 # first production apply of a change to database.tf. Without <ref> both are the working tree. Needs Docker, Terraform and
-# a `bun install`ed checkout; it removes its container and its temporary directory when it ends.
+# a `bun install`ed checkout; it removes its container, its volume and its temporary directory when it ends.
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -16,7 +16,8 @@ ref="${1:-}"
 work="$(mktemp -d)"
 container="skyclause-login-replay-$$"
 failures=0
-trap 'docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
+# -v also removes the anonymous volume the Postgres image's data directory gets.
+trap 'docker rm -fv "$container" >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 
 psql() { docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 --dbname=skyclause "$@"; }
 
