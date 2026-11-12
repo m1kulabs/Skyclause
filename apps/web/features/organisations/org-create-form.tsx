@@ -34,6 +34,7 @@ export function OrgCreateForm() {
     <form
       noValidate
       aria-label={t('organisations.create.title')}
+      className="flex min-w-0 flex-col gap-6 rounded-xl bg-card p-5 max-sm:p-4"
       onSubmit={async (event) => {
         event.preventDefault()
         if (saving) return
@@ -113,10 +114,14 @@ export function OrgCreateForm() {
           <AlertDescription>{t('organisations.general.loadError')}</AlertDescription>
         </Alert>
       )}
-      <Button type="submit" disabled={saving || name.trim().length === 0 || slug.length === 0}>
-        {t(saving ? 'organisations.create.creating' : 'organisations.create.submit')}
-      </Button>
-      <p role="status">{saving ? t('organisations.create.creating') : ''}</p>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <p role="status" className="type-small text-muted-foreground">
+          {saving ? t('organisations.create.creating') : ''}
+        </p>
+        <Button type="submit" disabled={saving || name.trim().length === 0 || slug.length === 0}>
+          {t(saving ? 'organisations.create.creating' : 'organisations.create.submit')}
+        </Button>
+      </div>
     </form>
   )
 }

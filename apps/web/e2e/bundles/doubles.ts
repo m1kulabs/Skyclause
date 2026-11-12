@@ -226,7 +226,7 @@ export const preferences = {
 export async function prepare(
   page: Page,
   bundle = bundleDouble(),
-  options: { role?: Role; guest?: boolean; shortcuts?: boolean; clock?: boolean } = {}
+  options: { role?: Role; guest?: boolean; shortcuts?: boolean; clock?: boolean; list?: BundleView[] } = {}
 ) {
   const role = options.role ?? 'approver'
   const principal: Principal = {
@@ -255,17 +255,30 @@ export async function prepare(
 
 /**
  * The bundle page's client reads, answered with `bundle` and its `calls` (each call's detail answers its explanation
- * too) for a `role` member of `org`, plus the run, strip, preferences, an idle stream and an approval.
+ * too) for a `role` member of `org`, plus the project's bundles (`list`, else `bundle` alone), the run, strip,
+ * preferences, an idle stream and an approval.
  */
 export async function stubReads(
   page: Page,
   bundle: BundleView,
   calls: CallDetail[],
-  options: { role?: Role; guest?: boolean; shortcuts?: boolean; org?: { id: string; slug: string } } = {}
+  options: {
+    role?: Role
+    guest?: boolean
+    shortcuts?: boolean
+    org?: { id: string; slug: string }
+    list?: BundleView[]
+  } = {}
 ) {
   const role = options.role ?? 'approver'
   const org = options.org ?? { id: 'test-org-id', slug: 'test-org' }
   await stubApi(page, 'getBundle', bundle, { registry: bundleOperations })
+  await stubApi(
+    page,
+    'listProjectBundles',
+    { data: options.list ?? [bundle], next_cursor: null },
+    { registry: bundleOperations }
+  )
   await stubApi(
     page,
     'getMyPreferences',

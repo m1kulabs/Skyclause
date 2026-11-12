@@ -20,26 +20,35 @@ export function VirtualRows<Item>({
   items,
   render,
   label,
-  className
+  className,
+  estimate = 180
 }: {
   items: Item[]
   render: (item: Item, index: number) => ReactNode
   label: string
   className?: string
+  /** The height of a row not rendered yet, in pixels. */
+  estimate?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const heights = useRef(new Map<number, number>())
   const [scroll, setScroll] = useState(0)
   const [, resized] = useState(0)
   const virtual = items.length > 50
+  // Measured rows change the spacers without a scroll event: read the position again so the window follows it.
+  useLayoutEffect(() => {
+    const top = ref.current?.scrollTop ?? 0
+    if (top !== scroll) setScroll(top)
+  })
   const offsets = [0]
-  items.forEach((_, index) => offsets.push(offsets[index]! + (heights.current.get(index) ?? 180)))
+  items.forEach((_, index) => offsets.push(offsets[index]! + (heights.current.get(index) ?? estimate)))
   const first = virtual ? Math.max(0, offsets.findIndex((offset) => offset >= scroll) - 6) : 0
+  // No row starts below the viewport: the scroller is at its end, so the rows run to the last one.
+  const below = offsets.findIndex((offset) => offset > scroll + (ref.current?.clientHeight ?? 600))
   const last = virtual
-    ? Math.min(
-        items.length,
-        Math.max(first + 12, offsets.findIndex((offset) => offset > scroll + (ref.current?.clientHeight ?? 600)) + 6)
-      )
+    ? below === -1
+      ? items.length
+      : Math.min(items.length, Math.max(first + 12, below + 6))
     : items.length
   return (
     <div

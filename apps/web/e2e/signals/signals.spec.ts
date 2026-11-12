@@ -85,7 +85,6 @@ test('?source=CA16W opens the station detail, keeps its URL state, table view an
   await expect(detail).toContainText('API 150')
   await expect(detail).toContainText('API 180')
   await expect(detail.locator('[data-chart-summary]')).toBeVisible()
-  await detail.getByRole('button', { name: 'Show table' }).press('Enter')
   await expect(detail.getByRole('table')).toBeVisible()
   await expectAxeClean(page)
   await page.reload()
@@ -107,8 +106,8 @@ test('gauge detail uses a no-window strip with a table and the copied CLI tail c
   await expect(detail).toContainText('0.5 mm')
   await expect(detail).toContainText('21:00 MYT')
   await expect(detail).toContainText('no declared window')
-  await detail.getByRole('button', { name: 'Show table' }).press('Enter')
-  await expect(detail.getByRole('table')).toBeVisible()
+  await expect(detail.locator('[data-readings-table] table')).toBeVisible()
+  expect(await detail.locator('[data-readings-table] tbody tr').count()).toBeLessThanOrEqual(50)
   const copy = page.getByRole('button', { name: 'Copy tail command' })
   await copy.press('Enter')
   await expect
@@ -123,7 +122,7 @@ test('Signals rows reflow at 320px without horizontal overflow', async ({ page }
   await page.goto(projectRoute)
   const row = page.locator(`[data-source="${sourceIdsForTest.gauge}"]`)
 
-  await expect(row.locator('td')).toHaveCount(2)
+  await expect(row.locator('td')).toHaveCount(4)
   expect(
     await row
       .locator('td')

@@ -249,6 +249,7 @@ export function ProjectForm({ org }: { org: string }) {
               <label className={styles.checkLabel} key={pack}>
                 <input
                   type="checkbox"
+                  className="native-check"
                   name="packs"
                   value={pack}
                   checked={draft.packs.includes(pack)}

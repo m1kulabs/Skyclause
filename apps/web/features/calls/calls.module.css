@@ -1,336 +1,532 @@
+/*
+ * Calls: the list measures each call (when it crossed, its mode, state, grade, and how long it took to send, drawn as
+ * the row's bar); the call page is the record of one call, its evidence on the left and its record on the right.
+ * Both fill the shell's 1200px column: the record grid is 1fr + 24 + 360.
+ */
 .page,
 .detailPage {
   display: grid;
   min-width: 0;
   gap: 24px;
+  overflow-wrap: anywhere;
 }
 
-.titleRow,
-.detailIdentity,
-.sectionTitle,
-.gradeResult,
-.linkValue,
-.copyGroup,
-.pagination {
+.titleRow {
+  display: grid;
+  gap: 4px;
+}
+.projectName {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-}
-
-.titleRow,
-.sectionTitle {
-  justify-content: space-between;
+  gap: 4px 12px;
 }
 
 .titleRow h1,
-.detailHeader h1 {
+.detailHeader h1,
+.detailPage > h1 {
   margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 32px;
+  letter-spacing: -0.02em;
 }
 
 .projectName,
-.detailHeader > p {
-  margin: 8px 0 0;
+.count,
+.quiet,
+.rowSub,
+.reason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
   color: var(--muted-foreground);
 }
-
-.filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  align-items: end;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--card);
+.projectName,
+.reason {
+  font-size: 14px;
+  line-height: 20px;
+}
+.count {
+  font-size: 14px;
 }
 
+/* Filters: pack and dates scope the read (Apply), mode and state dim at once. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
 .field {
   display: grid;
-  min-width: 0;
   gap: 6px;
-  color: var(--foreground);
-  font-size: 0.875rem;
-}
-
-.field select,
-.field input {
-  width: 100%;
-  min-height: 40px;
   min-width: 0;
-  padding: 0 10px;
-  border: 1px solid var(--input);
-  border-radius: var(--radius-md);
-  background: var(--background);
-  color: var(--foreground);
-}
-
-.field :focus-visible,
-.actionLink:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  box-shadow:
-    0 0 0 2px var(--background),
-    0 0 0 4px var(--ring);
-}
-
-.filterButton {
-  min-height: 40px;
-}
-
-.count {
-  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
   color: var(--muted-foreground);
-  font-variant-numeric: tabular-nums;
 }
-
-.empty {
-  display: grid;
-  justify-items: start;
-  gap: 12px;
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--card);
+/* The selects take the foundation's native-select; the date fields match it. */
+.field select {
+  inline-size: 168px;
+  max-width: 100%;
 }
-
-.empty p {
-  margin: 0;
+.field input {
+  width: 140px;
+  max-width: 100%;
+  height: 40px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 2px solid var(--input);
+  border-radius: var(--radius-nested, 10px);
+  background: var(--field);
+  color: var(--foreground);
+  font-size: 14px;
+}
+.field select:global(#calls-mode) {
+  inline-size: 216px;
+}
+.field input::placeholder {
+  color: var(--muted-foreground);
+}
+.filterButton {
+  margin-right: 8px;
 }
 
 .actionLink {
   display: inline-flex;
   min-height: 40px;
   align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  padding: 6px 10px;
-  color: var(--primary);
+  color: var(--foreground);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
+.empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 20px;
+  border-radius: var(--radius-surface, 16px);
+  background: var(--card);
+}
+.empty p {
+  margin: 0;
+}
+
+/* The list: rules and alignment on the ground, a 52px pitch, figures right-aligned. */
 .tableWrap {
   min-width: 0;
   overflow-x: auto;
 }
-
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 52px;
+}
 .callsTable {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   text-align: left;
+  font-size: 14px;
+  line-height: 20px;
 }
-
-.callsTable caption {
-  padding: 8px;
-  text-align: left;
+.callsTable th[scope='col'] {
+  height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.callsTable tbody tr {
+  border-top: 1px solid var(--rule);
+}
+.callsTable tbody th,
+.callsTable td {
+  height: 52px;
+  padding: 6px 12px;
+  font-weight: 400;
+  vertical-align: middle;
+}
+@media (min-width: 1024px) {
+  .callsTable th[scope='col']:nth-child(1) {
+    width: 24%;
+  }
+  .callsTable th[scope='col']:nth-child(2) {
+    width: 22%;
+  }
+  .callsTable th[scope='col']:nth-child(3),
+  .callsTable th[scope='col']:nth-child(4) {
+    width: 13%;
+  }
+}
+.rowLink {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--control-edge);
+  text-underline-offset: 3px;
+}
+.rowLink:hover {
+  text-decoration-color: currentColor;
+}
+.rowSub {
+  display: block;
+}
+.numeric {
+  text-align: right;
+}
+.callsTable th.numeric {
+  text-align: right;
+}
+.dash {
   color: var(--muted-foreground);
 }
+/* A dimmed row keeps its place and its words; it loses the fill of its mark and drops to the muted ink. */
+.callsTable tr[data-dimmed] {
+  color: var(--muted-foreground);
+}
+.callsTable tr[data-dimmed] .rowLink {
+  font-weight: 400;
+}
+.delay {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  min-height: 28px;
+}
+.delayBar {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  bottom: 2px;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+.delayFigure {
+  position: relative;
+  padding-inline: 10px;
+}
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
 
-.callsTable th {
-  border-bottom: 1px solid var(--border);
-  padding: 8px;
-  font-size: 0.8125rem;
+/* The call page. */
+.detailLoading {
+  display: grid;
+  gap: 16px;
+}
+.detailHeader {
+  display: grid;
+  gap: 8px;
+}
+.detailIdentity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.callState {
   font-weight: 600;
 }
-
-.callsTable :global([data-call]) {
-  border-color: var(--border);
+.detailWhen {
+  color: var(--muted-foreground);
 }
-
-.pagination {
-  justify-content: space-between;
+.recordGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  gap: 24px;
 }
-
-.detailPage {
-  gap: 32px;
-  width: 100%;
-}
-
-.detailPage > * {
+.recordMain {
+  display: grid;
   min-width: 0;
+  gap: 16px;
 }
-
-.detailHeader,
-.section {
+.panel {
   display: grid;
   min-width: 0;
   gap: 12px;
+  padding: 20px;
+  border-radius: var(--radius-surface, 16px);
+  background: var(--card);
 }
-
-.detailHeader > p {
-  max-width: 68ch;
-  line-height: 1.6;
+.panel h2,
+.recordSide h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
 }
-
-.callState {
-  color: var(--muted-foreground);
-  font-size: 0.875rem;
+.panel h3,
+.recordItem h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
 }
-
-.stripSection {
-  min-width: 0;
-  padding-bottom: 8px;
+.plainList {
+  display: grid;
+  gap: 4px;
 }
-
-.stripSection :global(svg) {
-  display: block;
+.expired {
+  margin: 0;
+  font-weight: 600;
+}
+.inputsTable {
   width: 100%;
-  height: auto;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 20px;
 }
-
-.section {
-  border-top: 1px solid var(--border);
-  padding-top: 20px;
+.inputsTable th[scope='col'] {
+  height: 36px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
+  color: var(--muted-foreground);
 }
-
-.section h2 {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
+.inputsTable th.numeric {
+  text-align: right;
 }
-
-.section h3 {
-  margin: 0 0 6px;
-  font-size: 1rem;
-  font-weight: 600;
+.inputsTable tbody tr {
+  border-top: 1px solid var(--rule);
 }
-
-.section p,
-.section ul,
-.section ol {
-  margin: 0;
+.inputsTable tbody th,
+.inputsTable td {
+  height: 44px;
+  padding: 4px 8px;
+  font-weight: 400;
+  text-align: left;
 }
-
+.inputsTable td.numeric {
+  text-align: right;
+}
+.inputsTable th,
+.inputsTable td {
+  overflow-wrap: normal;
+}
+.phoneLabel {
+  display: none;
+}
 .clauseList,
 .stepList {
   display: grid;
-  gap: 16px;
-  padding-left: 20px;
+  gap: 12px;
 }
-
-.clauseInputs {
-  margin-top: 8px !important;
+.clauseList > li {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--radius-nested, 10px);
+  background: var(--raised);
+}
+.clauseList code {
+  font-size: 13px;
   color: var(--muted-foreground);
 }
-
+.clauseInputs {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
 .stepList p {
-  margin-top: 6px;
+  margin: 4px 0 0;
 }
-
-.delayLine {
-  max-width: 100%;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-  line-height: 1.7;
+.traceSection :global([data-slot='trace-line']) {
+  flex-wrap: wrap;
 }
-
-.expired {
-  border-left: 3px solid var(--destructive);
-  padding: 8px 12px;
-  color: var(--destructive);
-}
-
-.linkValue {
+.traceSection :global([data-slot='trace-description']) {
+  flex-shrink: 1;
   min-width: 0;
 }
 
+/* The strip leads on the ground, where its track reads one tone up; the header already names the window. */
+.stripLead {
+  min-width: 0;
+}
+.stripLead :global(.day-strip > ol) {
+  display: none;
+}
+
+/* The record: one panel of facts on a 28-32px pitch, the delay drawn as one bar. */
+.recordSide {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius-surface, 16px);
+  background: var(--card);
+}
+.recordItem {
+  display: grid;
+  gap: 6px;
+}
+.delayBarTrack {
+  display: flex;
+  gap: 3px;
+  height: 12px;
+}
+.delaySegment {
+  min-width: 8px;
+  border: 2px solid var(--control-edge);
+  border-radius: 9999px;
+  background: var(--raised);
+}
+.delaySegment[data-part='approval'] {
+  border-color: var(--foreground);
+  background: var(--foreground);
+}
+.delayLine {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.gradeResult {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.gradeOutcome {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.linkValue,
+.copyGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
 .linkValue > a,
 .linkValue > code {
   min-width: 0;
   overflow-wrap: anywhere;
+  font-size: 13px;
 }
-
 .linkValue > a {
   display: inline-flex;
-  min-height: 40px;
-  max-width: 100%;
-  flex: 1 1 20rem;
-  align-items: center;
-}
-
-.traceSection :global([data-slot='trace-collapsible-trigger']) {
   min-height: 24px;
+  align-items: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.traceSection :global([data-slot='trace-description']) {
-  min-width: 0;
-  flex-shrink: 1;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-.copyGroup {
-  flex-shrink: 0;
-}
-
-@media (max-width: 640px) {
-  .filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 12px;
+@media (max-width: 1023px) {
+  .recordGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
-
-  .filterButton {
-    grid-column: 1 / -1;
+  /* The tablet keeps five columns sized by their content; the time and the mark stay on one line. */
+  .callsTable {
+    table-layout: auto;
   }
-
-  .callsTable thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+  .rowLink,
+  .callsTable td:nth-of-type(1) {
     white-space: nowrap;
   }
+}
 
-  .callsTable tbody :global([data-call]) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0 8px;
-    padding: 4px 0;
+/* Phone: the table becomes two-line rows (time and mode, then state, grade and delay); the record follows the evidence. */
+@media (max-width: 640px) {
+  .field {
+    flex: 1 1 140px;
   }
-
-  .callsTable tbody :global([data-call]) > td {
-    display: block;
-    min-width: 0;
-    border: 0;
-    padding: 2px 8px;
+  .field select,
+  .field input,
+  .field select:global(#calls-mode) {
+    inline-size: 100%;
+    width: 100%;
+    min-height: 44px;
   }
-
-  .callsTable tbody :global([data-call]) > td:first-child {
-    grid-column: 1 / -1;
+  .filterButton {
+    flex-basis: 100%;
+    min-height: 44px;
   }
-
-  .callsTable tbody :global([data-call]) > td:first-child > span:nth-child(2),
-  .callsTable tbody :global([data-call]) > td:nth-child(2) {
+  .callsTable thead {
     display: none;
   }
-
-  .callsTable tbody :global([data-call]) > td:nth-child(3) {
-    grid-column: 1;
-    grid-row: 2;
+  .callsTable tbody tr {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 12px;
+    padding-block: 10px;
   }
-
-  .callsTable tbody :global([data-call]) > td:last-child {
-    grid-column: 2;
-    grid-row: 2;
+  .callsTable tbody th,
+  .callsTable td {
+    height: auto;
+    min-width: 0;
+    padding: 0;
+  }
+  .callsTable tbody th {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+  .callsTable td:nth-of-type(1) {
+    grid-column: 3;
+    grid-row: 1;
     justify-self: end;
   }
-
-  .callsTable tbody :global([data-call]) > td:first-child > span:first-child {
-    min-width: 0;
+  .callsTable td:nth-of-type(2) {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 13px;
   }
-
-  .callsTable tbody :global([data-call]) > td:first-child > span:first-child > span:nth-child(2) {
-    max-width: 6rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .callsTable td:nth-of-type(3) {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 13px;
   }
-
-  .delayLine {
-    font-size: 0.875rem;
+  .callsTable td:nth-of-type(4) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .rowLink {
+    min-height: 44px;
+  }
+  .rowLink,
+  .callsTable td:nth-of-type(1) {
+    white-space: normal;
+  }
+  .delay {
+    width: 120px;
+  }
+  .panel,
+  .recordSide {
+    padding: 16px;
+  }
+  /* Inputs as two lines: the name and its value, then its state and its age at drafting. */
+  .inputsTable thead {
+    display: none;
+  }
+  .inputsTable tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    padding-block: 8px;
+  }
+  .inputsTable tbody th,
+  .inputsTable td {
+    height: auto;
+    padding: 0;
+  }
+  .inputsTable td:nth-of-type(2),
+  .inputsTable td:nth-of-type(3) {
+    font-size: 13px;
+  }
+  .phoneLabel {
+    display: inline;
+    color: var(--muted-foreground);
   }
 }

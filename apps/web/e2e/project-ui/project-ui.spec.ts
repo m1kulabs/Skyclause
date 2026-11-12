@@ -34,7 +34,9 @@ test('overview uses the 5 November captures, declares from the primary action an
   await prepareOverview(page, 'admin', { empty: false })
   await page.goto(emptyRoute)
   const overview = page.locator('[data-project-overview]')
-  await expect(overview.locator('[data-finding-line]')).toContainText('Sky: Normal; 5 inputs reporting, oldest 12 min')
+  // The answer: each pack's mode set large with its glyph and word, then the inputs behind it.
+  await expect(overview.locator('[data-pack="sky"] [data-state="normal"]')).toHaveText('Normal')
+  await expect(overview.locator('[data-finding-line]')).toContainText('5 inputs reporting, oldest 12 min')
   await expect(overview.locator('[data-pack="sky"]')).toContainText('No clause has fired')
   await expect(overview.locator('[data-source="source-jps"]')).toContainText('Sg. Kuyoh di LRT Bukit Jalil')
   await expect(overview.locator('[data-bundle]')).toBeVisible()

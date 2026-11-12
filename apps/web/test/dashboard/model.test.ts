@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import { sortNeedsReviewBySla, wilsonInterval } from '../../features/dashboard/model'
+import {
+  daySpan,
+  mytDay,
+  slaLeft,
+  sortNeedsReviewBySla,
+  verdictState,
+  wilsonInterval
+} from '../../features/dashboard/model'
 
 const review = (id: string, seconds_remaining: number) => ({
   id,
@@ -34,5 +41,57 @@ describe('dashboard model', () => {
 
   test('returns no interval for a zero-sample grade', () => {
     expect(wilsonInterval(0, 0)).toBeNull()
+  })
+
+  test('a day strip spans the MYT day of the instant it is given', () => {
+    expect(mytDay('2026-11-02T07:00:00Z')).toEqual({
+      from: '2026-11-01T16:00:00.000Z',
+      to: '2026-11-02T16:00:00.000Z'
+    })
+    // 23:30 MYT is still the same MYT day, a UTC date later than its start.
+    expect(mytDay('2026-11-02T15:30:00Z').from).toBe('2026-11-01T16:00:00.000Z')
+  })
+
+  test('a verdict draws as its mode, Storm watch or No call', () => {
+    const verdict = { mode: null, watch: false, no_call: null }
+    expect(verdictState({ ...verdict, mode: 'commute_disruption' })).toBe('commute_disruption')
+    expect(verdictState({ ...verdict, mode: 'normal', watch: true })).toBe('storm_watch')
+    expect(verdictState({ ...verdict, mode: 'normal' })).toBe('normal')
+    expect(verdictState({ ...verdict, mode: 'normal', no_call: { inputs: [] } })).toBe('no_call')
+    expect(verdictState(verdict)).toBe('no_call')
+  })
+
+  test('SLA time left counts down from the read and its share of the whole SLA', () => {
+    const bundle = { needs_review_at: '2026-11-02T07:05:00Z', sla_due_at: '2026-11-02T07:15:00Z' }
+    expect(slaLeft(bundle, 300, 0)).toEqual({ minutes: 5, share: 0.5, passed: false })
+    expect(slaLeft(bundle, 300, 2)).toEqual({ minutes: 3, share: 0.3, passed: false })
+    expect(slaLeft(bundle, 30, 1)).toEqual({ minutes: 0, share: 0, passed: true })
+    // Without the review start, the share is unknown and the capsule draws full.
+    expect(slaLeft({ needs_review_at: null, sla_due_at: bundle.sla_due_at }, 61, 0)).toEqual({
+      minutes: 2,
+      share: 1,
+      passed: false
+    })
+  })
+
+  test('the strip spans its windows with an hour either side, at least six hours, inside their MYT day', () => {
+    const at = (time: string) => `2026-11-02T${time}:00+08:00`
+    const iso = (time: string) => new Date(at(time)).toISOString()
+    const elsewhere = '2026-11-12T09:00:00+08:00'
+    // One short window, now on another day: 14:00 to 20:00, the six hours start an hour before it.
+    expect(daySpan([{ from: at('15:30'), to: at('15:45') }], elsewhere)).toEqual({
+      from: iso('14:00'),
+      to: iso('20:00')
+    })
+    // Now on the same day widens the span to hold it.
+    expect(daySpan([{ from: at('15:30'), to: at('15:45') }], at('12:10'))).toEqual({
+      from: iso('11:00'),
+      to: iso('17:00')
+    })
+    // Late windows keep six hours by starting earlier, never past midnight.
+    expect(daySpan([{ from: at('22:30'), to: at('23:30') }], elsewhere)).toEqual({
+      from: iso('18:00'),
+      to: new Date('2026-11-02T16:00:00Z').toISOString()
+    })
   })
 })

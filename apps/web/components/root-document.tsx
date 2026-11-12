@@ -50,7 +50,6 @@ export async function RootDocument({
       data-motion={resolved.motion}
       data-density={preferences.density}
       data-shortcuts={String(preferences.shortcuts)}
-      data-sidebar-collapsed={String(preferences.sidebar_collapsed)}
       suppressHydrationWarning
     >
       {/* eslint-disable-next-line @next/next/no-head-element -- Shared App Router document; appearance runs before the body paints. */}

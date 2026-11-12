@@ -55,6 +55,16 @@ test('LED-7 paginated ledger reads 1–50 then 51–100 and correction links fin
   )
   await page.goto(route)
   await expect(page.locator('[data-ledger-total]')).toHaveText(copy('ledger.total', { from: 1, to: 50, n: 100 }))
+  // The page scrolls and the header sticks under the shell bar.
+  await page.mouse.wheel(0, 1600)
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bar-height')) || 0
+        return Math.round(document.querySelector('[data-ledger-table] th')!.getBoundingClientRect().top - bar)
+      })
+    )
+    .toBe(0)
   await page.getByRole('button', { name: copy('ledger.nextPage'), exact: true }).press('Enter')
   await expect(page.locator('[data-ledger-total]')).toHaveText(copy('ledger.total', { from: 51, to: 100, n: 100 }))
   await expect(page.locator('tr[data-index]').first()).toHaveAttribute('aria-rowindex', '52')
@@ -96,7 +106,9 @@ test('LED-7 empty ledger prints n=0 and its next action; unavailable operations 
   await expect(page.getByText(copy('ledger.next'), { exact: true })).toBeVisible()
   await page.route('**/v1/projects/*/ledger?*', (r) => r.fulfill({ status: 501, json: { title: 'Not built' } }))
   await page.reload()
-  await expect(page.locator('.ledger-page').getByRole('alert')).toContainText(copy('ledger.failed'))
+  const failed = page.locator('.ledger-page [data-source-error="501"]')
+  await expect(failed).toContainText(copy('ledger.sources.entries'))
+  await expect(failed.getByRole('button', { name: copy('ledger.retry'), exact: true })).toBeVisible()
   await expect(page.getByText(copy('ledger.empty'), { exact: true })).toBeHidden()
 })
 
@@ -212,12 +224,8 @@ test('LED-5 calls, approvals, grades and ledger values link to readings; long ta
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto(route)
   await expect(page.locator('[data-ledger-table]')).toContainText(detailedRow.window!.title)
-  await expect(page.locator('[data-ledger-table]')).toContainText(
-    copy('ledger.delays', {
-      approved: copy('ledger.minutes', { value: 2 }),
-      sent: copy('ledger.minutes', { value: 1 })
-    })
-  )
+  await expect(page.locator('[data-ledger-table]')).toContainText(copy('ledger.toApproval', { value: 2 }))
+  await expect(page.locator('[data-ledger-table]')).toContainText(copy('ledger.toNotice', { value: 1 }))
   await expectUnclippedText(page)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('ledger-phone.png'), fullPage: true })
@@ -229,13 +237,8 @@ test('LED-5 calls, approvals, grades and ledger values link to readings; long ta
   const frameBounds = (await frame.boundingBox())!
   expect(actionBounds.x).toBeGreaterThanOrEqual(dateBounds.x + dateBounds.width + 4)
   expect(actionBounds.x + actionBounds.width).toBeLessThanOrEqual(frameBounds.x + frameBounds.width)
-  expect(
-    await frame.evaluate(
-      (element) =>
-        Number.parseFloat(getComputedStyle(element).scrollPaddingTop) >=
-        element.querySelector('thead')!.getBoundingClientRect().height
-    )
-  ).toBe(true)
+  // On a phone the record is a list: nothing in it scrolls sideways.
+  expect(await frame.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
   await page.goto(`${route}?tab=evidence&evidence=evidence-1`)
   const sheet = page.getByRole('dialog')
   await expect(sheet).toContainText('approval-1')
@@ -363,11 +366,7 @@ for (const theme of ['dark', 'light', 'high-contrast']) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: testInfo.outputPath(`ledger-${theme}.png`), fullPage: true })
     const frame = page.locator('[data-ledger-frame]')
-    const left = (await frame.locator('td').first().boundingBox())!.x
-    await frame.evaluate((e) => {
-      e.scrollLeft = 400
-    })
-    expect((await frame.locator('td').first().boundingBox())!.x).toBeCloseTo(left, 0)
+    expect(await frame.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
     await page
       .getByRole('button', { name: copy('evidence.request'), exact: true })
       .first()

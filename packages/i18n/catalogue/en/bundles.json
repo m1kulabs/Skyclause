@@ -14,9 +14,12 @@
     "calendar": "Calendar changed",
     "request": "Requested run"
   },
-  "packs": { "sky": "Sky", "crowd": "Crowd" },
+  "packs": {
+    "sky": "Sky",
+    "crowd": "Crowd"
+  },
   "sla": "SLA due {time}",
-  "disagreements": "Agent and clause engine disagree on {count} windows",
+  "disagreements": "Shadow check: the agent and the clause engine disagree, n={count}",
   "choose": "Choose a verdict for {name}",
   "agent": "Agent: {mode}",
   "shadow": "Clause engine: {mode}",
@@ -60,7 +63,10 @@
   "recipients": "Recipients: {count}",
   "unassigned": "Language not returned for {count} recipients",
   "no_recipients": "Recipients: n=0. Review channels in project settings.",
-  "language": { "en": "English", "ms": "Malay" },
+  "language": {
+    "en": "English",
+    "ms": "Malay"
+  },
   "language_group": "{language}: {count} recipients",
   "english_only": "Switched to English; Malay wording is unavailable.",
   "wording": "Wording",
@@ -136,5 +142,54 @@
     "getCallExplanation": "Call explanation",
     "getMyPreferences": "Preferences",
     "listMyMemberships": "Memberships"
-  }
+  },
+  "region_list": "Bundles in this project",
+  "region_item": "Open bundle",
+  "region_details": "Recipients, wording and trace",
+  "list_title": "Bundles",
+  "list_count": "n={count}",
+  "list_loading": "Loading this project's bundles",
+  "list_source": "this project's bundles",
+  "list_empty": "Bundles: n=0. A run that drafts calls adds one here.",
+  "list_more": "The newest {count} bundles. Older ones are in the ledger.",
+  "row_title": "{pack} · {trigger}",
+  "row_no_calls": "Calls: n=0",
+  "bundle_states": {
+    "drafted": "Drafted",
+    "closed": "Closed",
+    "needs_review": "Needs review",
+    "superseded": "Superseded",
+    "expired": "Expired",
+    "reconfirm": "Re-check",
+    "approved": "Approved",
+    "sending": "Sending",
+    "sent": "Sent",
+    "graded": "Graded"
+  },
+  "words": {
+    "now": "Just now",
+    "minutes": "{count} min ago",
+    "hours": "{count} h ago",
+    "yesterday": "Yesterday"
+  },
+  "span": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} h {minutes} min"
+  },
+  "sla_left": "{span} left",
+  "sla_now": "Due now",
+  "sla_over": "{span} over",
+  "sla_before": "left to review · SLA due {time}",
+  "sla_past": "past the SLA · due {time}",
+  "summary": "Calls: {count} · disagreements with the clause engine: {disagreements}",
+  "normal_statement": "Normal: nothing to send. Windows: {count}",
+  "back_to_list": "Bundles",
+  "open_details": "Recipients and wording",
+  "open_trace": "Agent trace",
+  "back_to_calls": "Calls",
+  "details_title": "What each call sends",
+  "trace_steps": "Agent steps ({count})",
+  "agent_who": "Agent",
+  "shadow_who": "Clause engine",
+  "list_retry": "Read the list again"
 }

@@ -85,6 +85,8 @@ export interface DashboardRead {
   bundles: Array<{ summary: DashboardReview; detail: DashboardBundle }>
   firstCall: DashboardCall | null
   strip: DashboardStrip | null
+  /** When the read landed: the countdowns and the strip's "now" count from it, the same on the server and client. */
+  readAt: string
 }
 
 export async function allPages<Item>(
@@ -150,5 +152,5 @@ export async function readDashboard(
       ])
     : [null, null]
 
-  return { dashboard, projects, bundles, firstCall, strip }
+  return { dashboard, projects, bundles, firstCall, strip, readAt: new Date().toISOString() }
 }

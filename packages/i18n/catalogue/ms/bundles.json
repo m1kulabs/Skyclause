@@ -14,9 +14,12 @@
     "calendar": "Kalendar berubah",
     "request": "Penilaian diminta"
   },
-  "packs": { "sky": "Sky", "crowd": "Crowd" },
+  "packs": {
+    "sky": "Sky",
+    "crowd": "Crowd"
+  },
   "sla": "Tempoh SLA tamat pada {time}",
-  "disagreements": "Ejen dan enjin klausa berbeza pendapat tentang {count} tetingkap",
+  "disagreements": "Semakan bayangan: ejen dan enjin klausa berbeza, n={count}",
   "choose": "Pilih keputusan untuk {name}",
   "agent": "Ejen: {mode}",
   "shadow": "Enjin klausa: {mode}",
@@ -60,7 +63,10 @@
   "recipients": "Penerima: {count}",
   "unassigned": "Bahasa tidak dipulangkan untuk {count} penerima",
   "no_recipients": "Penerima: n=0. Semak saluran dalam tetapan projek.",
-  "language": { "en": "Bahasa Inggeris", "ms": "Bahasa Melayu" },
+  "language": {
+    "en": "Bahasa Inggeris",
+    "ms": "Bahasa Melayu"
+  },
   "language_group": "{language}: {count} penerima",
   "english_only": "Ditukar kepada bahasa Inggeris; teks bahasa Melayu tidak tersedia.",
   "wording": "Teks pemberitahuan",
@@ -136,5 +142,54 @@
     "getCallExplanation": "Penjelasan panggilan",
     "getMyPreferences": "Keutamaan",
     "listMyMemberships": "Keahlian"
-  }
+  },
+  "region_list": "Berkas dalam projek ini",
+  "region_item": "Berkas yang dibuka",
+  "region_details": "Penerima, teks dan jejak",
+  "list_title": "Berkas",
+  "list_count": "n={count}",
+  "list_loading": "Memuatkan berkas projek ini",
+  "list_source": "berkas projek ini",
+  "list_empty": "Berkas: n=0. Penilaian yang mendraf panggilan akan menambahnya di sini.",
+  "list_more": "{count} berkas terbaharu. Berkas lebih lama ada dalam lejar.",
+  "row_title": "{pack} · {trigger}",
+  "row_no_calls": "Panggilan: n=0",
+  "bundle_states": {
+    "drafted": "Didraf",
+    "closed": "Ditutup",
+    "needs_review": "Perlu disemak",
+    "superseded": "Digantikan",
+    "expired": "Tamat tempoh",
+    "reconfirm": "Semak semula",
+    "approved": "Diluluskan",
+    "sending": "Sedang dihantar",
+    "sent": "Dihantar",
+    "graded": "Dinilai"
+  },
+  "words": {
+    "now": "Baru sahaja",
+    "minutes": "{count} min lalu",
+    "hours": "{count} j lalu",
+    "yesterday": "Semalam"
+  },
+  "span": {
+    "minutes": "{minutes} min",
+    "hours": "{hours} j {minutes} min"
+  },
+  "sla_left": "Tinggal {span}",
+  "sla_now": "Tamat sekarang",
+  "sla_over": "Lewat {span}",
+  "sla_before": "lagi untuk menyemak · SLA tamat pada {time}",
+  "sla_past": "melepasi SLA · tamat pada {time}",
+  "summary": "Panggilan: {count} · percanggahan dengan enjin klausa: {disagreements}",
+  "normal_statement": "Normal: tiada apa untuk dihantar. Tetingkap: {count}",
+  "back_to_list": "Berkas",
+  "open_details": "Penerima dan teks",
+  "open_trace": "Jejak ejen",
+  "back_to_calls": "Panggilan",
+  "details_title": "Apa yang dihantar oleh setiap panggilan",
+  "trace_steps": "Langkah ejen ({count})",
+  "agent_who": "Ejen",
+  "shadow_who": "Enjin klausa",
+  "list_retry": "Baca senarai semula"
 }

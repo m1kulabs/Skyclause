@@ -56,11 +56,13 @@ function CommandDialog({
 function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
     <div data-slot="command-input-wrapper" className="p-0 pb-1">
-      <InputGroup className="h-10! rounded-md! bg-background! shadow-none! *:data-[slot=input-group-addon]:pl-3!">
+      {/* The ring belongs to the field capsule, not the bare input in it: the page-wide :focus-visible outline is
+          unlayered, so the input drops it with an important utility and the group draws the same 2px ink ring. */}
+      <InputGroup className="h-10! rounded-md! bg-background! shadow-none! *:data-[slot=input-group-addon]:pl-3! has-[[data-slot=command-input]:focus-visible]:outline-(length:--focus-width) has-[[data-slot=command-input]:focus-visible]:outline-solid has-[[data-slot=command-input]:focus-visible]:outline-(--focus) has-[[data-slot=command-input]:focus-visible]:outline-offset-2">
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
-            'w-full bg-transparent text-[14px] outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60',
+            'w-full bg-transparent text-[14px] outline-hidden focus-visible:outline-none! placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60',
             className
           )}
           {...props}
@@ -121,7 +123,7 @@ function CommandItem({ className, children, ...props }: React.ComponentProps<typ
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "group/command-item relative flex cursor-default items-center min-h-9 gap-2 rounded-md px-3 py-2 text-[14px] leading-5 outline-hidden select-none [@media(pointer:coarse)]:min-h-11 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-60 data-selected:bg-accent data-selected:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-selected:*:[svg]:text-foreground",
+        "group/command-item relative flex cursor-default items-center min-h-9 gap-2 rounded-md px-3 py-2 text-[14px] leading-5 outline-hidden select-none [@media(pointer:coarse)]:min-h-11 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-60 data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[selected=true]:*:[svg]:text-foreground",
         className
       )}
       {...props}
@@ -137,7 +139,7 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<'span'>) 
     <span
       data-slot="command-shortcut"
       className={cn(
-        'ml-auto text-[13px] text-muted-foreground group-data-selected/command-item:text-foreground',
+        'ml-auto text-[13px] text-muted-foreground group-data-[selected=true]/command-item:text-foreground',
         className
       )}
       {...props}
