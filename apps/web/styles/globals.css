@@ -8,9 +8,45 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * Skyclause Figures: Roundo's digits at one width (fonts/skyclause-figures/build.py), for the characters numbers are
+ * printed with. Roundo has no tabular figures; [data-numeric], the figures utility and type-figure list this family
+ * ahead of Roundo, so their figures line up and their letters stay Roundo. Its 1 sits centred in a 0-wide cell, so
+ * keep it to columns and figures that update, not running text.
+ */
+@font-face {
+  font-family: 'Skyclause Figures';
+  src: url('../fonts/skyclause-figures/SkyclauseFigures-Regular.woff2') format('woff2');
+  font-weight: 200 449;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020, U+0025, U+002B-003A, U+00A0, U+2009, U+2013, U+202F, U+2212;
+}
+@font-face {
+  font-family: 'Skyclause Figures';
+  src: url('../fonts/skyclause-figures/SkyclauseFigures-Medium.woff2') format('woff2');
+  font-weight: 450 549;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020, U+0025, U+002B-003A, U+00A0, U+2009, U+2013, U+202F, U+2212;
+}
+@font-face {
+  font-family: 'Skyclause Figures';
+  src: url('../fonts/skyclause-figures/SkyclauseFigures-SemiBold.woff2') format('woff2');
+  font-weight: 550 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020, U+0025, U+002B-003A, U+00A0, U+2009, U+2013, U+202F, U+2212;
+}
+
+/*
  * Roles, set per theme. Two colours do everything (ground and ink, with tone steps of the ground); mode hues are for
- * data only. Every text pair is checked in test/tokens/contrast.test.ts. The shadcn names further down are aliases of
- * these roles, declared once.
+ * data only. Every text pair and every control edge is checked in test/tokens/contrast.test.ts. The shadcn names
+ * further down are aliases of these roles, declared once.
+ *
+ * Surfaces (panels, cards, menus) separate by tone alone. Controls and data marks are not surfaces: fields, checkboxes,
+ * switches, unselected segments and low-emphasis capsules carry a 2px edge in --ink-muted (3:1 or more). A mode
+ * capsule's edge is transparent where its fill alone reaches 3:1 on the ground and the surface, and muted otherwise.
+ * Text sits on the overlay step (hover and pressed fills) only in ink.
  */
 
 /* Dusk: the default theme, navy and pink. Marketing and auth surfaces always use it. */
@@ -23,14 +59,18 @@
   --raised: #2a3257;
   --overlay: #313a62;
   --ink: #f9a3c0;
-  --ink-muted: #c493a8;
+  --ink-muted: #c68da3;
   --edge: transparent;
   --mode-normal: #2a3257;
   --mode-outdoor-limited: #f6dc8e;
   --mode-commute-disruption: #f08c3f;
   --mode-hybrid-recommended: #ea5a44;
   --mode-surge-night: #7fb0ff;
-  --mode-on-hue: #1a2039;
+  --mode-outdoor-limited-ink: #1a2039;
+  --mode-commute-disruption-ink: #1a2039;
+  --mode-hybrid-recommended-ink: #1a2039;
+  --mode-surge-night-ink: #1a2039;
+  --mode-outdoor-limited-edge: transparent;
   --shadow-float: 0 12px 32px rgb(6 8 20 / 0.45);
   --focus-width: 2px;
   --edge-width: 0px;
@@ -43,10 +83,17 @@
   --raised: #f3cfdc;
   --overlay: #eec3d3;
   --ink: #1a2039;
-  --ink-muted: #51566f;
+  --ink-muted: #555a75;
   --mode-normal: #f3cfdc;
-  --mode-outdoor-limited: #efc04c;
-  --mode-on-hue: #1a2039;
+  --mode-outdoor-limited: #b4831a;
+  --mode-commute-disruption: #a8541c;
+  --mode-hybrid-recommended: #93302a;
+  --mode-surge-night: #3a64b0;
+  --mode-outdoor-limited-ink: #1a2039;
+  --mode-commute-disruption-ink: #fdeef3;
+  --mode-hybrid-recommended-ink: #fdeef3;
+  --mode-surge-night-ink: #fdeef3;
+  --mode-outdoor-limited-edge: var(--ink-muted);
   --shadow-float: 0 12px 28px rgb(26 32 57 / 0.16);
 }
 
@@ -58,10 +105,17 @@
     --raised: #f3cfdc;
     --overlay: #eec3d3;
     --ink: #1a2039;
-    --ink-muted: #51566f;
+    --ink-muted: #555a75;
     --mode-normal: #f3cfdc;
-    --mode-outdoor-limited: #efc04c;
-    --mode-on-hue: #1a2039;
+    --mode-outdoor-limited: #b4831a;
+    --mode-commute-disruption: #a8541c;
+    --mode-hybrid-recommended: #93302a;
+    --mode-surge-night: #3a64b0;
+    --mode-outdoor-limited-ink: #1a2039;
+    --mode-commute-disruption-ink: #fdeef3;
+    --mode-hybrid-recommended-ink: #fdeef3;
+    --mode-surge-night-ink: #fdeef3;
+    --mode-outdoor-limited-edge: var(--ink-muted);
     --shadow-float: 0 12px 28px rgb(26 32 57 / 0.16);
   }
 }
@@ -77,12 +131,16 @@
   --ink: #ffffff;
   --ink-muted: #e6e8f2;
   --edge: #ffffff;
+  --mode-outdoor-limited-edge: #ffffff;
   --mode-normal: #1e2448;
   --mode-outdoor-limited: #ffe29a;
   --mode-commute-disruption: #ffa25a;
   --mode-hybrid-recommended: #ff7a52;
   --mode-surge-night: #93c2ff;
-  --mode-on-hue: #0b0e1f;
+  --mode-outdoor-limited-ink: #0b0e1f;
+  --mode-commute-disruption-ink: #0b0e1f;
+  --mode-hybrid-recommended-ink: #0b0e1f;
+  --mode-surge-night-ink: #0b0e1f;
   --focus-width: 3px;
   --edge-width: 2px;
 }
@@ -96,12 +154,16 @@
   --ink: #0b0e1f;
   --ink-muted: #262a40;
   --edge: #0b0e1f;
+  --mode-outdoor-limited-edge: #0b0e1f;
   --mode-normal: #e9e6f0;
   --mode-outdoor-limited: #fbd25e;
   --mode-commute-disruption: #ffb066;
   --mode-hybrid-recommended: #ff8d6e;
   --mode-surge-night: #9cc8ff;
-  --mode-on-hue: #0b0e1f;
+  --mode-outdoor-limited-ink: #0b0e1f;
+  --mode-commute-disruption-ink: #0b0e1f;
+  --mode-hybrid-recommended-ink: #0b0e1f;
+  --mode-surge-night-ink: #0b0e1f;
   --focus-width: 3px;
   --edge-width: 2px;
 }
@@ -114,6 +176,7 @@
 [data-surface='marketing'],
 [data-surface='auth'] {
   --control: var(--raised);
+  --control-edge: var(--ink-muted);
   --focus: var(--ink);
   --field: var(--surface);
   --rule: var(--raised);
@@ -121,10 +184,10 @@
   --chart-ink: var(--ink-muted);
   --chart-grid: var(--raised);
   --mode-normal-ink: var(--ink);
-  --mode-outdoor-limited-ink: var(--mode-on-hue);
-  --mode-commute-disruption-ink: var(--mode-on-hue);
-  --mode-hybrid-recommended-ink: var(--mode-on-hue);
-  --mode-surge-night-ink: var(--mode-on-hue);
+  --mode-normal-edge: var(--ink-muted);
+  --mode-commute-disruption-edge: var(--edge);
+  --mode-hybrid-recommended-edge: var(--edge);
+  --mode-surge-night-edge: var(--edge);
   /* Non-mode states carry no hue: an edge style, a tone step, a word and a glyph. */
   --mode-watch: var(--ink);
   --mode-watch-ink: var(--ink);
@@ -151,14 +214,16 @@
   --muted-foreground: var(--ink-muted);
   --accent: var(--overlay);
   --accent-foreground: var(--ink);
-  --border: var(--rule);
-  --input: var(--field);
+  --border: var(--control-edge);
+  --input: var(--control-edge);
   --ring: var(--focus);
   --selection: var(--ink);
   --destructive: var(--ink);
   --warning: var(--ink);
   --sidebar: var(--ground);
   --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: var(--ground);
   --sidebar-accent: var(--surface);
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--rule);
@@ -175,7 +240,22 @@
   --landing-muted-foreground: var(--ink-muted);
   --landing-field: var(--ink);
   --landing-field-foreground: var(--ground);
+  --landing-field-muted-foreground: var(--ink-muted);
+  --landing-primary: var(--ink);
+  --landing-primary-foreground: var(--ground);
   --selection-width: 2px;
+  /* Earlier names, kept so nothing that still reads them silently loses its colour. */
+  --brand-crimson: var(--ink);
+  --brand-crimson-foreground: var(--ground);
+  --status-neutral-background: var(--mode-normal);
+  --status-neutral-foreground: var(--mode-normal-ink);
+  --status-warning-background: var(--mode-outdoor-limited);
+  --status-warning-foreground: var(--mode-outdoor-limited-ink);
+  --status-critical-background: var(--mode-hybrid-recommended);
+  --status-critical-foreground: var(--mode-hybrid-recommended-ink);
+  --status-no-call-background: transparent;
+  --status-no-call-foreground: var(--mode-no-call-ink);
+  --status-no-call-border: var(--mode-no-call);
 }
 
 @theme static inline {
@@ -194,7 +274,7 @@
   --color-mode-commute-disruption: var(--mode-commute-disruption);
   --color-mode-hybrid-recommended: var(--mode-hybrid-recommended);
   --color-mode-surge-night: var(--mode-surge-night);
-  --color-mode-on-hue: var(--mode-on-hue);
+  --color-control-edge: var(--control-edge);
   --color-chart-emphasis: var(--chart-emphasis);
   --color-chart-ink: var(--chart-ink);
   --color-background: var(--background);
@@ -217,6 +297,8 @@
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -236,7 +318,22 @@
   --color-landing-muted-foreground: var(--landing-muted-foreground);
   --color-landing-field: var(--landing-field);
   --color-landing-field-foreground: var(--landing-field-foreground);
+  --color-landing-field-muted-foreground: var(--landing-field-muted-foreground);
+  --color-landing-primary: var(--landing-primary);
+  --color-landing-primary-foreground: var(--landing-primary-foreground);
+  --color-brand-crimson: var(--brand-crimson);
+  --color-brand-crimson-foreground: var(--brand-crimson-foreground);
+  --color-status-neutral-background: var(--status-neutral-background);
+  --color-status-neutral-foreground: var(--status-neutral-foreground);
+  --color-status-warning-background: var(--status-warning-background);
+  --color-status-warning-foreground: var(--status-warning-foreground);
+  --color-status-critical-background: var(--status-critical-background);
+  --color-status-critical-foreground: var(--status-critical-foreground);
+  --color-status-no-call-background: var(--status-no-call-background);
+  --color-status-no-call-foreground: var(--status-no-call-foreground);
+  --color-status-no-call-border: var(--status-no-call-border);
   --font-sans: 'Roundo', 'Roundo Fallback', system-ui, sans-serif;
+  --font-figures: 'Skyclause Figures', 'Roundo', 'Roundo Fallback', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --font-heading: var(--font-sans);
   /* One surface radius (16px), its nested step (10px) and the capsule. `sm` is the checkbox's text-size square. */
@@ -271,6 +368,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Figures that must line up (numeric columns, values that update in place): Skyclause Figures ahead of Roundo. */
+@utility figures {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-figures);
+}
+
 /* App type: five sizes (13, 14, 16, 20, 26). Labels and meta 13, controls and tables 14, running text 16. */
 @utility type-title {
   font-size: 26px;
@@ -291,6 +394,7 @@
   font-weight: 500;
   line-height: 28px;
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-figures);
 }
 
 @utility type-card-title {
@@ -376,10 +480,30 @@
   line-height: 1.5;
 }
 
-/* A capsule at text size or larger, filled by its data-tone (see the tone block below). */
+/* A capsule at text size or larger, filled by its data-tone (see the tone block below), with its 2px edge. */
 @utility tone-fill {
   background-color: var(--tone);
   color: var(--tone-ink);
+  border: 2px var(--tone-edge-style, solid) var(--tone-edge, transparent);
+}
+
+/*
+ * The current item (navigation, a selected segment): the label in ink plus a text-size capsule under it, so the state is
+ * never told by colour alone. Pair it with aria-current or aria-selected.
+ */
+@utility current-mark {
+  position: relative;
+  &:is([aria-current]:not([aria-current='false']), [aria-selected='true'], [data-current])::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 16px;
+    height: 4px;
+    border-radius: 9999px;
+    background: currentColor;
+    transform: translateX(-50%);
+  }
 }
 
 @layer base {
@@ -429,6 +553,10 @@
   [data-numeric] {
     font-variant-numeric: tabular-nums;
   }
+  /* Figures that line up in columns or update in place; identity text and running prose keep Roundo's own digits. */
+  [data-numeric] {
+    font-family: var(--font-figures);
+  }
   code,
   pre,
   kbd,
@@ -457,26 +585,32 @@
   --tone: transparent;
   --tone-ink: var(--ink);
   --tone-edge: var(--edge);
+  --tone-edge-style: solid;
 }
 [data-tone='normal'] {
   --tone: var(--mode-normal);
   --tone-ink: var(--mode-normal-ink);
+  --tone-edge: var(--mode-normal-edge);
 }
 [data-tone='outdoor-limited'] {
   --tone: var(--mode-outdoor-limited);
   --tone-ink: var(--mode-outdoor-limited-ink);
+  --tone-edge: var(--mode-outdoor-limited-edge);
 }
 [data-tone='commute-disruption'] {
   --tone: var(--mode-commute-disruption);
   --tone-ink: var(--mode-commute-disruption-ink);
+  --tone-edge: var(--mode-commute-disruption-edge);
 }
 [data-tone='hybrid-recommended'] {
   --tone: var(--mode-hybrid-recommended);
   --tone-ink: var(--mode-hybrid-recommended-ink);
+  --tone-edge: var(--mode-hybrid-recommended-edge);
 }
 [data-tone='surge-night'] {
   --tone: var(--mode-surge-night);
   --tone-ink: var(--mode-surge-night-ink);
+  --tone-edge: var(--mode-surge-night-edge);
 }
 [data-tone='watch'] {
   --tone-ink: var(--mode-watch-ink);
@@ -485,18 +619,22 @@
 [data-tone='no-call'] {
   --tone-ink: var(--mode-no-call-ink);
   --tone-edge: var(--mode-no-call);
+  --tone-edge-style: dashed;
 }
 [data-tone='draft'] {
   --tone-ink: var(--mode-draft-ink);
   --tone-edge: var(--mode-draft);
+  --tone-edge-style: dotted;
 }
 [data-tone='expired'] {
   --tone: var(--mode-expired);
   --tone-ink: var(--mode-expired-ink);
+  --tone-edge: var(--control-edge);
 }
 [data-tone='rejected'] {
   --tone: var(--mode-rejected);
   --tone-ink: var(--mode-rejected-ink);
+  --tone-edge: var(--control-edge);
 }
 /* The strip engine writes the Dusk values as attributes for standalone SVG; on a page the theme's tokens win. */
 svg [data-tone][data-fill] {
@@ -654,7 +792,12 @@ html[data-motion='reduce'] *::after {
     --mode-commute-disruption: Canvas;
     --mode-hybrid-recommended: Canvas;
     --mode-surge-night: Canvas;
-    --mode-on-hue: CanvasText;
+    --mode-outdoor-limited-ink: CanvasText;
+    --mode-commute-disruption-ink: CanvasText;
+    --mode-hybrid-recommended-ink: CanvasText;
+    --mode-surge-night-ink: CanvasText;
+    --mode-outdoor-limited-edge: CanvasText;
+    --control-edge: CanvasText;
     --background: Canvas;
     --card: Canvas;
     --popover: Canvas;
@@ -682,11 +825,12 @@ html[data-motion='reduce'] *::after {
     --landing-field: ButtonText;
     --landing-field-foreground: ButtonFace;
   }
+  /* Fills vanish here: every capsule keeps a system-coloured edge and its glyph and word. */
   [data-status],
   [data-slot='badge'],
   [data-tone] {
     background: Canvas;
     color: CanvasText;
-    border: 1px solid CanvasText;
+    border: 2px solid CanvasText;
   }
 }
