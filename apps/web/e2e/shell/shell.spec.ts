@@ -22,7 +22,8 @@ const copy = (value: string) => (process.env.I18N_PSEUDO === '1' ? pseudo(value)
 const membership = (name: string, role: string) => copy(`${name}, ${copy(role)}`)
 const origin = process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`
 const PROJECT = '?org=test-one&project=test-project&tab=windows'
-const UNBUILT = /\/(approvals|clauses|docs)(\/|$|\?|#)|^\/developers$/
+// Webhooks have no handler yet (e-webhooks): reached by URL they say so, but nothing links to them.
+const UNBUILT = /\/(approvals|clauses|docs|webhooks)(\/|$|\?|#)|^\/developers(\/|$)/
 
 async function setShell(page: Page, shellData: ShellData) {
   await page.context().addCookies([
@@ -167,8 +168,9 @@ test('390px keeps the wordmark, Review and Menu; the sheet holds every destinati
     'Project settings'
   ])
     await expect(sheet.getByRole('link', { name: copy(name), exact: true })).toBeVisible()
-  for (const name of ['Dashboard', 'Projects', 'Organisation analysis', 'Webhooks', 'Organisation settings', 'Account'])
+  for (const name of ['Dashboard', 'Projects', 'Organisation analysis', 'Organisation settings', 'Account'])
     await expect(sheet.getByRole('link', { name: copy(name), exact: true })).toBeAttached()
+  await expect(sheet.getByRole('link', { name: copy('Webhooks'), exact: true })).toHaveCount(0)
   await expect(sheet.getByRole('link', { name: copy('Windows'), exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(sheet.getByRole('link', { name: membership('Test organisation one', 'Owner') })).toHaveAttribute(
     'aria-current',
@@ -226,7 +228,6 @@ test('the project and account menus link only to built pages, filtered by role',
     { name: copy('Dashboard'), href: '/test-one' },
     { name: copy('Projects'), href: '/test-one/projects' },
     { name: copy('Organisation analysis'), href: '/test-one/analysis' },
-    { name: copy('Webhooks'), href: '/test-one/settings/webhooks' },
     { name: copy('Organisation settings'), href: '/test-one/settings/general' },
     { name: copy('Connect your AI'), href: '/connect' },
     { name: copy('Account'), href: '/account/profile' }
@@ -480,12 +481,12 @@ test('on a real route the palette opens from the bar and offers every destinatio
     'Dashboard',
     'Projects',
     'Organisation analysis',
-    'Webhooks',
     'Organisation settings',
     'Connect your AI',
     'Account'
   ])
     await expect(dialog.getByRole('option', { name: copy(name), exact: true })).toBeAttached()
+  await expect(dialog.getByRole('option', { name: copy('Webhooks'), exact: true })).toHaveCount(0)
   await page.getByRole('combobox', { name: copy('Search commands') }).fill('ledger')
   await expect(dialog.getByRole('option').first()).toHaveAttribute('aria-selected', 'true')
   await expect(dialog.getByRole('option', { name: copy('Ledger'), exact: true })).toBeVisible()

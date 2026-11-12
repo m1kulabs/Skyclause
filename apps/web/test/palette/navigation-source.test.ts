@@ -22,7 +22,7 @@ function context(overrides: Partial<PaletteContext> & { role?: Role } = {}): Pal
 
 const ids = (value: PaletteContext) => navigationPaletteSource.itemsFor!(value).map((item) => item.id)
 
-test('offers Review and every destination of the project and organisation, as the bar does', () => {
+test('offers Review and every destination of the project and organisation, as the bar does; not webhooks', () => {
   expect(ids(context())).toEqual([
     'go:review',
     'go:windows',
@@ -36,7 +36,6 @@ test('offers Review and every destination of the project and organisation, as th
     'go:dashboard',
     'go:projects',
     'go:organisationAnalysis',
-    'go:webhooks',
     'go:organisationSettings',
     'go:connect',
     'go:account'
@@ -68,7 +67,6 @@ test('outside an organisation it goes to the first membership, and navigates to 
     'go:dashboard',
     'go:projects',
     'go:organisationAnalysis',
-    'go:webhooks',
     'go:organisationSettings',
     'go:connect',
     'go:account'
