@@ -25,6 +25,12 @@ const variables = {
 
 // Stub gh, bun and bunx log each call to $STUB_DIR/log; what they see goes to $STUB_DIR/seen.
 const stubs = {
+  git: `if [ "$1" = "\${STUB_GIT_FAIL:-}" ] &&
+  { [ "\${STUB_GIT_FAIL_AFTER_CHECKS:-}" != true ] || grep -qx 'bun test' "$STUB_DIR/log"; }; then
+  echo "fatal: cannot inspect $1" >&2
+  exit 9
+fi
+exec "$STUB_REAL_GIT" "$@"`,
   gh: `printf 'gh %s\\n' "$*" >> "$STUB_DIR/log"
 case "$1 $2" in
   'auth status') exit 0 ;;
@@ -95,6 +101,8 @@ function checkout() {
   git(dir, 'init', '-q', '--bare', '-b', 'main', 'origin.git')
   git(dir, 'init', '-q', '-b', 'main', 'work')
   mkdirSync(join(work, 'pilot/apps-script'), { recursive: true })
+  mkdirSync(join(work, 'pilot/workflows'), { recursive: true })
+  writeFileSync(join(work, 'pilot/workflows/ge-setup.sh'), '# tracked workflow setup\n')
   copyFileSync(join(import.meta.dir, 'deploy.sh'), join(work, 'pilot/deploy.sh'))
   writeFileSync(join(work, 'pilot/apps-script/appsscript.json'), '{}\n')
   writeFileSync(join(work, '.gitignore'), '.env\n.clasp*.json\n')
@@ -120,6 +128,7 @@ function checkout() {
         ...inherited,
         PATH: `${bin}:${process.env.PATH}`,
         STUB_DIR: dir,
+        STUB_REAL_GIT: Bun.which('git')!,
         STUB_VARIABLES: JSON.stringify(Object.entries(vars).map(([name, value]) => ({ name, value }))),
         STUB_LOGIN_EMAIL: 'Owner@Example.test',
         ...env
@@ -291,6 +300,49 @@ describe('pilot/deploy.sh stops after the checks', () => {
 })
 
 describe('pilot/deploy.sh refusals', () => {
+  for (const inspection of ['status', 'ls-files']) {
+    for (const afterChecks of [false, true]) {
+      test(`refuses a failed ${inspection} inspection ${afterChecks ? 'after' : 'before'} the checks`, () => {
+        const result = checkout().run({
+          STUB_GIT_FAIL: inspection,
+          STUB_GIT_FAIL_AFTER_CHECKS: String(afterChecks)
+        })
+        expect(result.exitCode).toBe(9)
+        expect(result.output).toContain(`fatal: cannot inspect ${inspection}`)
+        expect(result.output).not.toContain('✓ Deployed')
+        expect(result.steps).toEqual(afterChecks ? checks : [])
+      })
+    }
+  }
+
+  for (const change of ['modification', 'staged addition', 'staged deletion']) {
+    test(`refuses a tracked workflow ${change}`, () => {
+      const { work, run } = checkout()
+      const setup = join(work, 'pilot/workflows/ge-setup.sh')
+      if (change === 'modification') writeFileSync(setup, '# changed workflow setup\n')
+      if (change === 'staged addition') {
+        writeFileSync(join(work, 'pilot/workflows/new.md'), '# new workflow\n')
+        git(work, 'add', 'pilot/workflows/new.md')
+      }
+      if (change === 'staged deletion') git(work, 'rm', 'pilot/workflows/ge-setup.sh')
+      const result = run()
+      expect(result.exitCode).not.toBe(0)
+      expect(result.output).toContain('local changes')
+      expect(result.steps).toEqual([])
+    })
+  }
+
+  for (const path of ['pilot/workflows-extra.json', 'pilot/outside\nworkflow.json', 'pilot/\tworkflow.json']) {
+    test(`refuses an untracked filename ${JSON.stringify(path)} outside the workflow directory`, () => {
+      const { work, run } = checkout()
+      writeFileSync(join(work, path), '{}\n')
+      const result = run()
+      expect(result.exitCode).not.toBe(0)
+      expect(result.output).toContain('local changes')
+      expect(result.steps).toEqual([])
+    })
+  }
+
   test('refuses a changed tracked file before running anything', () => {
     const { work, run } = checkout()
     writeFileSync(join(work, 'pilot/apps-script/appsscript.json'), '{"changed":true}\n')

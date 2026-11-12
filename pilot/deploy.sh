@@ -34,7 +34,11 @@ lower() { tr '[:upper:]' '[:lower:]' <<<"$1"; }
 
 # clean stops the run on local changes, except the setup records the owner keeps untracked in pilot/workflows/.
 clean() {
-  [[ -z "$(git status --porcelain -- . ':(exclude)pilot/workflows')" ]] && return
+  local tracked untracked
+  # Plain assignments propagate failed inspections; filenames are never parsed to decide the exception.
+  tracked=$(git status --porcelain --untracked-files=no)
+  untracked=$(git ls-files --others --exclude-standard -- . ':(glob,exclude)pilot/workflows/**')
+  [[ -z "$tracked" && -z "$untracked" ]] && return
   warn "commit or stash your local changes first: the build stamps HEAD's SHA on what it deploys"
   exit 1
 }
