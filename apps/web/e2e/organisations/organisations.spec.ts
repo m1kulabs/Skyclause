@@ -144,7 +144,7 @@ test('ORG-5 with zero projects an owner sees n=0 and Create a project', async ({
   await expect(page.getByText(/No projects yet \(n=0\)/)).toBeVisible()
   const create = page.getByRole('link', { name: 'Create a project' })
   await expect(create).toBeVisible()
-  await expect(create).toHaveAttribute('href', '/test-org/new')
+  await expect(create).toHaveAttribute('href', '/test-org/new?another=1')
 })
 
 test('ORG-5 without project.manage the empty page asks for an Admin', async ({ page }) => {

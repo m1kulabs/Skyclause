@@ -240,6 +240,11 @@ test('project form shows inline slug errors, announces saving, and sends Crowd t
   expect(submitted).toMatchObject({ packs: ['sky', 'crowd'], site_lat: 3.0559, site_lon: 101.6997 })
   const panel = page.locator('[data-settings-panel]')
   await expect(panel.getByText('Needs a rail station with gate taps and a venue with listings.')).toBeVisible()
+  // A Create a project link asks for another project: the form stays, the first run waits beside it.
+  await page.goto(`/${org}/new?another=1`)
+  await expect(page.locator('[data-first-run-progress]').getByText('2 of 6 steps complete')).toBeVisible()
+  await expect(page.locator('[data-project-create]')).toBeVisible()
+  await expect(page).toHaveURL(/\/test-org\/new\?another=1$/)
   await page.goto(`/${org}/new`)
   await expect(page).toHaveURL(/\/test-org\/apu-air-quality\/settings\/packs/)
   await page.reload()

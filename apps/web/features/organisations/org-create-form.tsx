@@ -31,7 +31,9 @@ export function OrgCreateForm({ locale = 'en' }: { locale?: Locale }) {
     if (failed) alertRef.current?.focus()
   }, [failed])
 
-  const liveError = validateSlugInput(slug)
+  // A slug suggested from the first letter of the name is too short, not wrong: its error waits until the slug was
+  // edited or has the two characters a slug needs. Submit still checks it.
+  const liveError = slugTouched || slug.length >= 2 ? validateSlugInput(slug) : null
   const shown: Exclude<SlugError, null> | null = error ?? liveError
 
   function focusSlug() {

@@ -7,8 +7,16 @@ import { t } from '@skyclause/i18n'
 import styles from '../../../../features/onboarding/onboarding.module.css'
 import { cn } from '#lib/utils'
 
-export default async function Page({ params }: { params: Promise<{ org: string }> }) {
+export default async function Page({
+  params,
+  searchParams
+}: {
+  params: Promise<{ org: string }>
+  searchParams: Promise<{ another?: string | string[] }>
+}) {
   const { org } = await params
+  // The Create a project links ask for another project: only a bare visit resumes the first run's next step.
+  const another = (await searchParams).another === '1'
   const principal = await requireSettings({ scope: 'organisation', section: 'general', orgId: org })
   const locale = await settingsLocale()
   return (
@@ -26,7 +34,7 @@ export default async function Page({ params }: { params: Promise<{ org: string }
         <p className={cn(styles.helper, 'type-small')}>{t('onboarding.no_sample_data', {}, locale)}</p>
       </div>
       <div className={styles.firstRunSteps}>
-        <FirstRunProgress org={org} locale={locale} redirectFromProject />
+        <FirstRunProgress org={org} locale={locale} redirectFromProject={!another} />
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { ChevronDownIcon, CircleUserRoundIcon } from 'lucide-react'
 import { Button } from '#ui/button'
 import {
@@ -15,7 +15,7 @@ import {
 import { t, type Locale } from './i18n'
 import type { Destination, DestinationKey } from './navigation'
 import type { ShellScope } from './scope'
-import { signOutLabel, useSignOut } from './sign-out'
+import { signOutStatus, useSignOut } from './sign-out'
 
 const ACCOUNT_KEYS: readonly DestinationKey[] = ['connect', 'account', 'appearance']
 
@@ -149,7 +149,10 @@ export function ProjectSwitcher({ scope }: { scope: ShellScope }) {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <MenuLink href={`/${encodeURIComponent(org)}/new`} label={t('app-shell.createProject', {}, locale)} />
+              <MenuLink
+                href={`/${encodeURIComponent(org)}/new?another=1`}
+                label={t('app-shell.createProject', {}, locale)}
+              />
             </DropdownMenuGroup>
           </>
         ) : (
@@ -187,12 +190,27 @@ export function ProjectMenu({ scope }: { scope: ShellScope }) {
   )
 }
 
-/** Ends this session; the menu stays open while it does, so a failure is read where it was chosen. */
+/**
+ * Ends this session; the menu stays open while it does, so a failure is read where it was chosen. The item is named
+ * Sign out in every state; progress and failure are its description, a status line mounted inside it (a menu may hold
+ * only items, so the line cannot sit beside it).
+ */
 function SignOutItem({ locale }: { locale: Locale }) {
   const { state, signOut } = useSignOut()
+  const statusId = useId()
+  const status = signOutStatus[state]
   return (
-    <DropdownMenuItem className="shell-menu-item" closeOnClick={false} onClick={() => void signOut()}>
-      {t(signOutLabel[state], {}, locale)}
+    <DropdownMenuItem
+      className="shell-menu-item"
+      closeOnClick={false}
+      aria-label={t('app-shell.signOut', {}, locale)}
+      aria-describedby={statusId}
+      onClick={() => void signOut()}
+    >
+      <span>{t('app-shell.signOut', {}, locale)}</span>
+      <span id={statusId} role="status" className="basis-full type-small text-muted-foreground empty:sr-only">
+        {status ? t(status, {}, locale) : ''}
+      </span>
     </DropdownMenuItem>
   )
 }

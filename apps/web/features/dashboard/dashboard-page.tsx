@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { formatDate, formatNumber, formatTime } from '@skyclause/i18n/format'
@@ -101,7 +101,8 @@ function nextAction(key: DashboardBlockKey, data: DashboardRead, locale: Locale)
 function BlockHead({ id, title, action }: { id: string; title: string; action?: ReactNode }) {
   return (
     <header className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-      <h2 id={id} className="type-section">
+      {/* Focusable from script only: a block's Retry returns focus here once its read lands. */}
+      <h2 id={id} className="type-section" tabIndex={-1}>
         {title}
       </h2>
       {action}
@@ -198,15 +199,36 @@ function NoProjects({ org, locale }: { org: string; locale: Locale }) {
   )
 }
 
-function Block({ block, className, children }: { block: DashboardBlockKey; className?: string; children: ReactNode }) {
+function Block({
+  block,
+  className,
+  busy = false,
+  children
+}: {
+  block: DashboardBlockKey
+  className?: string
+  busy?: boolean
+  children: ReactNode
+}) {
   return (
     <section
       data-dashboard-block={block}
       aria-labelledby={BLOCK_IDS[block]}
+      aria-busy={busy || undefined}
       className={cn('flex min-w-0 flex-col gap-4', className)}
     >
       {children}
     </section>
+  )
+}
+
+/** A failed block being read again: its own skeleton, while the blocks that loaded stay as they are. */
+function BlockRetrying({ locale }: { locale: Locale }) {
+  return (
+    <>
+      <p className="sr-only">{t('dashboard.loading', {}, locale)}</p>
+      <Skeleton aria-hidden="true" className="h-11 w-full" />
+    </>
   )
 }
 
@@ -262,11 +284,13 @@ function DashboardFailure({
   httpStatus,
   at,
   retry,
+  retrying,
   locale
 }: {
   httpStatus: number | null
   at: string | null
   retry: () => void
+  retrying: boolean
   locale: Locale
 }) {
   return (
@@ -276,22 +300,26 @@ function DashboardFailure({
           {t('dashboard.title', {}, locale)}
         </h1>
       </header>
-      <Block block="needs_review">
+      <Block block="needs_review" busy={retrying}>
         <BlockHead id={BLOCK_IDS.needs_review} title={t('dashboard.needs_review', {}, locale)} />
-        <SourceError
-          source={t('dashboard.read_source', {}, locale)}
-          status={httpStatus}
-          at={at}
-          locale={locale}
-          // A 501 is "not built": reading again cannot change the answer.
-          retry={
-            httpStatus === 501 ? undefined : (
-              <Button type="button" variant="outline" onClick={retry}>
-                {t('dashboard.retry', {}, locale)}
-              </Button>
-            )
-          }
-        />
+        {retrying ? (
+          <BlockRetrying locale={locale} />
+        ) : (
+          <SourceError
+            source={t('dashboard.read_source', {}, locale)}
+            status={httpStatus}
+            at={at}
+            locale={locale}
+            // A 501 is "not built": reading again cannot change the answer.
+            retry={
+              httpStatus === 501 ? undefined : (
+                <Button type="button" variant="outline" onClick={retry}>
+                  {t('dashboard.retry', {}, locale)}
+                </Button>
+              )
+            }
+          />
+        )}
       </Block>
     </section>
   )
@@ -534,11 +562,14 @@ function DashboardContent({
   org,
   data,
   retry,
+  retrying,
   locale
 }: {
   org: string
   data: DashboardRead
-  retry: () => void
+  retry: (block: DashboardBlockKey) => void
+  /** A Retry's read is out: every failed block shows its skeleton, every loaded one stays. */
+  retrying: boolean
   locale: Locale
 }) {
   const minutesSinceRead = useMinutesSinceRead(data)
@@ -556,10 +587,18 @@ function DashboardContent({
   /** An empty block's action: none before the first project (every one would open Create a project). */
   const emptyAction = (key: DashboardBlockKey, href = blockHref(key, org, data), action?: string) =>
     noProjects ? {} : { href, action: action ?? nextAction(key, data, locale) }
+  const busy = (key: DashboardBlockKey) => retrying && !data[key].ok
   const failure = (key: DashboardBlockKey) => {
     const block = data[key]
-    return block.ok ? null : (
-      <BlockError read={block} source={t(`dashboard.sources.${key}`, {}, locale)} retry={retry} locale={locale} />
+    if (block.ok) return null
+    if (retrying) return <BlockRetrying locale={locale} />
+    return (
+      <BlockError
+        read={block}
+        source={t(`dashboard.sources.${key}`, {}, locale)}
+        retry={() => retry(key)}
+        locale={locale}
+      />
     )
   }
   const { needs_review: review, windows_at_risk: atRisk, signal_health: signals } = data
@@ -589,7 +628,7 @@ function DashboardContent({
         )}
       </header>
 
-      <Block block="needs_review">
+      <Block block="needs_review" busy={busy('needs_review')}>
         <BlockHead id={BLOCK_IDS.needs_review} title={t('dashboard.needs_review', {}, locale)} />
         {!review.ok ? (
           failure('needs_review')
@@ -615,7 +654,7 @@ function DashboardContent({
         )}
       </Block>
 
-      <Block block="windows_at_risk">
+      <Block block="windows_at_risk" busy={busy('windows_at_risk')}>
         <BlockHead
           id={BLOCK_IDS.windows_at_risk}
           title={t('dashboard.windows_at_risk', {}, locale)}
@@ -647,7 +686,7 @@ function DashboardContent({
       </Block>
 
       <div className={styles.lower}>
-        <Block block="signal_health" className={styles.signals}>
+        <Block block="signal_health" className={styles.signals} busy={busy('signal_health')}>
           <BlockHead
             id={BLOCK_IDS.signal_health}
             title={t('dashboard.signal_health', {}, locale)}
@@ -679,7 +718,7 @@ function DashboardContent({
         </Block>
 
         <div className={styles.side}>
-          <Block block="upcoming_risks">
+          <Block block="upcoming_risks" busy={busy('upcoming_risks')}>
             <BlockHead
               id={BLOCK_IDS.upcoming_risks}
               title={t('dashboard.upcoming_risks', {}, locale)}
@@ -715,7 +754,7 @@ function DashboardContent({
             )}
           </Block>
 
-          <Block block="yesterday_grades">
+          <Block block="yesterday_grades" busy={busy('yesterday_grades')}>
             <BlockHead
               id={BLOCK_IDS.yesterday_grades}
               title={t('dashboard.yesterday_grades', {}, locale)}
@@ -753,6 +792,15 @@ function DashboardContent({
   )
 }
 
+const BLOCK_KEYS = Object.keys(BLOCK_IDS) as DashboardBlockKey[]
+
+/** A re-read that failed as a whole: each block that had failed carries the new failure, the rest are untouched. */
+function failedAgain(data: DashboardRead, status: number | null, at: string): DashboardRead {
+  const next = { ...data }
+  for (const key of BLOCK_KEYS) if (!data[key].ok) next[key] = { ok: false, status, at }
+  return next
+}
+
 export function DashboardPage({
   org,
   locale = 'en',
@@ -768,7 +816,22 @@ export function DashboardPage({
         ? { status: 'error', httpStatus: initialError, at: initialErrorAt }
         : { status: 'loading' }
   )
-  const retry = () => setAttempt((value) => value + 1)
+  // Which block's Retry asked for the read that is out, so its heading takes focus once the read lands.
+  const [retrying, setRetrying] = useState<DashboardBlockKey | null>(null)
+  const retried = useRef<DashboardBlockKey | null>(null)
+  const focusAfter = useRef<DashboardBlockKey | null>(null)
+  const retry = (block: DashboardBlockKey) => {
+    retried.current = block
+    setRetrying(block)
+    setAttempt((value) => value + 1)
+  }
+
+  useEffect(() => {
+    const block = focusAfter.current
+    if (!block) return
+    focusAfter.current = null
+    document.getElementById(BLOCK_IDS[block])?.focus()
+  }, [state])
 
   useEffect(() => {
     // The server's own read stands until Retry asks for another.
@@ -781,26 +844,44 @@ export function DashboardPage({
       return
     }
     const controller = new AbortController()
-    setState({ status: 'loading' })
+    // A Retry keeps what is on screen: only the first read, with nothing to show yet, draws the page's skeleton.
+    if (attempt === 0) setState({ status: 'loading' })
+    const settle = (next: (current: ReadState) => ReadState) => {
+      focusAfter.current = retried.current
+      retried.current = null
+      setRetrying(null)
+      setState(next)
+    }
     void readDashboard(org, new Headers(), controller.signal)
       .then((value) => {
-        if (!controller.signal.aborted) setState({ status: 'ready', value })
+        if (!controller.signal.aborted) settle(() => ({ status: 'ready', value }))
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
-        setState({
-          status: 'error',
-          httpStatus: error instanceof ApiProblem ? error.status : null,
-          at: new Date().toISOString()
-        })
+        const httpStatus = error instanceof ApiProblem ? error.status : null
+        const at = new Date().toISOString()
+        // The blocks that had loaded stay; the ones that failed say they failed again, and when.
+        settle((current) =>
+          current.status === 'ready'
+            ? { status: 'ready', value: failedAgain(current.value, httpStatus, at) }
+            : { status: 'error', httpStatus, at }
+        )
       })
     return () => controller.abort()
   }, [attempt, initialData, initialError, initialErrorAt, org])
 
   if (state.status === 'loading') return <DashboardSkeleton locale={locale} />
   if (state.status === 'error')
-    return <DashboardFailure httpStatus={state.httpStatus} at={state.at} retry={retry} locale={locale} />
-  return <DashboardContent org={org} data={state.value} retry={retry} locale={locale} />
+    return (
+      <DashboardFailure
+        httpStatus={state.httpStatus}
+        at={state.at}
+        retry={() => retry('needs_review')}
+        retrying={retrying !== null}
+        locale={locale}
+      />
+    )
+  return <DashboardContent org={org} data={state.value} retry={retry} retrying={retrying !== null} locale={locale} />
 }
 
 export { DashboardSkeleton }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type ReactNode } from 'react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import { MenuIcon, SearchIcon } from 'lucide-react'
 import { Button } from '#ui/button'
 import { PhoneSheet, PhoneSheetItem } from '#ui/phone-sheet'
@@ -9,7 +9,7 @@ import { ShellClock } from './clock'
 import { t } from './i18n'
 import type { Destination } from './navigation'
 import type { ShellScope } from './scope'
-import { signOutLabel, useSignOut } from './sign-out'
+import { signOutStatus, useSignOut } from './sign-out'
 import { canCreateProject, offersSignOut } from './switchers'
 
 const ACCOUNT_KEYS = new Set(['connect', 'account', 'appearance'])
@@ -28,10 +28,24 @@ function Section({ id, title, children }: { id: string; title: string; children:
 /** The sheet's Sign out: a row like its links, but a button, since it ends the session rather than opening a page. */
 function SignOutRow({ scope }: { scope: ShellScope }) {
   const { state, signOut } = useSignOut()
+  const statusId = useId()
+  const status = signOutStatus[state]
   return (
-    <button type="button" className="shell-sheet-action" onClick={() => void signOut()}>
-      {t(signOutLabel[state], {}, scope.locale)}
-    </button>
+    <>
+      <button
+        type="button"
+        className="shell-sheet-action"
+        aria-disabled={state === 'busy' || undefined}
+        aria-describedby={statusId}
+        onClick={() => void signOut()}
+      >
+        {t('app-shell.signOut', {}, scope.locale)}
+      </button>
+      {/* Mounted before it speaks, so progress and a failure are announced; the button keeps its name. */}
+      <p id={statusId} role="status" className="shell-sheet-note empty:sr-only">
+        {status ? t(status, {}, scope.locale) : ''}
+      </p>
+    </>
   )
 }
 
@@ -145,7 +159,7 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
             </PhoneSheetItem>
           ))}
           {canCreateProject(scope) ? (
-            <PhoneSheetItem href={`/${encodeURIComponent(org)}/new`}>
+            <PhoneSheetItem href={`/${encodeURIComponent(org)}/new?another=1`}>
               {t('app-shell.createProject', {}, locale)}
             </PhoneSheetItem>
           ) : (

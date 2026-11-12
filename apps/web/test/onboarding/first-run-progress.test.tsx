@@ -9,7 +9,8 @@ vi.mock('../../features/onboarding/operations', async (original) => ({
   ...(await original<typeof import('../../features/onboarding/operations')>()),
   onboardingApi: vi.fn()
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }), usePathname: () => '/test-org/new' }))
+const replace = vi.hoisted(() => vi.fn())
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }), usePathname: () => '/test-org/new' }))
 
 const steps = ['organisation', 'project', 'sources', 'window', 'rota', 'channel'] as const
 const view = (done: number, skipped: readonly string[] = []) => ({
@@ -25,6 +26,41 @@ const view = (done: number, skipped: readonly string[] = []) => ({
 afterEach(() => {
   cleanup()
   vi.mocked(onboardingApi).mockReset()
+  replace.mockReset()
+  document.body.innerHTML = ''
+})
+
+/** The project form beside the list, with or without a draft typed into it. */
+function projectForm(dirty: boolean) {
+  const form = document.createElement('form')
+  form.setAttribute('data-project-create', '')
+  if (dirty) form.setAttribute('data-dirty', 'true')
+  document.body.append(form)
+}
+
+test('a bare visit to the project route after the project step resumes at the next outstanding step', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  projectForm(false)
+  render(<FirstRunProgress org="test-org" redirectFromProject />)
+  await waitFor(() => expect(replace).toHaveBeenCalledWith('/test-org/sources'))
+})
+
+test('a project form with a draft in it is never replaced by the next step', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  projectForm(true)
+  render(<FirstRunProgress org="test-org" redirectFromProject />)
+  await screen.findByRole('list')
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(replace).not.toHaveBeenCalled()
+})
+
+test('a Create a project link, which asks for another project, stays on the form', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(view(2) as never)
+  projectForm(false)
+  render(<FirstRunProgress org="test-org" redirectFromProject={false} />)
+  await screen.findByRole('list')
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  expect(replace).not.toHaveBeenCalled()
 })
 
 test('only the step that is next has actions: one Continue and one quiet Skip this step, none on the rest', async () => {

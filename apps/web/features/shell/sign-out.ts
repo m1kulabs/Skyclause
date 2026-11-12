@@ -16,7 +16,8 @@ export function useSignOut() {
     setState('busy')
     try {
       await authRequest('/sign-out', { method: 'POST', body: {} })
-      window.location.assign('/sign-in')
+      // Replaced, not pushed: Back from sign-in would only reopen a signed-out page.
+      window.location.replace('/sign-in')
     } catch {
       setState('failed')
     }
@@ -24,9 +25,12 @@ export function useSignOut() {
   return { state, signOut }
 }
 
-/** The control's words for each state, from the shell's catalogue. */
-export const signOutLabel = {
-  idle: 'app-shell.signOut',
+/**
+ * What the status line beside the control says in each state, from the shell's catalogue. The control itself always
+ * reads Sign out, so its name stays the action.
+ */
+export const signOutStatus = {
+  idle: null,
   busy: 'app-shell.signingOut',
   failed: 'app-shell.signOutFailed'
-} as const satisfies Record<SignOutState, string>
+} as const satisfies Record<SignOutState, string | null>
