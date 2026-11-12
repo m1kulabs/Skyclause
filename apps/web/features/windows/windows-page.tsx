@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { formatDate } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
@@ -18,7 +18,18 @@ function viewOf(value: string | null): WindowsView {
   return value === 'week' ? 'week' : value === 'month' || value === 'calendar' ? 'month' : 'timeline'
 }
 
-export function WindowsPage({ org, project, locale = 'en' }: { org: string; project: string; locale?: Locale }) {
+export function WindowsPage({
+  org,
+  project,
+  firstRun,
+  locale = 'en'
+}: {
+  org: string
+  project: string
+  /** The organisation's first-run steps, for those who run them. */
+  firstRun?: ReactNode
+  locale?: Locale
+}) {
   const search = useSearchParams()
   const view = viewOf(search.get('view'))
   const from = validDate(search.get('from') ?? '') ? search.get('from')! : localDate()
@@ -145,6 +156,7 @@ export function WindowsPage({ org, project, locale = 'en' }: { org: string; proj
           )}
         </p>
       )}
+      {firstRun}
       {(loading || (data && !empty)) && (
         <WindowsToolbar
           view={view}

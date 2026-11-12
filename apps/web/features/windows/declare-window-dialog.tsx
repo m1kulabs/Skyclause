@@ -177,6 +177,8 @@ export function DeclareWindowDialog({
         detail: created ? { id: created.id, date: localDate(created.starts_at) } : undefined
       })
     )
+    // The first-run steps on the page read again, so the window step turns done and the rota step opens.
+    window.dispatchEvent(new Event('onboarding:changed'))
   }
   return (
     <>

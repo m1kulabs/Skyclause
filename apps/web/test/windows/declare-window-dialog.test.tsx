@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { DeclareWindowDialog } from '../../features/windows/declare-window-dialog'
 import type { WindowControls } from '../../features/windows/controls'
@@ -110,4 +110,25 @@ test('a start in the past links to Request evidence with the request form open o
   const link = await within(dialog).findByRole('link', { name: 'Request evidence' })
   // The ledger opens its request form for `request=evidence` (features/ledger/page.tsx), not for the tab alone.
   expect(link.getAttribute('href')).toBe('/test-org/test-project/ledger?tab=evidence&request=evidence')
+})
+
+test('a declared window tells the first-run steps to read again, so they move on to the rota', async () => {
+  search = new URLSearchParams('declare=window')
+  vi.mocked(windowsApi).mockImplementation((async (operation: string) => {
+    if (operation === 'createWindow') return declared
+    throw new Error(`not reached: ${operation}`)
+  }) as never)
+  const changed = vi.fn()
+  window.addEventListener('onboarding:changed', changed)
+  render(<DeclareWindowDialog org="test-org" project="test-project" controls={none} />)
+  const dialog = await screen.findByRole('dialog', { name: 'Declare a window' })
+  fireEvent.change(await within(dialog).findByLabelText('Title'), { target: { value: 'Test lecture' } })
+  fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: '2026-11-16' } })
+  fireEvent.change(within(dialog).getByLabelText('Start (MYT)'), { target: { value: '15:30' } })
+  fireEvent.change(within(dialog).getByLabelText('End (MYT)'), { target: { value: '16:30' } })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save window' }))
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  const [, request] = vi.mocked(windowsApi).mock.calls.find(([operation]) => operation === 'createWindow')!
+  expect((request as unknown as { body: object }).body).not.toHaveProperty('recurrence')
+  window.removeEventListener('onboarding:changed', changed)
 })
