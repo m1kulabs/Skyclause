@@ -111,7 +111,8 @@ export function ReadingsChart({ layout, locale }: { layout: StripLayout; locale:
               className={`absolute type-small whitespace-nowrap text-foreground ${crossing.labelBeside ? 'pl-2' : '-translate-x-full pr-3'}`}
               style={
                 crossing.labelBeside
-                  ? { left: pct(crossing.x), top: crossing.y + 6 }
+                  ? // Under the Lebat line as well as the mark: with sparse readings the mark sits above the line.
+                    { left: pct(crossing.x), top: Math.max(crossing.y, layout.lebatY ?? crossing.y) + 6 }
                   : { left: `max(${pct(crossing.x)}, 8.5rem)`, top: crossing.y - 30 }
               }
             >

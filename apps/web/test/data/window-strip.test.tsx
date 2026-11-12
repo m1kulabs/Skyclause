@@ -179,3 +179,19 @@ describe('WindowStrip', () => {
     expect(screen.getAllByRole('row')).toHaveLength(1 + strip.rain60.length)
   })
 })
+
+describe('the crossing label beside its mark', () => {
+  afterEach(cleanup)
+
+  test('sits under the Lebat line as well as the mark, so the line never runs through it', async () => {
+    const { layoutStrip } = await import('@skyclause/elements')
+    const { ReadingsChart } = await import('../../features/data-components/readings-chart')
+    const layout = layoutStrip({ ...stripInput(false), windows: [], locale: 'en' }, { header: 48, laneGap: 30 })
+    expect(layout.lebatY).not.toBeNull()
+    // Sparse readings: the first reading past the line is drawn well above it, and its label has no room above.
+    const mark = { ...layout.crossings[0]!, y: layout.lebatY! - 20, labelBeside: true }
+    const { container } = render(<ReadingsChart layout={{ ...layout, crossings: [mark] }} locale="en" />)
+    const label = container.querySelector<HTMLElement>('[data-crossing-label]')!
+    expect(Number.parseFloat(label.style.top)).toBe(layout.lebatY! + 6)
+  })
+})
