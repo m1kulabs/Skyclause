@@ -449,12 +449,12 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
               <Table sticky>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-52">{copy('time')}</TableHead>
-                    <TableHead className="w-52">{copy('actorColumn')}</TableHead>
+                    <TableHead className="lg:w-52">{copy('time')}</TableHead>
+                    <TableHead className="lg:w-52">{copy('actorColumn')}</TableHead>
                     <TableHead>{copy('what')}</TableHead>
-                    <TableHead className="w-56">{copy('object')}</TableHead>
-                    <TableHead className="w-40 max-lg:hidden">{copy('project')}</TableHead>
-                    <TableHead className="w-14">
+                    <TableHead className="lg:w-56">{copy('object')}</TableHead>
+                    <TableHead className="lg:w-40 max-lg:hidden">{copy('project')}</TableHead>
+                    <TableHead className="lg:w-14">
                       <span className="sr-only">{copy('copyColumn')}</span>
                     </TableHead>
                   </TableRow>
@@ -471,7 +471,7 @@ export function AuditPanel({ org, locale = 'en' }: { org: string; locale?: 'en' 
                         <TableCell truncate="30ch" phone="meta" label={copy('actorColumn')}>
                           {actorCell(entry)}
                         </TableCell>
-                        <TableCell truncate="56ch" phone="primary">
+                        <TableCell phone="primary" className="whitespace-normal">
                           {sentence}
                         </TableCell>
                         <TableCell truncate="30ch" phone="meta" label={copy('object')}>

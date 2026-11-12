@@ -162,6 +162,7 @@ export function SubscriberTable({
           {t('subscribers.list_title', {}, locale)}
         </h2>
         <ToggleGroup
+          className="max-[420px]:flex-nowrap"
           aria-label={t('subscribers.filter', {}, locale)}
           value={[filter]}
           onValueChange={(value) => {
@@ -170,7 +171,7 @@ export function SubscriberTable({
           }}
         >
           {filters.map((item) => (
-            <ToggleGroupItem key={item} value={item} className="pointer-coarse:h-11 max-[420px]:px-2.5">
+            <ToggleGroupItem key={item} value={item} className="pointer-coarse:h-11 max-[420px]:px-1.5">
               {t(
                 item === 'all' || item === 'suppressed' ? `subscribers.filter_${item}` : `subscribers.status_${item}`,
                 {},
@@ -199,14 +200,14 @@ export function SubscriberTable({
           <TableHeader>
             <TableRow>
               <TableHead>{t('subscribe.email', {}, locale)}</TableHead>
-              <TableHead className="w-36">{t('subscribe.role', {}, locale)}</TableHead>
-              <TableHead numeric className="w-24">
+              <TableHead className="lg:w-36">{t('subscribe.role', {}, locale)}</TableHead>
+              <TableHead numeric className="lg:w-24">
                 {t('subscribe.windows', {}, locale)}
               </TableHead>
-              <TableHead className="w-28 max-lg:hidden">{t('subscribe.language', {}, locale)}</TableHead>
-              <TableHead className="w-52">{t('subscribers.since', {}, locale)}</TableHead>
-              <TableHead className="w-48">{t('subscribers.status', {}, locale)}</TableHead>
-              <TableHead className="w-14">
+              <TableHead className="lg:w-28 max-lg:hidden">{t('subscribe.language', {}, locale)}</TableHead>
+              <TableHead className="lg:w-52">{t('subscribers.since', {}, locale)}</TableHead>
+              <TableHead className="lg:w-48">{t('subscribers.status', {}, locale)}</TableHead>
+              <TableHead className="lg:w-14">
                 <span className="sr-only">{t('subscribers.actions', {}, locale)}</span>
               </TableHead>
             </TableRow>

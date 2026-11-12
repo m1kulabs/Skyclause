@@ -405,13 +405,13 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('members.name', {}, locale)}</TableHead>
-                    <TableHead className="w-52 max-lg:hidden">{t('members.email', {}, locale)}</TableHead>
-                    <TableHead className="w-36">{t('members.role', {}, locale)}</TableHead>
-                    <TableHead numeric className="w-32">
+                    <TableHead className="lg:w-48 max-lg:hidden">{t('members.email', {}, locale)}</TableHead>
+                    <TableHead className="lg:w-36">{t('members.role', {}, locale)}</TableHead>
+                    <TableHead numeric className="lg:w-28">
                       {t('members.last_active', {}, locale)}
                     </TableHead>
-                    <TableHead className="w-28">{t('members.malay_reader', {}, locale)}</TableHead>
-                    <TableHead className="w-14">
+                    <TableHead className="lg:w-24">{t('members.malay_reader', {}, locale)}</TableHead>
+                    <TableHead className="lg:w-14">
                       <span className="sr-only">{t('members.actions', {}, locale)}</span>
                     </TableHead>
                   </TableRow>
@@ -533,12 +533,12 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('members.email', {}, locale)}</TableHead>
-                        <TableHead className="w-40">{t('members.role', {}, locale)}</TableHead>
-                        <TableHead className="w-56 max-lg:hidden">{t('members.sent', {}, locale)}</TableHead>
-                        <TableHead numeric className="w-36">
+                        <TableHead className="lg:w-40">{t('members.role', {}, locale)}</TableHead>
+                        <TableHead className="lg:w-56 max-lg:hidden">{t('members.sent', {}, locale)}</TableHead>
+                        <TableHead numeric className="lg:w-36">
                           {t('members.expires', {}, locale)}
                         </TableHead>
-                        <TableHead className="w-14">
+                        <TableHead className="lg:w-14">
                           <span className="sr-only">{t('members.actions', {}, locale)}</span>
                         </TableHead>
                       </TableRow>
