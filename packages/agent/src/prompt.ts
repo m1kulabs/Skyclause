@@ -50,6 +50,27 @@ function dataBlock(name: string, value: unknown): string {
  * The user message: every input as a data block, built from picked fields only, so a title, name or email a caller
  * passes at runtime never reaches the model. `roles: false` (free-tier and unknown keys) drops recipient roles, forwarded emails and evidence requests.
  */
+/** How far back each series reaches in the prompt: the longest clause lookback (`w.rain_max_4h_mm`) plus two hours. */
+export const PROMPT_SERIES_MS = 6 * 3_600_000
+
+/**
+ * Each series as the model sees it: its points from the last six hours before `tEval`, or its newest point when none
+ * is that recent (a warning issued earlier and still in force). The run keeps the whole snapshot; the evaluator's
+ * history has no lower bound, so a gauge's seven-day backfill alone would overrun the run's input budget.
+ */
+export function recentSeries(
+  series: AgentInput['snapshot']['series'],
+  tEval: string
+): AgentInput['snapshot']['series'] {
+  const from = Date.parse(tEval) - PROMPT_SERIES_MS
+  return Object.fromEntries(
+    Object.entries(series).map(([name, points]) => {
+      const recent = points.filter(([at]) => Date.parse(at) >= from)
+      return [name, recent.length ? recent : points.slice(-1)]
+    })
+  )
+}
+
 export function serialise(input: AgentInput, o: { roles: boolean }): string {
   // Untrusted third-party text, present only when the caller has some: quoted like MET text and never quotable.
   // Listings are public venue text. Forwarded emails and evidence requests can name people, so they go to paid and
@@ -73,7 +94,7 @@ export function serialise(input: AgentInput, o: { roles: boolean }): string {
       tEval: snapshot.tEval,
       inputs: snapshot.inputs,
       site: snapshot.site,
-      series: snapshot.series,
+      series: recentSeries(snapshot.series, snapshot.tEval),
       nights: snapshot.nights
     }),
     dataBlock('met_warnings', input.met_warnings),
