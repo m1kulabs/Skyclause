@@ -72,7 +72,8 @@ test('Approver reads subscriber-counts only, without any subscriber table or adm
   await expect(page.getByRole('table')).toHaveCount(0)
   await expect(page.getByText(row.email)).toHaveCount(0)
   await expect(page.getByRole('button', { name: t('subscribers.copy') })).toHaveCount(0)
-  expect(requests.filter((path) => path.startsWith('/v1/'))).toEqual(['/v1/projects/project-id/subscriber-counts'])
+  // #737: the browser reaches /v1 operations through the app host's /api/v1.
+  expect(requests.filter((path) => path.includes('/v1/'))).toEqual(['/api/v1/projects/project-id/subscriber-counts'])
 })
 
 test('NTC-13 import validates addresses and requests confirmations only', async ({ page }) => {
