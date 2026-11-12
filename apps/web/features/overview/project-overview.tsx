@@ -43,7 +43,7 @@ import {
   type ProjectVerdicts,
   type ProjectWindow
 } from './operations'
-import { localDateAt, overviewFilterState, selectTodayAtRisk, type OverviewPackFilter } from './model'
+import { localDateAt, overviewFilterState, selectTodayAtRisk, todaysWindows, type OverviewPackFilter } from './model'
 import { t as bundleText } from '../bundles/i18n'
 import { clauseName } from '../bundles/clause-name'
 import { t } from './catalogue'
@@ -123,13 +123,14 @@ async function loadOverview(org: string, slug: string, signal: AbortSignal): Pro
           query: {
             limit: 200,
             cursor,
-            from: localDateAt(new Date(), project.time_zone),
+            // From yesterday: a window that began before midnight and runs into today is today's too.
+            from: localDateAt(new Date(Date.now() - 86_400_000), project.time_zone),
             to: localDateAt(new Date(Date.now() + 86_400_000), project.time_zone),
             include: 'calls'
           },
           signal
         })
-      )
+      ).then((windows) => windows.filter((window) => !window.cancelled_at))
     ),
     tryRead(() =>
       allPages((cursor) =>
@@ -523,8 +524,7 @@ export function ProjectOverview({
   const today = useMemo(() => {
     if (state.status !== 'ready' || !state.value.windows.ok) return null
     const { time_zone: timeZone } = state.value.project
-    const day = localDateAt(now, timeZone)
-    const todays = state.value.windows.value.filter((item) => localDateAt(new Date(item.starts_at), timeZone) === day)
+    const todays = todaysWindows(state.value.windows.value, timeZone, now)
     const windows = stripWindows(todays, filter)
     return { windows, span: daySpan(windows, now.toISOString()) }
   }, [state, filter, now])
