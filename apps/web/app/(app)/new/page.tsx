@@ -14,15 +14,15 @@ export default async function Page() {
   if (principal?.kind !== 'session' || principal.isGuest) redirect('/sign-up')
   return (
     <div className={styles.firstRunPage}>
-      <div className={styles.firstRunAside}>
-        <header className={styles.pageHeading}>
-          <h1 className="type-title">{t('organisations.create.title')}</h1>
-          <p className="type-text">{t('organisations.create.description')}</p>
-        </header>
-        <FirstRunOutline />
-      </div>
+      <header className={styles.pageHeading}>
+        <h1 className="type-title">{t('organisations.create.title')}</h1>
+        <p className="type-text">{t('organisations.create.description')}</p>
+      </header>
       <div className={styles.firstRunMain}>
         <OrgCreateForm />
+      </div>
+      <div className={styles.firstRunSteps}>
+        <FirstRunOutline />
       </div>
     </div>
   )

@@ -1,34 +1,37 @@
 /*
- * The first run in the shell's 1200px column: the heading and the progress in a 486px column (5 of 12) beside the
- * project form's 690px panel (7 of 12): 486 + 24 + 690 = 1200.
+ * The first run in the shell's 1200px column: the heading and the steps in a 486px column (5 of 12) beside the form's
+ * 690px panel (7 of 12): 486 + 24 + 690 = 1200. The form comes second in the source, so on a narrow screen (and from
+ * the keyboard) it follows the heading straight away and the steps come after it.
  */
 .firstRunPage {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: auto 1fr;
   align-items: start;
   gap: 32px 24px;
-  min-width: 0;
-}
-
-.firstRunAside {
-  grid-column: span 5;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  min-width: 0;
-}
-
-.firstRunMain {
-  grid-column: span 7;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   min-width: 0;
 }
 
 .pageHeading {
   display: grid;
   gap: 8px;
+  grid-column: 1 / span 5;
+  grid-row: 1;
+}
+
+.firstRunSteps {
+  grid-column: 1 / span 5;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.firstRunMain {
+  grid-column: 6 / -1;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .status,
@@ -419,8 +422,14 @@
 }
 
 @media (max-width: 1023px) {
-  .firstRunAside,
+  .firstRunPage {
+    grid-template-rows: none;
+  }
+
+  .pageHeading,
+  .firstRunSteps,
   .firstRunMain {
     grid-column: 1 / -1;
+    grid-row: auto;
   }
 }
