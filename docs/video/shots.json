@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "owner": "Director (docs/video/director-script.md). The Recorder films each recorded shot from this contract and reports any difference as a deviation, never a change.",
+  "owner": "Director (docs/demo/prelim/director-script.md). The Recorder films each recorded shot from this contract and reports any difference as a deviation, never a change.",
   "viewport": { "width": 1920, "height": 1080, "deviceScaleFactor": 1 },
   "fps": 30,
   "timezone": "Asia/Kuala_Lumpur",
