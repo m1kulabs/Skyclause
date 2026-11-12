@@ -238,10 +238,13 @@ test('link confirmation posts once and follows the continue redirect', async ({ 
   await page.goto('/sign-in?link=one-time-token&resend=resend-handle&next=%2Fcommons')
   await expect(page.getByRole('button', { name: 'Sign in' })).toHaveCount(1)
   await expectAuthAxe(page)
+  const entries = await page.evaluate(() => history.length)
   await page.getByRole('button', { name: 'Sign in' }).click()
 
   await expect(page).toHaveURL(/\/commons$/)
   expect(confirmCount).toBe(1)
+  // The signed-in page takes sign-in's place in history, so Back never lands on a page that sends you forward again.
+  expect(await page.evaluate(() => history.length)).toBe(entries)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })

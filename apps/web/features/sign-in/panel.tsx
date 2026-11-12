@@ -185,7 +185,8 @@ export function SignInPanel({
           setActionAlert(code === 'PASSKEY_NOT_FOUND' ? 'passkey_unknown' : 'passkey_failed')
           return
         }
-        window.location.assign(continueHref)
+        // Replace: /sign-in sends a signed-in visitor straight on, so a history entry for it makes Back look dead.
+        window.location.replace(continueHref)
       } catch {
         if (!autoFill) setActionAlert('passkey_failed')
       }
@@ -323,11 +324,11 @@ export function SignInPanel({
         const destination = new URL(response.url, window.location.origin)
         if (destination.origin !== window.location.origin) throw new Error('Unexpected auth redirect')
         if (destination.pathname === '/sign-in' && destination.searchParams.get('state') === 'link-expired') {
-          window.location.assign(`${destination.pathname}${destination.search}${destination.hash}`)
+          window.location.replace(`${destination.pathname}${destination.search}${destination.hash}`)
           return
         }
         if (!state.stepUp) {
-          window.location.assign(`${destination.pathname}${destination.search}${destination.hash}`)
+          window.location.replace(`${destination.pathname}${destination.search}${destination.hash}`)
           return
         }
       }
@@ -336,7 +337,7 @@ export function SignInPanel({
         setStepUpConfirmed(true)
         setStatus(text('sign-in.confirm_done'))
       } else {
-        window.location.assign(continueHref)
+        window.location.replace(continueHref)
       }
     } catch {
       setActionAlert('confirm_failed')
