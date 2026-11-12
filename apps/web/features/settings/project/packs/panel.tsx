@@ -176,19 +176,17 @@ export default function Panel({
       )
       return true
     } catch (error) {
-      const detail = error instanceof ApiProblem ? error.body.detail : undefined
+      // The answer's `detail` is the API's English: the panel words each refusal from the catalogue instead.
       const code = error instanceof ApiProblem ? error.body.type?.split('/').pop() : undefined
       if (pack === 'crowd' && enabled && code === 'pack-prerequisites') {
         const prerequisite = missingForCrowd(sourcesForCheck)
         setCrowdIntent(true)
         setCrowdMissingMessage(
-          typeof detail === 'string' && detail
-            ? detail
-            : t('onboarding.pack_missing', { missing: t(`onboarding.${prerequisite.missing ?? 'missing_both'}`) })
+          t('onboarding.pack_missing', { missing: t(`onboarding.${prerequisite.missing ?? 'missing_both'}`) })
         )
         setPickerOpen(true)
       } else {
-        setMessage(typeof detail === 'string' && detail ? detail : t('onboarding.save_error_generic'))
+        setMessage(t('onboarding.save_error_generic'))
       }
       return false
     } finally {

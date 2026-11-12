@@ -149,14 +149,8 @@ export class CameraRunner {
             setup = { ...setup, blockedUntil: start > p.now() ? start : start + 86_400_000 }
           }
           await p.store.saveSetup(setup)
-          p.emit({
-            key: 'dropped',
-            vars: {
-              reason: outside
-                ? 'outside_daylight'
-                : String(problem.detail ?? problem.title ?? problem.type ?? 'HTTP 422')
-            }
-          })
+          // Said from the catalogue: the problem's own detail is the API's English and never shows.
+          p.emit({ key: outside ? 'droppedDaylight' : 'dropped' })
           if (outside) break
           continue
         }

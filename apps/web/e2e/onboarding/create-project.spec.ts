@@ -560,7 +560,9 @@ test('Crowd prerequisite errors name the missing venue and rail station beside t
   const confirm = page.getByRole('alertdialog')
   await expect(confirm.getByRole('heading')).toContainText('Turn on Crowd for')
   await confirm.getByRole('button', { name: /^Turn on Crowd for/ }).click()
-  await expect(panel.getByText(prerequisites.detail)).toBeVisible()
+  // The catalogue's sentence names what is missing; the API's English detail never shows.
+  await expect(panel.getByText('Needs a rail station with gate taps and a venue with listings.')).toBeVisible()
+  await expect(page.getByText(prerequisites.detail)).toHaveCount(0)
   await expect(page.getByRole('dialog', { name: 'Bind sources' })).toBeVisible()
 })
 

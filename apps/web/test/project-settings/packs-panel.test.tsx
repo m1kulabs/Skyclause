@@ -5,6 +5,7 @@ import { t as onboarding } from '../../features/onboarding/catalogue'
 import { onboardingApi } from '../../features/onboarding/operations'
 import { sourcesApi, type BoundSourceView } from '../../features/sources/operations'
 import Panel from '../../features/settings/project/packs/panel'
+import { ApiProblem } from '../../lib/api-fetch'
 
 vi.mock('../../features/onboarding/operations', () => ({ onboardingApi: vi.fn() }))
 vi.mock('../../features/sources/operations', () => ({ sourcesApi: vi.fn() }))
@@ -70,6 +71,22 @@ test('?pack=crowd opens the confirm every other switch uses and turns nothing on
   const dialog = await screen.findByRole('alertdialog')
   expect(dialog.textContent).toContain('Turn on Crowd for “Campus”')
   expect(sourcesApi).not.toHaveBeenCalledWith('updateProjectPack', expect.anything())
+})
+
+test('a refused pack change is worded from the catalogue, never the API’s detail', async () => {
+  const detail = 'not built: owned by d-org-api'
+  bound = [source('rail', 'rail_station'), source('venue', 'venue_listings')]
+  vi.mocked(sourcesApi).mockImplementation((async (operation: string) => {
+    if (operation === 'listProjectSources') return { data: bound, next_cursor: null }
+    if (operation === 'updateProjectPack')
+      throw new ApiProblem(500, { type: 'about:blank', title: 'Server error', status: 500, detail })
+    return undefined
+  }) as never)
+  render(<Panel org="org" project="campus" initialPack="crowd" />)
+  const dialog = await screen.findByRole('alertdialog')
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Turn on Crowd for/ }))
+  expect(await screen.findByText(onboarding('onboarding.save_error_generic'))).toBeTruthy()
+  expect(document.body.textContent).not.toContain(detail)
 })
 
 test('unbinding a source puts focus on the sources heading, where the removed row was', async () => {
