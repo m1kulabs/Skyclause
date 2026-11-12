@@ -95,7 +95,7 @@ export function CallRow({ call, dashboard, actions = null, locale = 'en' }: Call
       <td className="block p-2 md:table-cell">
         <span
           role="group"
-          className="flex min-h-[34px] items-center gap-2 opacity-100 group-focus-within:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 [@media(pointer:coarse)]:min-h-[44px]"
+          className="flex min-h-[34px] items-center gap-2 opacity-100 group-focus-within:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 [@media(pointer:coarse)]:min-h-[44px]"
           aria-label={t('data.call.actions', {}, locale)}
         >
           {actions}

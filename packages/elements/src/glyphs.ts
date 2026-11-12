@@ -23,6 +23,8 @@ export const glyphPaths = {
   cross: '<path d="m2 2 8 8m0-8-8 8"/>'
 } as const
 export type GlyphName = keyof typeof glyphPaths
+/** Not a state's glyph: the mark on a replayed figure, a counter-clockwise arrow (ReplayMark in apps/web features/brand). */
+export const replayGlyphPath = '<path d="M2.3 3.4A4.5 4.5 0 1 1 1.5 6"/><path d="M1.2 1.6v2.2h2.2"/>'
 
 export const brandStates = {
   normal: { glyph: 'ring', word: 'brand.states.normal', level: 'neutral', tone: 'normal' },
