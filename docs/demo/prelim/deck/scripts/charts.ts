@@ -1,10 +1,10 @@
 // Draws the deck's two data charts from the stored JPS 5-minute series for gauge 0232901RF, and fails unless the
 // totals match the figures the deck and the video script print. A reading stamped T covers (T−5 min, T].
-// Run from the repo root: bun docs/demo/deck/scripts/charts.ts
+// Run from the repo root: bun docs/demo/prelim/deck/scripts/charts.ts
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const ROOT = join(import.meta.dirname, '..', '..', '..', '..')
+const ROOT = join(import.meta.dirname, '..', '..', '..', '..', '..')
 const CAPTURE = join(ROOT, 'pilot/fixtures/rainfall-graph-75-20261105T1312Z.json')
 
 type Reading = { timestamp: string; rf: number }
@@ -111,7 +111,7 @@ function strip(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Replay of 2 November 2026: the 60-minute rain total at gauge 0232901RF reaches the Lebat class at 15:00, before 89 sessions end at 15:30.">${parts.join('')}</svg>\n`
 }
 
-/** The problem chart: 5-minute rain from 14:00 to 16:00, with the 15:30 exit wave. */
+/** The problem chart: 5-minute rain from 14:00 to 16:00, with the 15:30 release wave. */
 function bars(): string {
   const W = 1200,
     H = 480,
@@ -144,21 +144,25 @@ function bars(): string {
   const wave = ms('15:30')
   parts.push(
     `<line x1="${x(wave)}" x2="${x(wave)}" y1="${top}" y2="${top + plotH}" stroke="${C.crimson}" stroke-width="2"/>`,
-    `<text x="${x(wave) + 12}" y="${top + 20}" fill="${C.crimson}" font-size="20" ${FONT}>15:30 exit wave</text>`,
+    `<text x="${x(wave) + 12}" y="${top + 20}" fill="${C.crimson}" font-size="20" ${FONT}>15:30 release wave</text>`,
     `<text x="${left}" y="${H - 8}" fill="${C.soft}" font-size="16" ${FONT}>Rain per 5 min, mm. JPS gauge 0232901RF, Sg. Kuyoh di LRT Bukit Jalil.</text>`
   )
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Replay of 2 November 2026: 63.0 mm of rain fell between 14:00 and 16:00 at gauge 0232901RF, across the 15:30 exit wave.">${parts.join('')}</svg>\n`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Replay of 2 November 2026: 63.0 mm of rain fell between 14:00 and 16:00 at gauge 0232901RF, across the 15:30 release wave.">${parts.join('')}</svg>\n`
 }
 
 // Inline each chart between its markers in index.html, so its text uses the deck's web fonts.
 const DECK = join(import.meta.dirname, '..', 'skyclause-pitch-deck.html')
 let html = readFileSync(DECK, 'utf8')
-for (const [name, svg] of [
-  ['bars-2nov', bars()],
-  ['strip-2nov', strip()]
+// The problem chart is required; the crossing strip is inlined only where a slide still holds its markers.
+for (const [name, svg, required] of [
+  ['bars-2nov', bars(), true],
+  ['strip-2nov', strip(), false]
 ] as const) {
   const marker = new RegExp(`(<!-- chart:${name} -->)[\\s\\S]*?(<!-- /chart:${name} -->)`)
-  if (!marker.test(html)) throw new Error(`the deck has no chart:${name} markers`)
+  if (!marker.test(html)) {
+    if (required) throw new Error(`the deck has no chart:${name} markers`)
+    continue
+  }
   html = html.replace(marker, `$1${svg.trim()}$2`)
 }
 writeFileSync(DECK, html)
