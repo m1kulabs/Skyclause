@@ -119,7 +119,7 @@ export function DeviceAlerts({
       {failed && <p role="alert">{t('alerts.pushError', {}, locale)}</p>}
       {(state === 'off' || state === 'stateError') && (
         <Button className={styles.action} disabled={busy} onClick={() => void enable()}>
-          {t(busy ? 'alerts.saving' : 'alerts.enable', {}, locale)}
+          {t(busy ? 'alerts.turningOn' : 'alerts.enable', {}, locale)}
         </Button>
       )}
       {(state === 'blocked' || state === 'stateError') && (

@@ -12,5 +12,6 @@
   "verifying": "Mengesahkan kunci laluan anda…",
   "not_fresh": "Sesi ini belum disahkan. Buka pautan dalam e-mel anda, kemudian teruskan di sini.",
   "error": "Identiti anda tidak dapat disahkan. Cuba lagi atau gunakan pautan e-mel.",
-  "passkey_error": "Kunci laluan tidak dapat disahkan. Cuba lagi atau gunakan pautan e-mel."
+  "passkey_error": "Kunci laluan tidak dapat disahkan. Cuba lagi atau gunakan pautan e-mel.",
+  "email_error": "Pautan e-mel tidak dapat dihantar. Tunggu sebentar dan cuba lagi, atau gunakan kunci laluan jika ada."
 }

@@ -1,28 +1,35 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
-import { formatDate, formatDateCompact, formatDateTime } from '@skyclause/i18n/format'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { formatDate, formatDateCompact, formatDateTime, formatList, formatNumber } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '#ui/empty'
 import { Input } from '#ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '#ui/select'
 import { Skeleton } from '#ui/skeleton'
 import { Switch } from '#ui/switch'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { ConfirmDialog } from '../settings/set-7/confirm-dialog'
+import { useUnsavedChangesGuard } from '../settings/set-7/use-unsaved-changes-guard'
 import {
   SettingsAside,
   SettingsError,
   SettingsField,
+  SettingsLoading,
   SettingsPart,
   SettingsParts,
   SettingsReadError,
+  SettingsRowMenu,
+  SettingsRowMenuItem,
   SettingsStatus,
-  SettingsSummaryLine
+  SettingsSummaryLine,
+  focusPartHeading
 } from '../settings/parts'
 import { apiFetch } from './operations'
 import {
   activityAge,
   errorMessageKey,
+  problemCode,
   roleIsLowering,
   roleOptions,
   type ManagedRole,
@@ -33,6 +40,9 @@ import { t, type Locale } from './i18n'
 import styles from './members.module.css'
 
 type Page<T> = { data: T[]; next_cursor: string | null }
+
+/** The most rows of a list on screen; a longer list pages. */
+const PAGE_SIZE = 50
 type ViewerRole = 'owner' | 'admin'
 type RoleChange = { member: Member; role: ManagedRole }
 
@@ -67,6 +77,15 @@ function signInName(method: string, locale: Locale): string {
   return known ? t(`members.method_names.${key}`, {}, locale) : method
 }
 
+function signInText(member: Member, locale: Locale): string {
+  return member.sign_in_methods.length
+    ? formatList(
+        member.sign_in_methods.map((method) => signInName(method, locale)),
+        locale
+      )
+    : t('members.no_methods', {}, locale)
+}
+
 function errorText(error: unknown, fallback: string, locale: Locale): string {
   return t(errorMessageKey(error, fallback), {}, locale)
 }
@@ -91,6 +110,13 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<ManagedRole>('approver')
   const [inviteError, setInviteError] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const emailField = useRef<HTMLInputElement>(null)
+  const [memberPage, setMemberPage] = useState(0)
+  const [invitePage, setInvitePage] = useState(0)
+  const [cancelTransferOpen, setCancelTransferOpen] = useState(false)
+  // An address typed and not yet sent is unsaved input.
+  useUnsavedChangesGuard(inviteEmail.trim().length > 0, locale)
   const [inviteBusy, setInviteBusy] = useState(false)
   const [roleChange, setRoleChange] = useState<RoleChange | null>(null)
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null)
@@ -184,6 +210,8 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
       await apiFetch('removeMember', { org, params: { org, id: member.id } })
       setMembers((previous) => previous.filter((row) => row.id !== member.id))
       setNotice(t('members.removed', { name: member.name }, locale))
+      // The row and its menu are gone: focus goes to the list's heading, not to the page.
+      focusPartHeading('members-table-heading')
     } catch (error) {
       rowProblem(member.id, errorText(error, 'members.member_remove_failed', locale))
     } finally {
@@ -193,11 +221,17 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
 
   async function createInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setInviteBusy(true)
+    const email = inviteEmail.trim()
     setInviteError('')
+    setEmailError('')
     setNotice('')
+    if (!email) {
+      setEmailError(t('members.email_required', {}, locale))
+      emailField.current?.focus()
+      return
+    }
+    setInviteBusy(true)
     try {
-      const email = inviteEmail.trim()
       const invite = await apiFetch('createInvitation', {
         org,
         params: { org },
@@ -207,7 +241,14 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
       setInviteEmail('')
       setNotice(t('members.invited', { email, role: roleName(inviteRole, locale) }, locale))
     } catch (error) {
-      setInviteError(errorText(error, 'members.invite_failed', locale))
+      // A role the account cannot grant belongs to the role field; anything else to the address.
+      const code = problemCode(error)
+      const message = errorText(error, 'members.invite_failed', locale)
+      if (code === 'role-not-grantable' || code === 'last-owner') setInviteError(message)
+      else {
+        setEmailError(message)
+        emailField.current?.focus()
+      }
     } finally {
       setInviteBusy(false)
     }
@@ -236,6 +277,7 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
       await apiFetch('revokeInvitation', { org, params: { org, id: invite.id } })
       setInvites((previous) => previous.filter((row) => row.id !== invite.id))
       setNotice(t('members.revoked', { email: invite.email }, locale))
+      focusPartHeading('pending-invites-heading')
     } catch (error) {
       rowProblem(invite.id, errorText(error, 'members.revoke_failed', locale))
     } finally {
@@ -287,16 +329,15 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
     role,
     count: members.filter((member) => member.role === role).length
   }))
-
-  const columns = (
-    <div className={styles.head} aria-hidden="true">
-      <span>{t('members.name', {}, locale)}</span>
-      <span>{t('members.role', {}, locale)}</span>
-      <span className={styles.headEnd}>{t('members.last_active', {}, locale)}</span>
-      <span>{t('members.malay_reader', {}, locale)}</span>
-      <span />
-    </div>
-  )
+  const memberRows = members.slice(memberPage * PAGE_SIZE, (memberPage + 1) * PAGE_SIZE)
+  const inviteRows = invites.slice(invitePage * PAGE_SIZE, (invitePage + 1) * PAGE_SIZE)
+  const countTitle = (key: 'count' | 'invites', count: number) =>
+    t(`members.${key}_${count === 1 ? 'one' : 'other'}`, { count: formatNumber(count, locale) }, locale)
+  // What went wrong on a row, named by whose row it is, shown where the list is rather than at the page's foot.
+  const problems = [
+    ...members.map((member) => ({ id: member.id, who: member.name })),
+    ...invites.map((invite) => ({ id: invite.id, who: invite.email }))
+  ].filter((entry) => rowProblems[entry.id])
 
   return (
     <div className={styles.panel} aria-busy={loading}>
@@ -306,12 +347,16 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
             {byRole
               .filter((entry) => entry.count > 0)
               .map((entry) =>
-                t('members.summary_role', { count: entry.count, role: roleName(entry.role, locale) }, locale)
+                t(
+                  'members.summary_role',
+                  { count: formatNumber(entry.count, locale), role: roleName(entry.role, locale) },
+                  locale
+                )
               )
               .join(' · ') || t('members.empty', {}, locale)}
           </SettingsSummaryLine>
           <SettingsSummaryLine label={t('members.invites_label', {}, locale)}>
-            {t('members.summary_invites', { count: invites.length }, locale)}
+            {t('members.summary_invites', { count: formatNumber(invites.length, locale) }, locale)}
           </SettingsSummaryLine>
         </SettingsAside>
       )}
@@ -327,11 +372,11 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
         ) : null}
 
         {loading && !failure ? (
-          <div className="grid gap-0.5" role="status" aria-label={t('members.loading', {}, locale)}>
+          <SettingsLoading locale={locale} className="grid gap-1">
             {Array.from({ length: 3 }, (_, index) => (
-              <Skeleton key={index} className="h-[68px] w-full rounded-md" />
+              <Skeleton key={index} className="h-11 w-full rounded-full" />
             ))}
-          </div>
+          </SettingsLoading>
         ) : null}
 
         {loaded && members.length === 0 ? (
@@ -343,191 +388,202 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
           </Empty>
         ) : null}
 
+        {/* The outcome of a row action, beside the list it came from. */}
+        {loaded && (notice || problems.length > 0) ? (
+          <div className="grid min-w-0 gap-2">
+            {notice ? <SettingsStatus>{notice}</SettingsStatus> : null}
+            {problems.map((entry) => (
+              <SettingsError key={entry.id}>{`${entry.who}: ${rowProblems[entry.id]}`}</SettingsError>
+            ))}
+          </div>
+        ) : null}
+
         {loaded && members.length > 0 ? (
-          <SettingsPart title={t('members.count', { count: members.length }, locale)} id="members-table-heading">
-            {columns}
-            <ul className={styles.list} aria-label={t('members.table_label', {}, locale)}>
-              {members.map((member) => {
-                const editable = viewerRole === 'owner' || member.role !== 'owner'
-                const rowBusy = activeAction === `member:${member.id}`
-                const selectId = `member-role-${member.id}`
-                return (
-                  <li key={member.id} className={styles.row} data-member-row>
-                    <div className={styles.identity}>
-                      <strong>{member.name}</strong>
-                      <span>{member.email}</span>
-                      <span>
-                        {member.sign_in_methods.length
-                          ? t(
-                              'members.signs_in_with',
-                              {
-                                methods: member.sign_in_methods.map((method) => signInName(method, locale)).join(', ')
-                              },
-                              locale
-                            )
-                          : t('members.no_methods', {}, locale)}
-                      </span>
-                    </div>
-                    <div className={styles.roleCell}>
-                      <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
-                        {t('members.role', {}, locale)}
-                      </span>
-                      {editable ? (
-                        <>
-                          <Select
-                            value={member.role}
-                            onValueChange={(value) => {
-                              if (!value || value === member.role) return
-                              const next = value as ManagedRole
-                              if (roleIsLowering(member.role as ManagedRole | 'owner', next))
-                                setRoleChange({ member, role: next })
-                              else void updateRole(member, next)
-                            }}
-                            disabled={rowBusy}
-                          >
-                            <SelectTrigger
-                              id={selectId}
-                              className="w-full"
-                              aria-label={t('members.role_for', { name: member.name }, locale)}
-                            >
-                              <SelectValue>{roleName(member.role, locale)}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {member.role === 'owner' && viewerRole === 'owner' && (
-                                  <SelectItem value="owner">{roleName('owner', locale)}</SelectItem>
-                                )}
-                                {roles.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {roleName(option, locale)}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                          {viewerRole === 'admin' && member.role === 'owner' && (
-                            <span className={styles.meta}>{t('members.owner_transfer_hint', {}, locale)}</span>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <span className={styles.roleWord}>{roleName(member.role, locale)}</span>
-                          <span className={styles.meta}>{t('members.owner_transfer_hint', {}, locale)}</span>
-                        </>
-                      )}
-                    </div>
-                    <div className={styles.active} data-numeric>
-                      <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
-                        {t('members.last_active', {}, locale)}
-                      </span>
-                      {member.last_active_at ? (
-                        <time dateTime={member.last_active_at} title={formatDateTime(member.last_active_at, locale)}>
-                          {activeWords(member.last_active_at, locale)}
-                        </time>
-                      ) : (
-                        <span>{activeWords(null, locale)}</span>
-                      )}
-                    </div>
-                    <div className={styles.switchCell}>
-                      <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
-                        {t('members.malay_reader', {}, locale)}
-                      </span>
-                      <Switch
-                        checked={member.reads_malay}
-                        aria-label={`${member.name}: ${t('members.malay_reader', {}, locale)}`}
-                        disabled={rowBusy}
-                        onCheckedChange={(checked) => void updateMalay(member, checked)}
-                      />
-                      <span className={styles.meta}>
-                        {member.reads_malay ? t('members.on', {}, locale) : t('members.off', {}, locale)}
-                      </span>
-                    </div>
-                    <div className={styles.actions}>
-                      {editable && (
-                        <Button
-                          variant="outline"
-                          disabled={rowBusy}
-                          aria-label={`${t('members.remove_member', {}, locale)}: ${member.name}`}
-                          onClick={() => setRemoveTarget(member)}
+          <SettingsPart title={countTitle('count', members.length)} id="members-table-heading">
+            <div role="region" className="min-w-0" aria-label={t('members.table_label', {}, locale)}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('members.name', {}, locale)}</TableHead>
+                    <TableHead className="lg:w-48 max-lg:hidden">{t('members.email', {}, locale)}</TableHead>
+                    <TableHead className="lg:w-36">{t('members.role', {}, locale)}</TableHead>
+                    <TableHead numeric className="lg:w-28">
+                      {t('members.last_active', {}, locale)}
+                    </TableHead>
+                    <TableHead className="lg:w-24">{t('members.malay_reader', {}, locale)}</TableHead>
+                    <TableHead className="lg:w-14">
+                      <span className="sr-only">{t('members.actions', {}, locale)}</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {memberRows.map((member) => {
+                    const editable = viewerRole === 'owner' || member.role !== 'owner'
+                    const rowBusy = activeAction === `member:${member.id}`
+                    return (
+                      <TableRow key={member.id} data-member-row>
+                        <TableCell truncate="26ch" phone="primary">
+                          <strong className="font-semibold">{member.name}</strong>
+                        </TableCell>
+                        <TableCell
+                          truncate="26ch"
+                          phone="meta"
+                          className="max-lg:hidden"
+                          title={`${member.email} · ${t('members.signs_in_with', { methods: signInText(member, locale) }, locale)}`}
                         >
-                          {t('members.remove', {}, locale)}
-                        </Button>
-                      )}
-                    </div>
-                    {rowProblems[member.id] ? (
-                      <SettingsError className={styles.problem}>{rowProblems[member.id]}</SettingsError>
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ul>
+                          {member.email}
+                        </TableCell>
+                        <TableCell phone="meta" label={t('members.role', {}, locale)}>
+                          {editable ? (
+                            <Select
+                              value={member.role}
+                              onValueChange={(value) => {
+                                if (!value || value === member.role) return
+                                const next = value as ManagedRole
+                                if (roleIsLowering(member.role as ManagedRole | 'owner', next))
+                                  setRoleChange({ member, role: next })
+                                else void updateRole(member, next)
+                              }}
+                              disabled={rowBusy}
+                            >
+                              <SelectTrigger
+                                id={`member-role-${member.id}`}
+                                className="w-full min-w-32"
+                                aria-label={t('members.role_for', { name: member.name }, locale)}
+                              >
+                                <SelectValue>{roleName(member.role, locale)}</SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {member.role === 'owner' && viewerRole === 'owner' && (
+                                    <SelectItem value="owner">{roleName('owner', locale)}</SelectItem>
+                                  )}
+                                  {roles.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {roleName(option, locale)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className={styles.roleWord} title={t('members.owner_transfer_hint', {}, locale)}>
+                              {roleName(member.role, locale)}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell numeric phone="meta" label={t('members.last_active', {}, locale)}>
+                          {member.last_active_at ? (
+                            <time
+                              dateTime={member.last_active_at}
+                              title={formatDateTime(member.last_active_at, locale)}
+                            >
+                              {activeWords(member.last_active_at, locale)}
+                            </time>
+                          ) : (
+                            <span>{activeWords(null, locale)}</span>
+                          )}
+                        </TableCell>
+                        <TableCell phone="meta" label={t('members.malay_reader', {}, locale)}>
+                          <span className={styles.switchCell}>
+                            <Switch
+                              checked={member.reads_malay}
+                              aria-label={t('members.malay_reader_for', { name: member.name }, locale)}
+                              disabled={rowBusy}
+                              onCheckedChange={(checked) => void updateMalay(member, checked)}
+                            />
+                            <span className={styles.meta}>
+                              {member.reads_malay ? t('members.on', {}, locale) : t('members.off', {}, locale)}
+                            </span>
+                          </span>
+                        </TableCell>
+                        <TableCell phone="end" className="text-right">
+                          {editable ? (
+                            <SettingsRowMenu
+                              label={t('members.more_actions', { name: member.name }, locale)}
+                              disabled={rowBusy}
+                            >
+                              <SettingsRowMenuItem destructive onSelect={() => setRemoveTarget(member)}>
+                                {t('members.remove_member', {}, locale)}
+                              </SettingsRowMenuItem>
+                            </SettingsRowMenu>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <Pager page={memberPage} total={members.length} onPage={setMemberPage} locale={locale} />
+            {viewerRole === 'admin' && members.some((member) => member.role === 'owner') ? (
+              <p className="type-small m-0 text-muted-foreground">{t('members.owner_transfer_hint', {}, locale)}</p>
+            ) : null}
           </SettingsPart>
         ) : null}
 
         {loaded ? (
-          <SettingsPart title={t('members.invites', { count: invites.length }, locale)} id="pending-invites-heading">
+          <SettingsPart title={countTitle('invites', invites.length)} id="pending-invites-heading">
             {invites.length === 0 ? (
               <p className="type-body text-muted-foreground">{t('members.invites_empty', {}, locale)}</p>
             ) : (
               <>
-                <div className={`${styles.head} ${styles.inviteHead}`} aria-hidden="true">
-                  <span>{t('members.email', {}, locale)}</span>
-                  <span>{t('members.sent', {}, locale)}</span>
-                  <span className={styles.headEnd}>{t('members.expires', {}, locale)}</span>
-                  <span />
+                <div role="region" className="min-w-0" aria-label={countTitle('invites', invites.length)}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('members.email', {}, locale)}</TableHead>
+                        <TableHead className="lg:w-40">{t('members.role', {}, locale)}</TableHead>
+                        <TableHead className="lg:w-56 max-lg:hidden">{t('members.sent', {}, locale)}</TableHead>
+                        <TableHead numeric className="lg:w-36">
+                          {t('members.expires', {}, locale)}
+                        </TableHead>
+                        <TableHead className="lg:w-14">
+                          <span className="sr-only">{t('members.actions', {}, locale)}</span>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {inviteRows.map((invite) => {
+                        const rowBusy = activeAction === `invite:${invite.id}`
+                        return (
+                          <TableRow key={invite.id} data-invite-row>
+                            <TableCell truncate="34ch" phone="primary">
+                              <strong className="font-semibold">{invite.email}</strong>
+                            </TableCell>
+                            <TableCell phone="meta" label={t('members.role', {}, locale)}>
+                              {roleName(invite.role, locale)}
+                            </TableCell>
+                            <TableCell phone="meta" label={t('members.sent', {}, locale)} className="max-lg:hidden">
+                              {invite.sent_at ? (
+                                <time dateTime={invite.sent_at}>{formatDateTime(invite.sent_at, locale)}</time>
+                              ) : (
+                                t('members.sent_unavailable', {}, locale)
+                              )}
+                            </TableCell>
+                            <TableCell numeric phone="meta" label={t('members.expires', {}, locale)}>
+                              <time dateTime={invite.expires_at}>{formatDateCompact(invite.expires_at, locale)}</time>
+                            </TableCell>
+                            <TableCell phone="end" className="text-right">
+                              <SettingsRowMenu
+                                label={t('members.more_actions', { name: invite.email }, locale)}
+                                disabled={rowBusy}
+                              >
+                                <SettingsRowMenuItem onSelect={() => void resendInvite(invite)}>
+                                  {t('members.resend', {}, locale)}
+                                </SettingsRowMenuItem>
+                                <SettingsRowMenuItem destructive onSelect={() => setRevokeTarget(invite)}>
+                                  {t('members.revoke', {}, locale)}
+                                </SettingsRowMenuItem>
+                              </SettingsRowMenu>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
-                <ul className={styles.list} aria-label={t('members.invites', { count: invites.length }, locale)}>
-                  {invites.map((invite) => {
-                    const rowBusy = activeAction === `invite:${invite.id}`
-                    return (
-                      <li key={invite.id} className={`${styles.row} ${styles.inviteRow}`} data-invite-row>
-                        <div className={styles.identity}>
-                          <strong>{invite.email}</strong>
-                          <span>{t('members.invited_as', { role: roleName(invite.role, locale) }, locale)}</span>
-                        </div>
-                        <div className={styles.roleCell}>
-                          <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
-                            {t('members.sent', {}, locale)}
-                          </span>
-                          <span className={styles.roleWord}>
-                            {invite.sent_at ? (
-                              <time dateTime={invite.sent_at}>{formatDateTime(invite.sent_at, locale)}</time>
-                            ) : (
-                              t('members.sent_unavailable', {}, locale)
-                            )}
-                          </span>
-                        </div>
-                        <div className={styles.active} data-numeric>
-                          <span className={`${styles.cellLabel} sr-only @max-[599px]:not-sr-only`}>
-                            {t('members.expires', {}, locale)}
-                          </span>
-                          <time dateTime={invite.expires_at}>{formatDateCompact(invite.expires_at, locale)}</time>
-                        </div>
-                        <div className={styles.actions}>
-                          <Button
-                            variant="outline"
-                            disabled={rowBusy}
-                            aria-label={t('members.resend_named', { email: invite.email }, locale)}
-                            onClick={() => void resendInvite(invite)}
-                          >
-                            {rowBusy ? t('members.resending', {}, locale) : t('members.resend', {}, locale)}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            disabled={rowBusy}
-                            aria-label={t('members.revoke_named', { email: invite.email }, locale)}
-                            onClick={() => setRevokeTarget(invite)}
-                          >
-                            {t('members.revoke', {}, locale)}
-                          </Button>
-                        </div>
-                        {rowProblems[invite.id] ? (
-                          <SettingsError className={styles.problem}>{rowProblems[invite.id]}</SettingsError>
-                        ) : null}
-                      </li>
-                    )
-                  })}
-                </ul>
+                <Pager page={invitePage} total={invites.length} onPage={setInvitePage} locale={locale} />
               </>
             )}
           </SettingsPart>
@@ -535,15 +591,17 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
 
         {loaded ? (
           <SettingsPart title={t('members.invite_form', {}, locale)} id="invite-form-heading">
-            <form className={styles.form} onSubmit={(event) => void createInvite(event)}>
+            <form className={styles.form} noValidate onSubmit={(event) => void createInvite(event)}>
               <div className={styles.fields}>
                 <SettingsField
                   label={t('members.invite_email', {}, locale)}
                   hint={t('members.invite_hint', {}, locale)}
+                  error={emailError || undefined}
                 >
                   {(aria) => (
                     <Input
                       {...aria}
+                      ref={emailField}
                       name="email"
                       type="email"
                       inputMode="email"
@@ -584,10 +642,9 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
                 </SettingsField>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={inviteBusy || !inviteEmail.trim()}>
+                <Button type="submit" disabled={inviteBusy}>
                   {inviteBusy ? t('members.sending_invite', {}, locale) : t('members.send_invite', {}, locale)}
                 </Button>
-                {notice ? <SettingsStatus>{notice}</SettingsStatus> : null}
               </div>
             </form>
           </SettingsPart>
@@ -599,7 +656,11 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
             {pendingTransfer && transferMember ? (
               <div className={styles.transferRow}>
                 <p>{t('members.transfer_pending', { name: transferMember.name }, locale)}</p>
-                <Button variant="outline" disabled={activeAction === 'transfer'} onClick={() => void cancelTransfer()}>
+                <Button
+                  variant="outline"
+                  disabled={activeAction === 'transfer'}
+                  onClick={() => setCancelTransferOpen(true)}
+                >
                   {activeAction === 'transfer'
                     ? t('members.transfer_cancelling', {}, locale)
                     : t('members.transfer_cancel', {}, locale)}
@@ -698,13 +759,65 @@ export function MembersPanel({ org, viewerRole, locale, accountId }: MembersPane
           open
           onOpenChange={(open) => !open && setRevokeTarget(null)}
           objectName={revokeTarget.email}
-          title={`${t('members.revoke_invite', {}, locale)}: “${revokeTarget.email}”?`}
+          title={t('members.revoke_title', { name: `“${revokeTarget.email}”` }, locale)}
           description={t('members.revoke_description', { email: revokeTarget.email }, locale)}
           confirmLabel={t('members.revoke_invite', {}, locale)}
           locale={locale}
           onConfirm={() => revokeInvite(revokeTarget)}
         />
       )}
+      {cancelTransferOpen && transferMember && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setCancelTransferOpen(false)}
+          objectName={transferMember.name}
+          title={t('members.transfer_cancel_title', { name: `“${transferMember.name}”` }, locale)}
+          description={t('members.transfer_cancel_description', { name: transferMember.name }, locale)}
+          confirmLabel={t('members.transfer_cancel', {}, locale)}
+          locale={locale}
+          onConfirm={() => cancelTransfer()}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Previous and next page of a list that runs past one page; a control with nowhere to go is not drawn. */
+function Pager({
+  page,
+  total,
+  onPage,
+  locale
+}: {
+  page: number
+  total: number
+  onPage: (page: number) => void
+  locale: Locale
+}) {
+  if (total <= PAGE_SIZE) return null
+  const from = page * PAGE_SIZE + 1
+  const to = Math.min(total, (page + 1) * PAGE_SIZE)
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="type-small m-0 text-muted-foreground" data-numeric>
+        {t(
+          'members.range',
+          { from: formatNumber(from, locale), to: formatNumber(to, locale), total: formatNumber(total, locale) },
+          locale
+        )}
+      </p>
+      <div className="flex gap-2">
+        {page > 0 ? (
+          <Button variant="outline" onClick={() => onPage(page - 1)}>
+            {t('members.previous_page', {}, locale)}
+          </Button>
+        ) : null}
+        {to < total ? (
+          <Button variant="outline" onClick={() => onPage(page + 1)}>
+            {t('members.next_page', {}, locale)}
+          </Button>
+        ) : null}
+      </div>
     </div>
   )
 }

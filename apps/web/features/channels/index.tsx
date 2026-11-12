@@ -3,9 +3,10 @@
 import '../subscribe/catalogue'
 import '../subscribers/catalogue'
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import type { Channel } from '@skyclause/contracts'
 import { Button } from '#ui/button'
+import { Label } from '#ui/label'
 import { Skeleton } from '#ui/skeleton'
 import { Switch } from '#ui/switch'
 import { t } from './catalogue'
@@ -28,9 +29,8 @@ import {
 const readPreview = (id: string) => apiFetch('previewChannels', { params: { id } })
 type Preview = Awaited<ReturnType<typeof readPreview>>
 
-export function Channels() {
+export function Channels({ locale = 'en' }: { locale?: 'en' | 'ms' }) {
   const { org, project } = useParams<{ org: string; project: string }>()
-  const locale = useSearchParams().get('lang') === 'ms' ? 'ms' : 'en'
   const [projectId, setProjectId] = useState<string>()
   const [channels, setChannels] = useState<Channel[]>()
   const [preview, setPreview] = useState<Preview>()
@@ -145,7 +145,9 @@ export function Channels() {
                 return (
                   <SettingsItem key={channel.channel} data-channel={channel.channel}>
                     <div className="grid min-w-0 flex-1 gap-1">
-                      <span className="type-card-title">{name}</span>
+                      <Label htmlFor={`channel-${channel.channel}`} className="type-card-title">
+                        {name}
+                      </Label>
                       <p className="type-body">
                         <StatusMark
                           state={channel.enabled ? 'fresh' : 'off_hours'}
@@ -159,6 +161,7 @@ export function Channels() {
                       </p>
                     </div>
                     <Switch
+                      id={`channel-${channel.channel}`}
                       aria-label={t('channels.toggle', { channel: name }, locale)}
                       checked={channel.enabled}
                       disabled={busy}
@@ -187,9 +190,7 @@ export function Channels() {
                   </p>
                 ) : (
                   <>
-                    <p className="type-body text-muted-foreground">
-                      {t('channels.source', { id: preview.call_id }, locale)}
-                    </p>
+                    <p className="type-body text-muted-foreground">{t('channels.source', {}, locale)}</p>
                     {!preview.previews.length && <p className="type-body">{t('channels.no_renderings', {}, locale)}</p>}
                     {preview.previews.map((notice, index) => (
                       <article key={index} className="grid min-w-0 gap-2 rounded-md bg-raised p-4">

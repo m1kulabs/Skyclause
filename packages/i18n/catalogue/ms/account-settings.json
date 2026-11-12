@@ -10,9 +10,11 @@
     "save": "Simpan perubahan",
     "saving": "Menyimpan…",
     "saved": "Nama disimpan.",
-    "saveFailed": "Nama anda tidak dapat dikemas kini.",
+    "saveFailed": "Nama anda tidak dapat dikemas kini. Cuba lagi.",
     "summaryName": "Nama sekarang",
-    "summaryEmail": "E-mel log masuk"
+    "summaryEmail": "E-mel log masuk",
+    "nameRequired": "Masukkan nama.",
+    "unchanged": "Itu sudah nama anda."
   },
   "appearance": {
     "theme": "Tema",
@@ -74,7 +76,6 @@
     "off": "Mati",
     "linked": "Dipautkan",
     "notLinked": "Tidak dipautkan",
-    "summaryMethods": "{passkeys} kunci laluan · pautan ajaib {magic} · Google {google}",
     "summarySessions": "{count} log masuk",
     "passkeys": "Kunci laluan",
     "noPasskeys": "Tiada kunci laluan didaftarkan.",
@@ -124,6 +125,13 @@
     "confirmDescription": "Perubahan ini berkuat kuasa serta-merta.",
     "addedOn": "Ditambah {date}",
     "createdOn": "Dicipta {date}",
-    "lastActiveOn": "Aktif terakhir {date}"
+    "lastActiveOn": "Aktif terakhir {date}",
+    "summaryMethods_one": "1 kunci laluan · pautan ajaib {magic} · Google {google}",
+    "summaryMethods_other": "{passkeys} kunci laluan · pautan ajaib {magic} · Google {google}",
+    "passkeyNameRequired": "Masukkan nama untuk kunci laluan.",
+    "addingPasskey": "Menambah kunci laluan…",
+    "nameLimit": "Sehingga {limit} aksara.",
+    "unlinkNamed": "Nyahpaut {name}",
+    "signOutNamed": "Log keluar daripada {name}"
   }
 }

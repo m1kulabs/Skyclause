@@ -60,3 +60,21 @@ test('the frame is written in Malay on request', () => {
   expect(markup).toContain('Tetapan akaun')
   expect(markup).toContain('Profil')
 })
+
+test('a wide section leaves the two columns: its title above it and the panel across the whole column', () => {
+  const split = renderToStaticMarkup(
+    <SettingsFrame scope="organisation" section="audit" principal={session('admin')} org="org-test">
+      <p />
+    </SettingsFrame>
+  )
+  const wide = renderToStaticMarkup(
+    <SettingsFrame scope="organisation" section="audit" principal={session('admin')} org="org-test" wide>
+      <p />
+    </SettingsFrame>
+  )
+  expect(split).not.toContain('data-wide')
+  expect(wide).toContain('data-wide')
+  // The label, the aside and the panel are still all there, in the same order: only the layout changes.
+  expect(wide.indexOf('data-settings-label')).toBeLessThan(wide.indexOf('data-settings-panel'))
+  expect(wide.match(/<h2\b/g)).toHaveLength(1)
+})

@@ -1,64 +1,12 @@
-/* The page lives in the shell's column: no width, padding or page-level scroll rules of its own. */
+/* The page lives in the shell's column: no width, padding or page-level scroll rules of its own. The tool list is the
+   shared table (`.connect-tools` is only its hook). */
 .connect-page {
   overflow-wrap: anywhere;
-}
-
-.connect-tools {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 8px;
-  text-align: left;
-}
-.connect-tools thead th {
-  padding: 0 16px 4px 0;
-  color: var(--muted-foreground);
-  font-weight: 400;
-  font-size: 13px;
-}
-.connect-tools tbody th,
-.connect-tools tbody td {
-  padding: 12px 16px 12px 0;
-  vertical-align: top;
-  background: var(--card);
-}
-.connect-tools tbody th {
-  width: 30%;
-  padding-left: 16px;
-  border-radius: 16px 0 0 16px;
-  font-weight: 600;
-}
-.connect-tools tbody td:last-child {
-  width: 20%;
-  border-radius: 0 16px 16px 0;
 }
 
 @media (max-width: 640px) {
   .connect-targets {
     border-radius: 16px;
     flex-direction: row;
-  }
-  .connect-tools,
-  .connect-tools tbody,
-  .connect-tools tr {
-    display: block;
-  }
-  .connect-tools tr {
-    margin-bottom: 8px;
-    padding: 12px 16px;
-    border-radius: 16px;
-    background: var(--card);
-  }
-  .connect-tools tbody th,
-  .connect-tools tbody td,
-  .connect-tools tbody td:last-child {
-    display: block;
-    width: 100%;
-    padding: 2px 0;
-    border-radius: 0;
-    background: transparent;
-  }
-  .connect-tools tbody th {
-    padding-left: 0;
-    width: 100%;
   }
 }

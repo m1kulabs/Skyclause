@@ -1,7 +1,8 @@
 import { t } from '@skyclause/i18n'
+import { formatNumber } from '@skyclause/i18n/format'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#ui/table'
 import { SettingsParts } from '../settings/parts'
 import '../settings/catalogue'
-import styles from './panel.module.css'
 
 export interface BillingOrganisation {
   id: string
@@ -18,13 +19,17 @@ export default function BillingPanel({
 }) {
   const plan = organization?.plan ?? ''
   const plans = [
-    { key: 'commons', price: 'commonsPrice', availability: 'now' },
-    { key: 'community', price: 'communityPrice', availability: 'now' },
-    { key: 'team', price: 'teamPrice', availability: 'fromP2' },
-    { key: 'campus', price: 'campusPrice', availability: 'afterGa' }
+    { key: 'commons', price: 'commonsPrice', amount: null, availability: 'now' },
+    { key: 'community', price: 'communityPrice', amount: null, availability: 'now' },
+    { key: 'team', price: 'teamPrice', amount: 49, availability: 'fromP2' },
+    { key: 'campus', price: 'campusPrice', amount: 900, availability: 'afterGa' }
   ] as const
 
-  const cell = (key: string): string => t(`settings.billing.${key}`, {}, locale)
+  const cell = (key: string, vars: Record<string, string | number> = {}): string =>
+    t(`settings.billing.${key}`, vars, locale)
+  // The prices are Malaysian ringgit in the reader's own format, not text typed into the catalogue.
+  const ringgit = (amount: number) =>
+    formatNumber(amount, locale, { style: 'currency', currency: 'MYR', maximumFractionDigits: 0 })
 
   return (
     <SettingsParts className="gap-6">
@@ -42,29 +47,31 @@ export default function BillingPanel({
         <p className="type-body text-muted-foreground">{cell('betaNotice')}</p>
       </section>
 
-      <table aria-label={cell('tableLabel')} className={styles.table}>
-        <thead className="sr-only sm:not-sr-only">
-          <tr>
-            <th scope="col">{cell('planColumn')}</th>
-            <th scope="col">{cell('priceColumn')}</th>
-            <th scope="col">{cell('availabilityColumn')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {plans.map(({ key, price, availability }) => (
-            <tr key={key} aria-current={key === plan ? 'true' : undefined}>
-              <th scope="row">
+      <Table aria-label={cell('tableLabel')}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{cell('planColumn')}</TableHead>
+            <TableHead>{cell('priceColumn')}</TableHead>
+            <TableHead>{cell('availabilityColumn')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {plans.map(({ key, price, amount, availability }) => (
+            <TableRow key={key} selected={key === plan}>
+              <TableCell className="font-medium">
                 {cell(key)}
-                {key === plan ? <span className={styles.current}>{cell('yourPlan')}</span> : null}
-              </th>
-              <td data-label={cell('priceColumn')}>
-                <p data-price>{cell(price)}</p>
-              </td>
-              <td data-label={cell('availabilityColumn')}>{cell(availability)}</td>
-            </tr>
+                {key === plan ? <span className="type-small block font-normal">{cell('yourPlan')}</span> : null}
+              </TableCell>
+              <TableCell className="whitespace-normal" phone="meta" label={cell('priceColumn')}>
+                <p data-price>{cell(price, amount === null ? {} : { price: ringgit(amount) })}</p>
+              </TableCell>
+              <TableCell phone="meta" label={cell('availabilityColumn')}>
+                {cell(availability)}
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </SettingsParts>
   )
 }

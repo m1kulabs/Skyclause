@@ -12,5 +12,6 @@
   "verifying": "Verifying your passkey…",
   "not_fresh": "This session has not been confirmed yet. Open the link in your email, then continue here.",
   "error": "We couldn’t confirm your identity. Try again or use an email link.",
-  "passkey_error": "The passkey could not be verified. Try again or use an email link."
+  "passkey_error": "The passkey could not be verified. Try again or use an email link.",
+  "email_error": "The email link could not be sent. Wait a moment and try again, or use a passkey if you have one."
 }

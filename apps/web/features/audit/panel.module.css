@@ -1,67 +1,10 @@
-/* The audit log as a ledger: one record a row, time first, then who, what and on what. Rows are raised tiles; a record
-   that does not match the filters now set is dimmed (set in the muted ink, never faded) until the answer lands. */
+/* The audit log's filters in one wrapping row of fields, and the pager under its table. The records themselves are the
+   shared table; a record that does not match the filters now set is dimmed by the table (muted ink, never faded). */
 .filters {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 16px;
-}
-
-.ledger {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.head,
-.row {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: 150px minmax(0, 0.9fr) minmax(0, 1.3fr) minmax(0, 1.5fr);
-  align-items: start;
-  gap: 4px 16px;
-  padding: 10px 16px;
-}
-
-.head {
-  padding-block: 0 4px;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.row {
-  min-height: 56px;
-  border-radius: 10px;
-  background: var(--raised);
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.row[data-dim] {
-  color: var(--muted-foreground);
-}
-
-.cell {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.sub {
-  display: block;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.label {
-  display: block;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  line-height: 18px;
 }
 
 .pager {
@@ -75,24 +18,4 @@
   margin-inline-end: auto;
   color: var(--muted-foreground);
   font-size: 13px;
-}
-
-@media (width < 640px) {
-  .head {
-    display: none;
-  }
-
-  .row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 4px 12px;
-    padding: 10px 12px;
-  }
-
-  .row .cell:first-child {
-    grid-column: 1 / -1;
-  }
-
-  .row .cell:last-child {
-    grid-column: 1 / -1;
-  }
 }

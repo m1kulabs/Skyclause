@@ -37,33 +37,6 @@
   font-weight: 500;
 }
 
-.templates {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.templateRow {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  border-radius: 10px;
-  background: var(--raised);
-  padding: 10px 16px;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.templateRow strong {
-  font-weight: 600;
-}
-
-.templateRow span {
-  color: var(--muted-foreground);
-}
-
 .week {
   min-width: 0;
 }
@@ -168,9 +141,9 @@
   align-items: center;
   justify-content: center;
   container-type: inline-size;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--ink-muted);
   border-radius: 9999px;
-  background: transparent;
+  background: var(--overlay);
   color: var(--ink);
   font-size: 13px;
   font-weight: 500;
@@ -179,9 +152,11 @@
   overflow: hidden;
 }
 
+/* Your own shifts are a data mark like the rest (tone and edge, never the primary button's ink fill): the edge is ink and
+   the label says "You". */
 .capsule[data-own] {
-  background: var(--ink);
-  color: var(--ground);
+  border-color: var(--ink);
+  font-weight: 700;
 }
 
 .capsule[data-gap] {
@@ -267,6 +242,30 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-inline-start: auto;
+}
+
+/* The week's hour axis is sticky under the bar: a focused menu button clears it as well. */
+.shiftActions button {
+  scroll-margin-top: 48px;
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.removed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .empty {

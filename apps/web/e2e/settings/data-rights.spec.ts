@@ -12,7 +12,6 @@ const expiresAt = '2026-11-18T00:00:00Z'
 const uuidV7 = (suffix: number) => `018f47a3-b2c1-7c00-8000-${suffix.toString(16).padStart(12, '0')}`
 const projectId = uuidV7(1)
 const actorId = uuidV7(2)
-const filterTargetId = uuidV7(3)
 const ids = {
   readyExport: uuidV7(10),
   expiredExport: uuidV7(11),
@@ -66,6 +65,50 @@ function auditEntry(index: number) {
   }
 }
 
+const auditProject = {
+  id: projectId,
+  org_id: uuidV7(900),
+  name: 'Bukit Jalil',
+  slug: 'bukit-jalil',
+  time_zone: 'Asia/Kuala_Lumpur',
+  public: false,
+  semester_ends_on: null,
+  site_name: 'APU',
+  site_lat: 3.0559,
+  site_lon: 101.6997,
+  archived_at: null,
+  camera_day_start: null,
+  camera_day_end: null,
+  warning_area_terms: [],
+  packs: [{ pack: 'sky', enabled: true, sheet_id: uuidV7(901), schedule: null, sla_s: 600 }]
+}
+
+/** The people and projects the audit filters choose from. */
+async function stubAuditDirectory(page: Page) {
+  await stubApi(
+    page,
+    'listMembers',
+    {
+      data: [
+        {
+          id: uuidV7(902),
+          org_id: uuidV7(900),
+          account_id: actorId,
+          role: 'admin',
+          reads_malay: false,
+          name: 'Aisha Rahman',
+          email: 'aisha@example.test',
+          last_active_at: null,
+          sign_in_methods: ['email']
+        }
+      ],
+      next_cursor: null
+    },
+    { registry: auditOperations }
+  )
+  await stubApi(page, 'listProjects', { data: [auditProject], next_cursor: null }, { registry: auditOperations })
+}
+
 function organisationExport(id: string, status: 'queued' | 'running' | 'ready' | 'failed' | 'expired') {
   return {
     id,
@@ -96,30 +139,36 @@ test('audit filters stay in the URL and CSV export sends the same filters', asyn
   await asPage(page, principal())
   await stubApi(page, 'listAuditEntries', { data: [], next_cursor: null }, { registry: auditOperations })
   await stubApi(page, 'exportAuditLog', 'id,action\n', { registry: auditOperations })
+  await stubAuditDirectory(page)
   await page.goto('/test-org/settings/audit')
   const panel = settingsPanel(page)
   const filters = panel.getByRole('group', { name: 'Audit filters' })
-  await expect(panel.getByText('No audit entries yet (n=0)')).toBeVisible()
+  await expect(panel.getByText('No audit entries yet.')).toBeVisible()
 
-  for (const name of ['actor_id', 'target_type', 'target_id', 'project_id', 'from', 'to']) {
+  for (const name of ['from', 'to']) {
     await expect(filters.locator(`input[name="${name}"]`)).toHaveAttribute('autocomplete', 'off')
   }
-  await expect(filters.locator('select[name="action"]')).toHaveAttribute('autocomplete', 'off')
+  // A person, an action, a project and a kind of object are chosen from lists: no field takes a typed identifier.
+  for (const name of ['actor_id', 'action', 'project_id', 'target_type']) {
+    await expect(filters.locator(`select[name="${name}"]`)).toHaveAttribute('autocomplete', 'off')
+  }
+  await expect(
+    filters.locator('input[name="actor_id"], input[name="target_id"], input[name="project_id"]')
+  ).toHaveCount(0)
 
-  await filters.getByLabel('Actor ID', { exact: true }).fill(actorId)
+  await filters.getByLabel('Person', { exact: true }).selectOption({ label: 'Aisha Rahman' })
   await filters.getByLabel('Action', { exact: true }).selectOption(auditAction)
-  await filters.getByLabel('Target type', { exact: true }).fill('membership')
-  await filters.getByLabel('Target ID', { exact: true }).fill(filterTargetId)
-  await filters.getByLabel('Project ID', { exact: true }).fill(projectId)
+  await filters.getByLabel('Object type', { exact: true }).selectOption('member')
+  await filters.getByLabel('Project', { exact: true }).selectOption({ label: 'Bukit Jalil' })
   await filters.getByLabel('From', { exact: true }).fill('2026-11-01')
   await filters.getByLabel('To', { exact: true }).fill('2026-11-08')
   await expect(page).toHaveURL(new RegExp(`actor_id=${actorId}`))
   await page.reload()
 
-  await expect(filters.getByLabel('Actor ID', { exact: true })).toHaveValue(actorId)
+  await expect(filters.getByLabel('Person', { exact: true })).toHaveValue(actorId)
   await expect(filters.getByLabel('Action', { exact: true })).toHaveValue(auditAction)
-  await expect(filters.getByLabel('Target ID', { exact: true })).toHaveValue(filterTargetId)
-  await expect(filters.getByLabel('Project ID', { exact: true })).toHaveValue(projectId)
+  await expect(filters.getByLabel('Object type', { exact: true })).toHaveValue('member')
+  await expect(filters.getByLabel('Project', { exact: true })).toHaveValue(projectId)
   await expect(filters.getByLabel('From', { exact: true })).toHaveValue('2026-11-01')
   await expect(filters.getByLabel('To', { exact: true })).toHaveValue('2026-11-08')
 
@@ -130,8 +179,8 @@ test('audit filters stay in the URL and CSV export sends the same filters', asyn
   const query = new URL(request.url()).searchParams
   expect(query.get('actor_id')).toBe(actorId)
   expect(query.get('action')).toBe(auditAction)
-  expect(query.get('target_type')).toBe('membership')
-  expect(query.get('target_id')).toBe(filterTargetId)
+  expect(query.get('target_type')).toBe('member')
+  expect(query.get('target_id')).toBeNull()
   expect(query.get('project_id')).toBe(projectId)
   expect(query.get('from')).toBe('2026-11-01T00:00:00+08:00')
   expect(query.get('to')).toBe('2026-11-08T23:59:59.999+08:00')
@@ -142,6 +191,7 @@ test('audit filters stay in the URL and CSV export sends the same filters', asyn
 test('audit pages by cursor, never rendering more than 50 records, as two-line rows on mobile', async ({ page }) => {
   await asPage(page, principal())
   await page.setViewportSize({ width: 375, height: 812 })
+  await stubAuditDirectory(page)
   await stubApi(
     page,
     'listAuditEntries',
@@ -159,29 +209,25 @@ test('audit pages by cursor, never rendering more than 50 records, as two-line r
   const rows = panel.locator('[data-audit-row]')
   const entries = panel.getByRole('region', { name: 'Audit entries' })
   await expect(rows).toHaveCount(50)
-  await expect(panel.getByText('Records 1–50')).toBeVisible()
-  await expect(panel.getByRole('button', { name: 'Newer' })).toBeDisabled()
-  await panel.getByRole('button', { name: 'Older' }).click()
+  await expect(panel.getByText('Records 1–50').last()).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Newer records' })).toBeDisabled()
+  await panel.getByRole('button', { name: 'Older records' }).click()
   // The next page replaces the first: the ledger never holds more than one page.
   await expect(rows).toHaveCount(30)
-  await expect(panel.getByText('Records 51–80')).toBeVisible()
-  await expect(panel.getByRole('button', { name: 'Older' })).toBeDisabled()
-  await expect(entries).toContainText('Aisha Rahman')
-  await expect(entries).toContainText('admin')
-  await expect(entries).toContainText(auditAction)
-  await expect(entries).toContainText(`membership · ${uuidV7(350)}`)
-  await expect(entries).toContainText('10 November 2026, 10:00 MYT')
-  await expect
-    .poll(() =>
-      rows.first().evaluate((row) => {
-        const style = getComputedStyle(row)
-        return style.gridTemplateColumns.split(' ').length
-      })
-    )
-    .toBe(2)
-  await panel.getByRole('button', { name: 'Newer' }).click()
+  await expect(panel.getByText('Records 51–80').last()).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Older records' })).toBeDisabled()
+  await expect(entries).toContainText('Aisha Rahman · Admin')
+  // The action reads as a sentence and the object as its kind: neither shows a slug or an identifier.
+  await expect(entries).toContainText('Approved a bundle')
+  await expect(entries).not.toContainText(auditAction)
+  await expect(entries).not.toContainText(uuidV7(350))
+  await expect(entries).toContainText('Tue, 10 Nov 2026, 10:00 MYT')
+  // On a phone each record is a list item of two short lines.
+  await expect.poll(() => rows.first().evaluate((row) => getComputedStyle(row).display)).toBe('flex')
+  await expect.poll(() => rows.first().evaluate((row) => row.getBoundingClientRect().height)).toBeLessThan(96)
+  await panel.getByRole('button', { name: 'Newer records' }).click()
   await expect(rows).toHaveCount(50)
-  await expect(panel.getByText('Records 1–50')).toBeVisible()
+  await expect(panel.getByText('Records 1–50').last()).toBeVisible()
 })
 
 test('organisation data shows API export states, retention policy and a cancellable grace period', async ({ page }) => {
@@ -222,10 +268,9 @@ test('organisation data shows API export states, retention policy and a cancella
 
   await expect(panel.getByText('Ready within 24 hours').first()).toBeVisible()
   await expect(panel.getByText('Link expires 18 November 2026')).toBeVisible()
-  await expect(panel.getByRole('link', { name: `Download export ${ids.readyExport}` })).toHaveAttribute(
-    'href',
-    `/api/exports/${ids.readyExport}/download`
-  )
+  // A download is named by when it was requested, never by its internal id.
+  const download = panel.getByRole('link', { name: 'Download export from 10 November 2026, 10:00 MYT' })
+  await expect(download).toHaveAttribute('href', `/api/exports/${ids.readyExport}/download`)
   await expect(panel.getByText('This download link has expired. Request a new export.')).toBeVisible()
   await expect(exports.locator('[data-export-row]')).toHaveCount(5)
   await expect(exports).toContainText('Queued')
@@ -269,7 +314,9 @@ test('organisation data shows API export states, retention policy and a cancella
   }
 
   await panel.getByRole('button', { name: 'Request export' }).click()
-  await expect(panel.getByRole('link', { name: `Download export ${ids.newExport}` })).toBeVisible()
+  await expect(download).toHaveCount(2)
+  await expect(download.first()).toHaveAttribute('href', `/api/exports/${ids.newExport}/download`)
+  await expect(panel.getByText(/Export requested/)).toBeVisible()
   await panel.getByRole('button', { name: 'Cancel deletion' }).click()
   await expect(panel.getByText('Deletion is not scheduled.')).toBeVisible()
 })
@@ -300,7 +347,7 @@ test('organisation export-pending is shown inline', async ({ page }) => {
   await expect(panel.getByText('An export is already being prepared.')).toBeVisible()
 })
 
-test('organisation export list loads another cursor page and virtualises over 50 jobs', async ({ page }) => {
+test('organisation export list loads another cursor page and never draws more than 50 rows', async ({ page }) => {
   await asPage(page, principal('owner'))
   const firstPage = Array.from({ length: 50 }, (_, index) => organisationExport(uuidV7(index + 500), 'ready'))
   const secondPage = Array.from({ length: 20 }, (_, index) => organisationExport(uuidV7(index + 600), 'ready'))
@@ -327,27 +374,25 @@ test('organisation export list loads another cursor page and virtualises over 50
   const panel = settingsPanel(page)
   const jobs = panel.getByRole('region', { name: 'Export jobs' })
   await panel.getByRole('button', { name: 'Load more exports' }).click()
-  await expect.poll(() => jobs.locator('[data-export-row]').count()).toBeLessThan(70)
-  await expect(jobs.locator('[data-export-row]')).not.toHaveCount(0)
+  await expect(jobs.locator('[data-export-row]')).toHaveCount(50)
+  await panel.getByRole('button', { name: 'Older exports' }).click()
+  await expect(jobs.locator('[data-export-row]')).toHaveCount(20)
 })
 
-test('billing and retention tables reflow into two-line rows below 640px', async ({ page }) => {
+test('billing and retention tables reflow into two-line list rows below 640px', async ({ page }) => {
   await asPage(page, principal('owner'))
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto('/test-org/settings/billing')
   const panel = settingsPanel(page)
+  // The shared table turns each row into a list item: the first cell names it, the others carry their column name.
   const checkTwoLineRows = async (table: Locator) => {
     const firstRow = table.locator('tbody tr').first()
-    const layout = await firstRow.evaluate((row) => {
-      const heading = row.querySelector('th[scope="row"]')
-      return {
-        display: getComputedStyle(row).display,
-        columns: getComputedStyle(row).gridTemplateColumns.split(' ').length,
-        headingColumnEnd: heading ? getComputedStyle(heading).gridColumnEnd : null,
-        dataCells: row.querySelectorAll('td').length
-      }
-    })
-    expect(layout).toEqual({ display: 'grid', columns: 2, headingColumnEnd: '-1', dataCells: 2 })
+    const layout = await firstRow.evaluate((row) => ({
+      display: getComputedStyle(row).display,
+      cells: row.querySelectorAll('td').length,
+      labelled: row.querySelectorAll('td[data-label]').length
+    }))
+    expect(layout).toEqual({ display: 'flex', cells: 3, labelled: 2 })
   }
 
   await checkTwoLineRows(panel.getByRole('table'))
@@ -431,9 +476,10 @@ test('account export downloads and sole-owner refusal links every organisation t
   await page.goto('/account/data')
   const panel = settingsPanel(page)
 
-  await expect(panel.getByRole('link', { name: `Download account export ${ids.accountReadyExport}` })).toBeVisible()
+  const accountDownload = panel.getByRole('link', { name: 'Download account export from 10 November 2026, 10:00 MYT' })
+  await expect(accountDownload).toBeVisible()
   await panel.getByRole('button', { name: 'Request account export' }).click()
-  await expect(panel.getByRole('link', { name: `Download account export ${ids.accountNewExport}` })).toBeVisible()
+  await expect(accountDownload).toHaveCount(2)
   await panel.getByRole('button', { name: 'Delete account' }).click()
   const dialog = page.getByRole('alertdialog')
   const confirm = dialog.getByRole('button', { name: /Delete account/ })
@@ -467,6 +513,7 @@ test('P1 settings routes and destructive dialogs are payment-free and axe-clean 
   const panel = settingsPanel(page)
   await stubApi(page, 'listAuditEntries', { data: [], next_cursor: null }, { registry: auditOperations })
   await stubApi(page, 'exportAuditLog', 'id,action\n', { registry: auditOperations })
+  await stubAuditDirectory(page)
   await stubApi(page, 'listOrganisationExports', { data: [], next_cursor: null }, { registry: dataOperations })
   await stubApi(page, 'createOrganisationExport', organisationExport(ids.dialogExport, 'ready'), {
     registry: dataOperations
@@ -530,7 +577,8 @@ test('P1 settings routes and destructive dialogs are payment-free and axe-clean 
     }
 
     await page.goto(`/${org.slug}/settings/data`)
-    await expect(panel.getByText('Loading exports…', { exact: true })).toBeHidden()
+    // The loading words are a status region that fills after the page is live, so wait for the control itself.
+    await expect(panel.getByRole('button', { name: 'Delete organisation' })).toBeEnabled()
     await panel.getByRole('button', { name: 'Delete organisation' }).focus()
     await page.keyboard.press('Enter')
     const offer = page.getByRole('alertdialog')
@@ -544,7 +592,7 @@ test('P1 settings routes and destructive dialogs are payment-free and axe-clean 
     await page.keyboard.press('Escape')
 
     await page.goto('/account/data')
-    await expect(panel.getByText('Loading exports…', { exact: true })).toBeHidden()
+    await expect(panel.getByRole('button', { name: 'Delete account' })).toBeEnabled()
     await panel.getByRole('button', { name: 'Delete account' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('alertdialog')).toBeVisible()

@@ -3,13 +3,18 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { t } from '@skyclause/i18n'
+import { EllipsisIcon } from 'lucide-react'
 import { Button } from '#ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '#ui/dropdown-menu'
 import { Label } from '#ui/label'
 import { Switch } from '#ui/switch'
 import { cn } from '#lib/utils'
 import { ApiProblem } from '../../lib/api-fetch'
 import { Glyph } from '../brand/glyph'
 import { SourceError } from '../data-components/states'
+import './catalogue'
+import './table-phone.css'
+import { focusHeadingWhenFree } from './focus'
 
 /**
  * Building blocks for what sits inside a settings panel. The frame supplies the row (label column and panel); these
@@ -51,7 +56,7 @@ export function SettingsPart({
     <section aria-labelledby={headingId} className={cn('grid min-w-0 gap-4', className)}>
       <header className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="grid min-w-0 gap-1">
-          <h3 id={headingId} className="type-card-title [overflow-wrap:anywhere]">
+          <h3 id={headingId} tabIndex={-1} className="type-card-title [overflow-wrap:anywhere]">
             {title}
           </h3>
           {description ? <p className="type-body text-muted-foreground">{description}</p> : null}
@@ -115,12 +120,92 @@ export function SettingsError({ children, id, className }: { children: ReactNode
   )
 }
 
-/** A quiet confirmation of what a control just did ("Saved"), announced politely. */
+/**
+ * A quiet confirmation of what a control just did ("Saved"), announced politely. A live region announces only what
+ * changes after it exists, so the region mounts empty and takes its message in an effect: a call site can still mount
+ * it together with its message.
+ */
 export function SettingsStatus({ children, className }: { children?: ReactNode; className?: string }) {
+  const [message, setMessage] = useState<ReactNode>(null)
+  useEffect(() => setMessage(children), [children])
   return (
     <p role="status" className={cn('type-small text-muted-foreground', className)}>
-      {children}
+      {message}
     </p>
+  )
+}
+
+/**
+ * Moves focus to a part's heading by the id given to its `SettingsPart`. A control that removes its own row (or turns
+ * into another control) leaves focus nowhere, so the panel calls this once the change has landed. A confirm dialog that
+ * is still closing keeps the page inert, so the move retries until the page is free.
+ */
+export function focusPartHeading(id: string) {
+  focusHeadingWhenFree(id)
+}
+
+/** What stands in for a panel's content while it loads: the skeleton, with the words for assistive technology. */
+export function SettingsLoading({
+  children,
+  locale = 'en',
+  className
+}: {
+  children: ReactNode
+  locale?: 'en' | 'ms'
+  className?: string
+}) {
+  return (
+    <div role="status" className={className}>
+      <span className="sr-only">{t('settings.loading', {}, locale)}</span>
+      {children}
+    </div>
+  )
+}
+
+/**
+ * The one quiet menu for a row's own actions (Edit, Remove, Resend), so a list of rows shows one small control each
+ * instead of a button pair. The button names its row ("More actions for Aisha Rahman").
+ */
+export function SettingsRowMenu({
+  label,
+  disabled,
+  children
+}: {
+  /** The button's accessible name, which names the row. */
+  label: string
+  disabled?: boolean
+  /** `SettingsRowMenuItem`s. */
+  children: ReactNode
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button type="button" variant="ghost" size="icon" aria-label={label} disabled={disabled} />}
+      >
+        <EllipsisIcon aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-auto min-w-44">
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export function SettingsRowMenuItem({
+  onSelect,
+  destructive,
+  disabled,
+  children
+}: {
+  onSelect: () => void
+  destructive?: boolean
+  disabled?: boolean
+  children: ReactNode
+}) {
+  return (
+    <DropdownMenuItem variant={destructive ? 'destructive' : 'default'} disabled={disabled} onClick={() => onSelect()}>
+      {children}
+    </DropdownMenuItem>
   )
 }
 

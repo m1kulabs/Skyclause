@@ -23,12 +23,13 @@ export function applyAccountPreferences(preferences: Preferences): void {
   root.lang = preferences.language
 }
 
-export function presentSessionAgent(userAgent: string | null | undefined): { device: string; browser: string } {
-  if (!userAgent)
-    return {
-      device: t('account-settings.security.unknownDevice'),
-      browser: t('account-settings.security.unknownBrowser')
-    }
+export function presentSessionAgent(
+  userAgent: string | null | undefined,
+  locale: 'en' | 'ms' = 'en'
+): { device: string; browser: string } {
+  const unknownDevice = () => t('account-settings.security.unknownDevice', {}, locale)
+  const unknownBrowser = () => t('account-settings.security.unknownBrowser', {}, locale)
+  if (!userAgent) return { device: unknownDevice(), browser: unknownBrowser() }
   if (/skyclause(?:[- ]cli)/i.test(userAgent)) return { device: 'Skyclause CLI', browser: 'Skyclause CLI' }
 
   const device = /Windows NT/i.test(userAgent)
@@ -41,7 +42,7 @@ export function presentSessionAgent(userAgent: string | null | undefined): { dev
           ? 'macOS'
           : /Linux/i.test(userAgent)
             ? 'Linux'
-            : t('account-settings.security.unknownDevice')
+            : unknownDevice()
   const browser = /Edg\//i.test(userAgent)
     ? 'Edge'
     : /Firefox\//i.test(userAgent)
@@ -52,12 +53,12 @@ export function presentSessionAgent(userAgent: string | null | undefined): { dev
           ? 'Chrome'
           : /Safari\//i.test(userAgent)
             ? 'Safari'
-            : t('account-settings.security.unknownBrowser')
+            : unknownBrowser()
   return { device, browser }
 }
 
-export function formatSessionDate(value: string | Date): string {
+export function formatSessionDate(value: string | Date, locale: 'en' | 'ms' = 'en'): string {
   const date = value instanceof Date ? value : new Date(value)
-  if (!Number.isFinite(date.getTime())) return t('account-settings.security.unknownTime')
-  return formatDateTime(date, 'en')
+  if (!Number.isFinite(date.getTime())) return t('account-settings.security.unknownTime', {}, locale)
+  return formatDateTime(date, locale)
 }

@@ -1,5 +1,6 @@
+import { settingsLocale } from '../../../../features/settings/locale'
 import { WebhookFeature } from '../../../../features/webhooks'
 
-export default function Page() {
-  return <WebhookFeature />
+export default async function Page() {
+  return <WebhookFeature locale={await settingsLocale()} />
 }

@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { formatDate } from '@skyclause/i18n/format'
 import { ChevronRightIcon } from 'lucide-react'
 import { Button } from '#ui/button'
 import { Card, CardContent } from '#ui/card'
@@ -10,7 +9,7 @@ import { CodeBlock, CodeBlockContent } from '#ui/code-block'
 import { apiFetch } from './operations'
 import { CopyButton } from './copy-button'
 import { StepUp } from './step-up'
-import { t } from './i18n'
+import { t, type Locale } from './i18n'
 import { useResource } from './resource'
 import { Glyph } from '../brand/glyph'
 import { Failure } from './failure'
@@ -33,7 +32,8 @@ async function readMemberships(signal: AbortSignal) {
   return memberships
 }
 
-export function Enterprise({ orgId }: { orgId: string | null }) {
+export function Enterprise({ orgId, locale }: { orgId: string | null; locale: Locale }) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) => t(key, vars, locale)
   const [memberships, retry] = useResource(readMemberships)
   const [selected, setSelected] = useState(orgId ?? '')
   const membership =
@@ -45,93 +45,94 @@ export function Enterprise({ orgId }: { orgId: string | null }) {
       <CardContent className="grid min-w-0 gap-5">
         <div className="grid gap-1">
           <h2 id="enterprise-title" className="type-section" translate="no">
-            {t('connect.enterprise')}
+            {copy('connect.enterprise')}
           </h2>
-          <p className="type-body text-muted-foreground">{t('connect.preview')}</p>
+          <p className="type-body text-muted-foreground">{copy('connect.preview')}</p>
         </div>
         <ol className="grid list-decimal gap-4 pl-6 marker:font-semibold marker:text-foreground">
           <li className="pl-1">
             <div className="grid gap-1.5">
-              <p>{t('connect.policy')}</p>
+              <p>{copy('connect.policy')}</p>
               <p className="font-semibold" translate="no">
-                {t('connect.policy_name')}
+                {copy('connect.policy_name')}
               </p>
               <p translate="no" className="[overflow-wrap:anywhere]">
-                {t('connect.policy_id')}
+                {copy('connect.policy_id')}
               </p>
-              <p translate="no">{t('connect.policy_role')}</p>
-              <p>{t('connect.egress')}</p>
+              <p translate="no">{copy('connect.policy_role')}</p>
+              <p>{copy('connect.egress')}</p>
               <p className="type-small flex flex-wrap items-center gap-x-5 gap-y-1">
                 <a
-                  className="inline-flex min-h-6 items-center font-medium underline underline-offset-3"
+                  className="inline-flex min-h-6 items-center font-medium underline underline-offset-3 hover:decoration-2"
                   href="https://docs.cloud.google.com/gemini/enterprise/docs/connectors/custom-mcp-server/override-constraint-for-custom-mcp-data-stores"
                 >
-                  {t('connect.policy_source')}
+                  {copy('connect.policy_source')}
                 </a>
                 <a
-                  className="inline-flex min-h-6 items-center font-medium underline underline-offset-3"
+                  className="inline-flex min-h-6 items-center font-medium underline underline-offset-3 hover:decoration-2"
                   href="https://docs.cloud.google.com/organization-policy/reference/org-policy-constraints#discoveryengine.managed.disableCustomMcpServerConnector"
                 >
-                  {t('connect.constraint_source')}
+                  {copy('connect.constraint_source')}
                 </a>
-                <span className="text-muted-foreground">
-                  {t('connect.checked', { date: formatDate('2026-11-06T00:00:00Z', 'en') })}
-                </span>
+                <span className="text-muted-foreground">{copy('connect.checked')}</span>
               </p>
             </div>
           </li>
           <li className="pl-1">
             <div className="grid gap-1.5">
-              <p>{t('connect.registration')}</p>
-              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-semibold" translate="no">
-                {t('connect.registration_path')
+              <p>{copy('connect.registration')}</p>
+              <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-semibold" translate="no">
+                {t('connect.registration_path', {}, locale)
                   .split(' > ')
                   .map((step, index) => (
-                    <span key={step} className="inline-flex items-center gap-1.5">
+                    <li key={step} className="inline-flex items-center gap-1.5">
                       {index > 0 && <ChevronRightIcon className="size-3.5" aria-hidden="true" />}
                       {step}
-                    </span>
+                    </li>
                   ))}
-              </p>
+              </ol>
             </div>
           </li>
           <li className="pl-1">
             <div className="grid gap-1.5">
-              <p>{t('connect.oauth_fields')}</p>
+              <p>{copy('connect.oauth_fields')}</p>
               <p className="font-semibold [overflow-wrap:anywhere]" translate="no">
-                {t('connect.redirect')}
+                {copy('connect.redirect')}
               </p>
             </div>
           </li>
           <li className="pl-1">
-            <p>{t('connect.enable_tools')}</p>
+            <p>{copy('connect.enable_tools')}</p>
           </li>
         </ol>
         {memberships.kind === 'loading' ? (
           <p role="status" className="type-body text-muted-foreground">
-            {t('connect.loading_organisations')}
+            {copy('connect.loading_organisations')}
           </p>
         ) : memberships.kind === 'error' ? (
           <Failure
-            source={t('connect.source_organisations')}
+            source={copy('connect.source_organisations')}
             error={memberships.error}
             at={memberships.at}
             retry={retry}
+            locale={locale}
           />
         ) : memberships.value.length === 0 ? (
           <div className="grid justify-items-start gap-2">
-            <p className="type-body">{t('connect.no_org')}</p>
+            <p className="type-body">{copy('connect.no_org')}</p>
             <Link
               href="/new"
-              className="type-body inline-flex min-h-6 items-center font-medium underline underline-offset-3"
+              className="type-body inline-flex min-h-6 items-center font-medium underline underline-offset-3 hover:decoration-2"
             >
-              {t('connect.create_org')}
+              {copy('connect.create_org')}
             </Link>
           </div>
         ) : (
           <label className="type-body grid max-w-sm gap-2 font-medium">
-            {t('connect.organisation')}
+            {copy('connect.organisation')}
             <select
+              name="organisation"
+              autoComplete="off"
               className="native-select"
               value={membership?.org_id ?? ''}
               onChange={(event) => setSelected(event.target.value)}
@@ -146,6 +147,7 @@ export function Enterprise({ orgId }: { orgId: string | null }) {
         )}
         <EnterpriseClient
           key={membership?.org_id ?? ''}
+          locale={locale}
           orgId={membership?.org_id ?? null}
           mayCreate={membership ? membership.role === 'admin' || membership.role === 'owner' : undefined}
         />
@@ -154,7 +156,16 @@ export function Enterprise({ orgId }: { orgId: string | null }) {
   )
 }
 
-function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreate: boolean | undefined }) {
+function EnterpriseClient({
+  orgId,
+  mayCreate,
+  locale
+}: {
+  orgId: string | null
+  mayCreate: boolean | undefined
+  locale: Locale
+}) {
+  const copy = (key: string, vars: Record<string, string | number> = {}) => t(key, vars, locale)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
   const [created, setCreated] = useState(false)
@@ -162,6 +173,9 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
   const [stepping, setStepping] = useState(false)
   const { withReauth } = useReauth()
   const mounted = useRef(true)
+  const secretPanel = useRef<HTMLDivElement>(null)
+  const createdStatus = useRef<HTMLParagraphElement>(null)
+  const dismissed = useRef(false)
   useEffect(() => {
     mounted.current = true
     const forget = () => setClient(undefined)
@@ -171,6 +185,15 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
       window.removeEventListener('pagehide', forget)
     }
   }, [])
+  // The button that made the secret is gone: the panel takes focus, and its name is the warning that it is shown once.
+  // Dismissing it removes the panel, so the line that says the client exists takes focus in turn.
+  useEffect(() => {
+    if (client) secretPanel.current?.focus()
+    else if (dismissed.current) {
+      dismissed.current = false
+      createdStatus.current?.focus()
+    }
+  }, [client])
   const resolve = useCallback(() => {
     setStepping(false)
   }, [])
@@ -211,41 +234,52 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
   return (
     <div className="grid min-w-0 gap-3">
       {mayCreate === undefined ? null : !mayCreate ? (
-        <p className="type-body">{t('connect.ask_admin')}</p>
+        <p className="type-body">{copy('connect.ask_admin')}</p>
       ) : !orgId ? (
-        <p className="type-body">{t('connect.no_org')}</p>
+        <p className="type-body">{copy('connect.no_org')}</p>
       ) : (
         <>
           {client ? (
-            <div className="grid min-w-0 gap-3 rounded-md bg-raised p-4">
-              <p className="type-card-title">{t('connect.secret_once')}</p>
-              <h3 className="type-body font-semibold">{t('connect.client_id')}</h3>
+            <div
+              ref={secretPanel}
+              role="group"
+              aria-labelledby="enterprise-secret-once"
+              tabIndex={-1}
+              className="grid min-w-0 gap-3 rounded-md bg-raised p-4"
+            >
+              <p id="enterprise-secret-once" className="type-card-title">
+                {copy('connect.secret_once')}
+              </p>
+              <h3 className="type-body font-semibold">{copy('connect.client_id')}</h3>
               <CodeBlock>
                 <CodeBlockContent wrap translate="no">
                   {client.client_id}
                 </CodeBlockContent>
               </CodeBlock>
-              <h3 className="type-body font-semibold">{t('connect.client_secret')}</h3>
+              <h3 className="type-body font-semibold">{copy('connect.client_secret')}</h3>
               <CodeBlock>
                 <CodeBlockContent wrap translate="no">
                   {client.client_secret}
                 </CodeBlockContent>
               </CodeBlock>
               <div className="flex flex-wrap items-center gap-3">
-                <CopyButton value={client.client_secret} label="copy_secret" />
+                <CopyButton value={client.client_secret} label="copy_secret" locale={locale} />
                 <Button
                   variant="outline"
                   className="h-auto min-h-9 max-w-full py-2 text-left whitespace-normal"
-                  onClick={() => setClient(undefined)}
+                  onClick={() => {
+                    dismissed.current = true
+                    setClient(undefined)
+                  }}
                 >
-                  {t('connect.dismiss_secret')}
+                  {copy('connect.dismiss_secret')}
                 </Button>
               </div>
             </div>
           ) : created ? (
-            <p role="status" className="type-body flex items-center gap-2">
+            <p ref={createdStatus} tabIndex={-1} role="status" className="type-body flex items-center gap-2">
               <Glyph state="fresh" />
-              <span>{t('connect.client_created')}</span>
+              <span>{copy('connect.client_created')}</span>
             </p>
           ) : (
             <Button
@@ -254,18 +288,14 @@ function EnterpriseClient({ orgId, mayCreate }: { orgId: string | null; mayCreat
               disabled={busy}
               onClick={() => void create()}
             >
-              {t(busy ? 'connect.creating' : 'connect.create_client')}
+              {copy(busy ? 'connect.creating' : 'connect.create_client')}
             </Button>
           )}
-          {stepping && (
-            <div aria-label={t('connect.reauth')}>
-              <StepUp resolve={resolve} cancel={cancel} />
-            </div>
-          )}
+          {stepping && <StepUp resolve={resolve} cancel={cancel} />}
           {error && (
             <p role="alert" className="type-body flex items-start gap-2 font-medium">
               <Glyph state="error" className="mt-1.5" />
-              <span>{t('connect.create_error')}</span>
+              <span>{copy('connect.create_error')}</span>
             </p>
           )}
         </>

@@ -23,9 +23,11 @@ export function ImportAddresses({
   const [addresses, setAddresses] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const [invalid, setInvalid] = useState(false)
+  // What is wrong with the input: no address at all, or the first one that is not an email address.
+  const [invalid, setInvalid] = useState<{ address: string | null } | null>(null)
   const [count, setCount] = useState<number>()
   const inFlight = useRef(false)
+  const field = useRef<HTMLTextAreaElement>(null)
   useUnsavedChangesGuard(addresses.length > 0, locale)
   async function submit() {
     if (inFlight.current) return
@@ -37,14 +39,16 @@ export function ImportAddresses({
           .filter(Boolean)
       )
     ]
-    if (!emails.length || emails.some((email) => !Subscriber.shape.email.safeParse(email).success)) {
-      setInvalid(true)
+    const wrong = emails.find((email) => !Subscriber.shape.email.safeParse(email).success)
+    if (!emails.length || wrong !== undefined) {
+      setInvalid({ address: wrong ?? null })
+      field.current?.focus()
       return
     }
     inFlight.current = true
     setBusy(true)
     setError(null)
-    setInvalid(false)
+    setInvalid(null)
     setCount(0)
     let sent = 0
     try {
@@ -86,6 +90,7 @@ export function ImportAddresses({
         <label className="type-body grid min-w-0 gap-2 font-medium" htmlFor="subscriber-addresses">
           {t('subscribers.addresses', {}, locale)}
           <Textarea
+            ref={field}
             id="subscriber-addresses"
             name="addresses"
             autoComplete="off"
@@ -95,20 +100,22 @@ export function ImportAddresses({
             value={addresses}
             onChange={(event) => setAddresses(event.target.value)}
             disabled={busy}
-            aria-describedby="import-notice"
-            aria-invalid={invalid}
+            aria-invalid={invalid ? true : undefined}
+            aria-describedby={invalid ? 'import-notice import-error' : 'import-notice'}
           />
         </label>
         {invalid && (
-          <p role="alert" className="type-body flex items-start gap-2 font-medium">
+          <p id="import-error" role="alert" className="type-body flex items-start gap-2 font-medium">
             <Glyph state="error" className="mt-1.5" />
-            {t('subscribers.invalid_addresses', {}, locale)}
+            {invalid.address === null
+              ? t('subscribers.invalid_addresses', {}, locale)
+              : t('subscribers.invalid_address', { address: invalid.address }, locale)}
           </p>
         )}
         <OperationError error={error} locale={locale} />
         {count !== undefined && (
           <p role="status" className="type-body">
-            {t('subscribers.import_result', { count }, locale)}
+            {t(count === 1 ? 'subscribers.import_result_one' : 'subscribers.import_result', { count }, locale)}
           </p>
         )}
         <Button className="justify-self-start" type="submit" disabled={busy || !addresses.trim()}>

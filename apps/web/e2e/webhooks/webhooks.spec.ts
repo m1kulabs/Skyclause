@@ -1,6 +1,18 @@
 import { WEBHOOK_EVENT_TYPES } from '@skyclause/contracts'
 import { test, expect } from '../fixtures'
-import { setup, endpoint, verified, secret, delivery, event, project, t, stubAction, tabTo } from './fixtures'
+import {
+  setup,
+  endpoint,
+  verified,
+  secret,
+  delivery,
+  event,
+  project,
+  t,
+  stubAction,
+  tabTo,
+  openDeleteDialog
+} from './fixtures'
 import { stubApi, expectZonedTimes } from '../harness'
 import { webhookOperations } from '../../features/webhooks/operations'
 import { expectUnclippedText } from '../harness/expect-unclipped-text'
@@ -29,10 +41,9 @@ test('settings replaces its placeholder inside the app shell', async ({ page }) 
   await expect(page.locator('[data-settings-panel] [data-unbuilt]')).toHaveCount(0)
   await expect(page.locator('#shell-content [data-settings-frame]')).toBeVisible()
   await expect(page.getByText(endpoint.url, { exact: true })).toHaveAttribute('translate', 'no')
-  await expect(page.getByRole('link', { name: t('webhooks.open'), exact: true })).toHaveAttribute(
-    'href',
-    `${inspector}?webhook=${endpoint.id}`
-  )
+  await expect(
+    page.getByRole('link', { name: t('webhooks.open_named', { url: endpoint.url }), exact: true })
+  ).toHaveAttribute('href', `${inspector}?webhook=${endpoint.id}`)
 })
 
 for (const role of ['owner', 'admin', 'approver', 'editor', 'viewer', 'guest'] as const) {
@@ -134,7 +145,9 @@ for (const status of ['pending', 'verified', 'failed', 'disabled'] as const) {
   })
 }
 
-test('deliveries group retries by event newest first and preserve evidence and URL selection', async ({ page }) => {
+test('deliveries are table rows, retries together under the newest event, with evidence and URL selection kept', async ({
+  page
+}) => {
   await setup(page, [verified])
   const older = {
     ...delivery,
@@ -151,14 +164,21 @@ test('deliveries group retries by event newest first and preserve evidence and U
     { registry: webhookOperations }
   )
   await page.goto(`${inspector}?webhook=${endpoint.id}&delivery=delivery-2`)
-  await expect(page.locator('[data-webhook-log] section')).toHaveCount(2)
-  expect(
-    await page
-      .locator('[data-event-id]')
-      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-event-id')))
-  ).toEqual([event.id, 'older-event'])
-  const attempt = page.locator('[data-delivery-id=delivery-2]')
-  await expect(attempt).toHaveAttribute('open', '')
+  const rows = page.locator('[data-webhook-log] tbody tr[data-delivery-id]')
+  await expect(rows).toHaveCount(3)
+  expect(await rows.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-delivery-id')))).toEqual([
+    'delivery-2',
+    'delivery-1',
+    'older'
+  ])
+  expect(await rows.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-event-id')))).toEqual([
+    event.id,
+    event.id,
+    'older-event'
+  ])
+  const row = page.locator('[data-delivery-id=delivery-2]')
+  const attempt = page.locator('[data-delivery-detail=delivery-2]')
+  await expect(row.getByRole('button', { expanded: true })).toBeVisible()
   for (const value of [
     'Skyclause-Webhook-Id',
     'Skyclause-Webhook-Timestamp',
@@ -170,16 +190,22 @@ test('deliveries group retries by event newest first and preserve evidence and U
   ])
     await expect(attempt.getByText(value, { exact: true })).toBeVisible()
   await expect(attempt.locator('pre').first()).toHaveText(delivery.raw_request_body)
-  // The record reads time first, then the outcome as a mark with its word and the status code, then the duration.
-  await expect(attempt.locator('summary time')).toHaveAttribute('datetime', retry.attempted_at)
-  await expect(attempt.locator('summary')).toContainText('503')
-  await expect(attempt.locator('summary')).toContainText(t('webhooks.failed_attempt'))
-  await expect(attempt.locator('summary')).toContainText('120 ms')
+  // The record reads time first, then the event, the outcome as a mark with its word and the status code, then the duration.
+  await expect(row.locator('time').first()).toHaveAttribute('datetime', retry.attempted_at)
+  await expect(row).toContainText('503')
+  await expect(row).toContainText(t('webhooks.failed_attempt'))
+  await expect(row).toContainText('120 ms')
+  // The event ID is cut to its last 8 characters; the control copies the whole of it.
+  await expect(row.getByRole('button', { name: t('webhooks.copy_id') })).toBeVisible()
+  await expect(row).not.toContainText(event.id)
   await expect(attempt.locator('dt[translate=no]')).toHaveCount(3)
-  await page.locator('[data-delivery-id=delivery-1] summary').click()
+  await page
+    .locator('[data-delivery-id=delivery-1]')
+    .getByRole('button', { name: /Details/ })
+    .click()
   await expect(page).toHaveURL(/delivery=delivery-1/)
   await page.reload()
-  await expect(page.locator('[data-delivery-id=delivery-1]')).toHaveAttribute('open', '')
+  await expect(page.locator('[data-delivery-id=delivery-1]').getByRole('button', { expanded: true })).toBeVisible()
   await expectZonedTimes(page)
 })
 
@@ -213,7 +239,9 @@ for (const problem of ['unsafe-url', 'validation-failed'] as const) {
     const url = page.getByRole('textbox', { name: t('webhooks.url'), exact: true })
     await expect(url).toBeFocused()
     await expect(url).toHaveAttribute('aria-invalid', 'true')
-    await expect(page.locator('[data-slot=field]').filter({ has: url }).getByRole('alert')).toContainText(problem)
+    await expect(page.locator('[data-slot=field]').filter({ has: url }).getByRole('alert')).toContainText(
+      t(problem === 'unsafe-url' ? 'webhooks.unsafe_url' : 'webhooks.validation_failed')
+    )
   })
 }
 
@@ -267,7 +295,9 @@ test('keyboard register, copy, verify, redeliver, and typed delete', async ({ pa
   await setup(page)
   const deletions = await stubAction(page, 'deleteWebhook', undefined)
   await page.goto('/test-org/settings/webhooks')
-  await tabTo(page, page.getByRole('button', { name: t('webhooks.delete'), exact: true }))
+  await tabTo(page, page.getByRole('button', { name: t('webhooks.more_actions', { url: endpoint.url }), exact: true }))
+  await page.keyboard.press('Enter')
+  await page.getByRole('menuitem', { name: t('webhooks.delete'), exact: true }).focus()
   await page.keyboard.press('Enter')
   const dialog = page.getByRole('alertdialog')
   await expect(dialog.getByRole('heading')).toHaveText(t('webhooks.delete_title', { url: endpoint.url }))
@@ -316,7 +346,7 @@ for (const theme of ['light', 'dark', 'high-contrast'] as const) {
         await page.getByRole('button', { name: t('webhooks.add'), exact: true }).click()
         await expect(page.getByRole('form')).toBeVisible()
         await expectAxeClean(page)
-        await page.getByRole('button', { name: t('webhooks.delete'), exact: true }).click()
+        await openDeleteDialog(page)
         await expect(page.getByRole('alertdialog')).toBeVisible()
         await expectAxeClean(page)
         await expectUnclippedText(page)

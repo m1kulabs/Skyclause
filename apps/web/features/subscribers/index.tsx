@@ -11,10 +11,13 @@ import { ApiProblem } from '../../lib/api-fetch'
 import { t } from './catalogue'
 import { apiFetch } from '../subscribe/operations'
 import { OperationError } from '../subscribe/error'
+import { windowsApi } from '../windows/operations'
 import { resolveProject } from './project'
 import { ImportAddresses } from './import-addresses'
 import { Figures, Reach } from './counts'
+import { useSubscriberRemoval } from './remove-subscriber'
 import { SubscriberTable } from './table'
+import { readWindowNames, type WindowName } from './window-names'
 import './subscribers.css'
 
 export type Counts = Awaited<ReturnType<typeof readCounts>>
@@ -51,16 +54,27 @@ export function Subscribers({
   const [link, setLink] = useState('')
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [windows, setWindows] = useState<ReadonlyMap<string, WindowName>>()
+  const [windowsFailed, setWindowsFailed] = useState<Failed>()
   const [attempt, setAttempt] = useState(0)
   const inFlight = useRef(false)
+  // A read after a removal or a retry keeps the rows on screen until the answer replaces them.
+  const shown = useRef('')
   useEffect(() => {
     const controller = new AbortController()
+    const key = `${org}/${project}/${manage}`
     setLoading(true)
     setError(null)
     setNotFound(false)
     setCountsFailed(undefined)
     setRowsFailed(undefined)
-    setPages([])
+    setWindowsFailed(undefined)
+    if (shown.current !== key) {
+      shown.current = key
+      setPages([])
+      setCounts(undefined)
+      setWindows(undefined)
+    }
     setPageIndex(0)
     resolveProject(org, project, controller.signal)
       .then(async (resolved) => {
@@ -72,7 +86,10 @@ export function Subscribers({
         // Counts are the only subscriber operation an Approver ever calls; the list is read beside them.
         await Promise.all([
           readCounts(resolved.id, controller.signal).then(
-            (value) => setCounts(value),
+            (value) => {
+              setCounts(value)
+              return nameWindows(resolved.id, value, controller.signal)
+            },
             (reason: unknown) => {
               if (!controller.signal.aborted) setCountsFailed(failed(reason))
             }
@@ -95,6 +112,25 @@ export function Subscribers({
       })
     return () => controller.abort()
   }, [org, project, manage, attempt])
+
+  /** The windows the counts are grouped by, named by the project's windows read; a failed read is shown, not hidden. */
+  async function nameWindows(projectId: string, value: Counts, signal: AbortSignal) {
+    const wanted = new Set(value.by_window.map((item) => item.window_id))
+    if (!wanted.size) {
+      setWindows(new Map())
+      return
+    }
+    try {
+      const names = await readWindowNames(
+        (cursor) =>
+          windowsApi('listWindows', { org, params: { id: projectId }, query: { limit: 200, cursor }, signal }),
+        wanted
+      )
+      if (!signal.aborted) setWindows(names)
+    } catch (reason) {
+      if (!signal.aborted) setWindowsFailed(failed(reason))
+    }
+  }
 
   async function copyLink() {
     if (!projectId || inFlight.current) return
@@ -141,6 +177,13 @@ export function Subscribers({
     }
   }
   const refresh = () => setAttempt((n) => n + 1)
+  const removal = useSubscriberRemoval({
+    locale,
+    onRemoved: () => {
+      refresh()
+      document.getElementById('subscriber-list-title')?.focus()
+    }
+  })
   const page = pages[pageIndex]
   const from = pages.slice(0, pageIndex).reduce((sum, item) => sum + Math.min(item.data.length, 50), 0) + 1
   const retry = (
@@ -212,14 +255,31 @@ export function Subscribers({
                 {manage ? t('subscribers.empty', {}, locale) : t('subscribers.no_counts', {}, locale)}
               </p>
             )}
-            {counts && <Reach counts={counts} locale={locale} />}
+            {counts && (
+              <Reach
+                counts={counts}
+                windows={windows}
+                windowsError={
+                  windowsFailed ? (
+                    <SourceError
+                      source={t('subscribers.source_windows', {}, locale)}
+                      status={statusOf(windowsFailed.error)}
+                      at={windowsFailed.at}
+                      locale={locale}
+                      retry={retry}
+                    />
+                  ) : undefined
+                }
+                locale={locale}
+              />
+            )}
           </section>
         )
       )}
       {manage && projectId && loading && !page && !rowsFailed && (
         <div className="grid gap-2" aria-hidden="true">
           {[0, 1, 2].map((item) => (
-            <Skeleton key={item} className="h-16 w-full rounded-xl" />
+            <Skeleton key={item} className="h-11 w-full rounded-full" />
           ))}
         </div>
       )}
@@ -233,18 +293,22 @@ export function Subscribers({
         />
       )}
       {manage && page && page.data.length > 0 && (
-        <SubscriberTable
-          rows={page.data}
-          from={from}
-          total={counts?.total}
-          hasPrevious={pageIndex > 0}
-          hasNext={!!pages[pageIndex + 1] || !!page.next_cursor}
-          busy={busy}
-          onPrevious={() => setPageIndex(Math.max(0, pageIndex - 1))}
-          onNext={() => void next()}
-          onRemoved={refresh}
-          locale={locale}
-        />
+        <>
+          {removal.node}
+          <SubscriberTable
+            rows={page.data}
+            from={from}
+            total={counts?.total}
+            hasPrevious={pageIndex > 0}
+            hasNext={!!pages[pageIndex + 1] || !!page.next_cursor}
+            busy={busy}
+            removing={removal.busy}
+            onPrevious={() => setPageIndex(Math.max(0, pageIndex - 1))}
+            onNext={() => void next()}
+            onRemove={(row) => removal.request({ id: row.id, email: row.email })}
+            locale={locale}
+          />
+        </>
       )}
       {manage && projectId && <ImportAddresses projectId={projectId} locale={locale} onImported={refresh} />}
     </div>

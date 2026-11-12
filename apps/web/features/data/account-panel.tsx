@@ -31,6 +31,7 @@ export function AccountDataPanel({ email, locale = 'en' }: { email: string | nul
   const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [exportError, setExportError] = useState('')
+  const [requested, setRequested] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [transferOrganisations, setTransferOrganisations] = useState<Membership[]>([])
   const [membershipsLoaded, setMembershipsLoaded] = useState(false)
@@ -72,9 +73,11 @@ export function AccountDataPanel({ email, locale = 'en' }: { email: string | nul
 
   const requestExport = async () => {
     setExportError('')
+    setRequested(false)
     try {
       const job = await accountApiFetch('createMyExport', { body: { format: 'json' } })
       setExports((current) => [job, ...current.filter((entry) => entry.id !== job.id)])
+      setRequested(true)
     } catch (error) {
       setExportError(problemSlug(error) === 'export-pending' ? label('exportPending') : label('exportFailed'))
     }
@@ -153,6 +156,7 @@ export function AccountDataPanel({ email, locale = 'en' }: { email: string | nul
               {label('refreshExports')}
             </Button>
             {loading && <SettingsStatus>{label('loadingExports')}</SettingsStatus>}
+            {requested && <SettingsStatus>{label('exportRequested')}</SettingsStatus>}
           </div>
           {exportError && <SettingsError>{exportError}</SettingsError>}
           <ExportList
@@ -185,7 +189,7 @@ export function AccountDataPanel({ email, locale = 'en' }: { email: string | nul
               {transferOrganisations.map((membership) => (
                 <li key={membership.id}>
                   <a
-                    className="inline-flex min-h-9 items-center underline underline-offset-4"
+                    className="inline-flex min-h-9 items-center underline underline-offset-4 hover:decoration-2"
                     href={`/${encodeURIComponent(membership.org_slug)}/settings/members`}
                   >
                     {label('transferOwnership', { name: membership.org_name })}

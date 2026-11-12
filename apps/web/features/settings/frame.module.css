@@ -88,6 +88,13 @@
   overflow-wrap: anywhere;
 }
 
+/* A wide section: one column at every width, its title above it and its summary in a row. */
+.columns[data-wide] .aside:not(:empty) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+}
+
 @media (width >= 860px) {
   .columns {
     grid-template-columns: minmax(0, 428fr) minmax(0, 700fr);
@@ -100,5 +107,17 @@
     top: calc(var(--shell-bar-height, 0px) + 16px);
     align-self: start;
     padding-top: 20px;
+  }
+}
+
+@media (width >= 860px) {
+  .columns[data-wide] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .columns[data-wide] .label {
+    position: static;
+    padding-top: 0;
   }
 }

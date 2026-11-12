@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CopyIcon } from 'lucide-react'
+import { formatList } from '@skyclause/i18n/format'
 import { Button } from '#ui/button'
 import { CodeBlock, CodeBlockContent } from '#ui/code-block'
 import { Input } from '#ui/input'
@@ -11,17 +12,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ApiProblem } from '../../../../lib/api-fetch'
 import { StatusMark } from '../../../brand/status-mark'
 import { FirstRunProgress } from '../../../onboarding/first-run-progress'
-import { t } from '../../../onboarding/catalogue'
-import { t as ts } from '../../../project-settings/catalogue'
+import { t as baseT } from '../../../onboarding/catalogue'
+import { t as baseTs } from '../../../project-settings/catalogue'
+import '../../catalogue'
 import { onboardingApi, type ProjectView } from '../../../onboarding/operations'
 import { SourcePicker } from '../../../sources/source-picker'
 import { sourcesApi, type BoundSourceView, type CatalogueSourceView } from '../../../sources/operations'
 import { ConfirmDialog } from '../../set-7'
+import { focusHeadingWhenFree } from '../../focus'
+import { RowPager, pageOf } from '../row-pager'
 import {
   SettingsAside,
   SettingsError,
   SettingsItem,
   SettingsList,
+  SettingsLoading,
   SettingsPart,
   SettingsParts,
   SettingsReadError,
@@ -70,9 +75,12 @@ export interface ProjectPacksPanelProps {
   org: string
   project: string
   initialPack?: string
+  locale?: 'en' | 'ms'
 }
 
-export default function Panel({ org, project: projectSlug, initialPack }: ProjectPacksPanelProps) {
+export default function Panel({ org, project: projectSlug, initialPack, locale = 'en' }: ProjectPacksPanelProps) {
+  const t = (key: string, vars: Record<string, string | number> = {}) => baseT(key, vars, locale)
+  const ts = (key: string, vars: Record<string, string | number> = {}) => baseTs(key, vars, locale)
   const [project, setProject] = useState<ProjectView | null>(null)
   const [sources, setSources] = useState<BoundSourceView[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,6 +100,8 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
   const [device, setDevice] = useState<Device | null>(null)
   const [deviceSaving, setDeviceSaving] = useState(false)
   const [deviceError, setDeviceError] = useState(false)
+  const [deviceNameError, setDeviceNameError] = useState(false)
+  const [sourcePage, setSourcePage] = useState(0)
   const queryApplied = useRef(false)
 
   const load = useCallback(async () => {
@@ -124,7 +134,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
     setCrowdIntent(true)
     const prerequisites = missingForCrowd(sources)
     if (prerequisites.missing) setPickerOpen(true)
-    else void updatePack('crowd', true)
+    else setConfirmPack({ pack: 'crowd', enable: true })
     // The query is a one-time request to enter Crowd's source step.
   }, [initialPack, loading, project, sources])
 
@@ -202,7 +212,10 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
       await sourcesApi('unbindSource', { params: { id: project.id, sourceId: source.id }, org })
       const next = await allProjectSources(project.id, org)
       setSources(next)
+      setSourcePage((page) => Math.min(page, Math.max(0, Math.ceil(next.length / 50) - 1)))
       setNotice(ts('project-settings.unbound', { source: source.external_id, project: project.name }))
+      // The row that held focus is gone: the list's heading takes it, after the confirm dialog lets go.
+      focusHeadingWhenFree('sources-heading')
     } catch {
       setMessage(t('onboarding.save_error_generic'))
     }
@@ -210,7 +223,12 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
 
   async function createDevice(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!project || deviceSaving || !deviceName.trim()) return
+    if (!project || deviceSaving) return
+    if (!deviceName.trim()) {
+      setDeviceNameError(true)
+      document.getElementById('device-name')?.focus()
+      return
+    }
     setDeviceSaving(true)
     setDeviceError(false)
     try {
@@ -239,16 +257,20 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
 
   if (loading && !project)
     return (
-      <div className="grid gap-4" aria-busy="true">
+      <SettingsLoading locale={locale} className="grid gap-4">
         <Skeleton className="h-16 w-full rounded-md" />
         <Skeleton className="h-16 w-full rounded-md" />
-        <p role="status" className="sr-only">
-          {t('onboarding.loading_project')}
-        </p>
-      </div>
+      </SettingsLoading>
     )
   if (loadFailed || !project) {
-    return <SettingsReadError source={ts('project-settings.source')} error={loadFailed} onRetry={() => void load()} />
+    return (
+      <SettingsReadError
+        source={ts('project-settings.source')}
+        error={loadFailed}
+        onRetry={() => void load()}
+        locale={locale}
+      />
+    )
   }
 
   const readsOf = (pack: Pack) =>
@@ -299,7 +321,10 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                   <p className="type-small text-muted-foreground [overflow-wrap:anywhere]">
                     {reads.length
                       ? ts('project-settings.reads', {
-                          sources: reads.map((source) => `${source.external_id} ${source.name}`).join(', ')
+                          sources: formatList(
+                            reads.map((source) => `${source.external_id} ${source.name}`),
+                            locale
+                          )
                         })
                       : ts('project-settings.reads_none')}
                   </p>
@@ -346,11 +371,11 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
           <p className="type-body text-muted-foreground">{t('onboarding.no_bound_sources')}</p>
         ) : (
           <SettingsList>
-            {sources.map((source) => (
+            {pageOf(sources, sourcePage).map((source) => (
               <SettingsItem key={source.id}>
                 <div className="grid min-w-0 gap-0.5">
                   <strong className="type-body [overflow-wrap:anywhere]">
-                    {source.external_id} {t('onboarding.separator')} {source.name}
+                    <span translate="no">{source.external_id}</span> {t('onboarding.separator')} {source.name}
                   </strong>
                   <p className="type-small text-muted-foreground">
                     {t('onboarding.source_adapter_role', {
@@ -376,6 +401,13 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
             ))}
           </SettingsList>
         )}
+        <RowPager
+          total={sources.length}
+          page={sourcePage}
+          onPage={setSourcePage}
+          locale={locale}
+          rangeKey="project-settings.sources_range"
+        />
       </SettingsPart>
 
       <SettingsPart
@@ -389,6 +421,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
               setDevice(null)
               setDeviceError(false)
               setTokenCopied('idle')
+              setDeviceNameError(false)
               setDeviceOpen(true)
             }}
           >
@@ -411,6 +444,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
           open
           onOpenChange={(open) => !open && setConfirmPack(null)}
           objectName={project.name}
+          locale={locale}
           title={ts(confirmPack.enable ? 'project-settings.pack_on_title' : 'project-settings.pack_off_title', {
             pack: ts(`project-settings.${confirmPack.pack}`),
             project: project.name
@@ -433,6 +467,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
           open
           onOpenChange={(open) => !open && setUnbinding(null)}
           objectName={unbinding.external_id}
+          locale={locale}
           title={ts('project-settings.unbind_title', { source: unbinding.external_id })}
           confirmLabel={ts('project-settings.unbind_title', { source: unbinding.external_id })}
           description={ts('project-settings.unbind_description', { project: project.name })}
@@ -449,6 +484,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
             setDevice(null)
             setDeviceName('')
             setDeviceError(false)
+            setDeviceNameError(false)
           }
         }}
       >
@@ -478,6 +514,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                   {t('onboarding.close')}
                 </Button>
               </div>
+              {tokenCopied === 'copied' ? <SettingsStatus>{ts('project-settings.copied')}</SettingsStatus> : null}
               {tokenCopied === 'failed' ? <SettingsError>{ts('project-settings.copy_failed')}</SettingsError> : null}
             </div>
           ) : (
@@ -489,9 +526,20 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                   name="name"
                   autoComplete="off"
                   value={deviceName}
-                  onChange={(event) => setDeviceName(event.target.value)}
-                  required
+                  maxLength={80}
+                  aria-invalid={deviceNameError ? true : undefined}
+                  aria-describedby={`device-name-hint${deviceNameError ? ' device-name-error' : ''}`}
+                  onChange={(event) => {
+                    setDeviceName(event.target.value)
+                    if (deviceNameError) setDeviceNameError(false)
+                  }}
                 />
+                <p id="device-name-hint" className="type-small text-muted-foreground">
+                  {ts('project-settings.device_name_hint')}
+                </p>
+                {deviceNameError ? (
+                  <SettingsError id="device-name-error">{ts('project-settings.device_name_required')}</SettingsError>
+                ) : null}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="device-kind">{t('onboarding.device_kind')}</Label>
@@ -508,7 +556,7 @@ export default function Panel({ org, project: projectSlug, initialPack }: Projec
                 </select>
               </div>
               {deviceError ? <SettingsError>{t('onboarding.save_error_generic')}</SettingsError> : null}
-              <Button type="submit" disabled={deviceSaving || !deviceName.trim()}>
+              <Button type="submit" disabled={deviceSaving} aria-busy={deviceSaving}>
                 {deviceSaving ? t('onboarding.saving') : t('onboarding.create_device')}
               </Button>
             </form>

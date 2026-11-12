@@ -34,10 +34,6 @@
   white-space: nowrap;
 }
 
-.tile[data-disabled] {
-  cursor: not-allowed;
-}
-
 .name {
   font-size: 14px;
   line-height: 20px;
@@ -63,6 +59,41 @@
 
 .tile:hover .preview {
   border-color: var(--foreground);
+}
+
+/* The mark on the chosen card: an ink disc with a check, set on the preview's top corner. */
+.check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--foreground);
+  color: var(--background);
+  pointer-events: none;
+}
+
+.check svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The high-contrast preview is drawn in the scheme the page is in, chosen here by the page's own class. */
+.whenDark,
+.whenLight {
+  display: contents;
+}
+
+.whenLight,
+:global(html.light) .whenDark {
+  display: none;
+}
+
+:global(html.light) .whenLight {
+  display: contents;
 }
 
 .tile:has(input:focus-visible) .preview {
@@ -135,7 +166,7 @@
   font-weight: 500;
 }
 
-.hc .capsule {
+:global(.hc) .capsule {
   border-color: var(--edge);
 }
 
@@ -200,6 +231,21 @@
 }
 
 .track[data-motion='reduce'] .traveller {
+  transform: translateX(75%);
+}
+
+/* The preview of full motion rests too while the page itself is calm: the OS asks for less (and the account has not
+   said full motion), or the account says reduced motion. This is the global `calm` variant, written out because a CSS
+   module cannot use it. */
+@media (prefers-reduced-motion: reduce) {
+  :global(html:not([data-motion='full'])) .track[data-motion='full'] .traveller {
+    animation: none;
+    transform: translateX(75%);
+  }
+}
+
+:global(html[data-motion='reduce']) .track[data-motion='full'] .traveller {
+  animation: none;
   transform: translateX(75%);
 }
 

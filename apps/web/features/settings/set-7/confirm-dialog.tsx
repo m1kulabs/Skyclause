@@ -74,7 +74,7 @@ function Confirmation({
   return (
     <AlertDialog open={open} onOpenChange={(next) => !inFlight.current && onOpenChange(next)}>
       <AlertDialogContent
-        className="max-h-[90svh] max-w-[calc(100%-2rem)] overflow-y-auto break-words sm:max-w-md"
+        className="max-h-[90svh] max-w-[calc(100%-2rem)] overflow-y-auto overscroll-contain break-words sm:max-w-md"
         initialFocus={cancel}
       >
         <AlertDialogHeader>
