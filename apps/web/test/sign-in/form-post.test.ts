@@ -1,0 +1,99 @@
+import { expect, test } from 'vitest'
+import { sendLinkFromForm, startGoogleFromForm, type FormPostDependencies } from '../../features/sign-in/form-post'
+
+const APP = 'https://app.skyclause.m1ku.tech'
+const NOW = new Date('2026-11-13T02:10:00.000Z')
+
+function fake(answer: (request: Request) => Response) {
+  const calls: Array<{ url: string; headers: Headers; body: unknown }> = []
+  const deps: FormPostDependencies = {
+    appOrigin: () => APP,
+    now: () => NOW,
+    auth: async (request) => {
+      calls.push({ url: request.url, headers: request.headers, body: await request.clone().json() })
+      return answer(request)
+    }
+  }
+  return { deps, calls }
+}
+
+function post(path: string, fields: Record<string, string>, headers: Record<string, string> = { origin: APP }) {
+  return new Request(`${APP}${path}`, { method: 'POST', headers, body: new URLSearchParams(fields) })
+}
+
+test('a sent link lands on /sign-in saying until when it works, fifteen minutes from before the send', async () => {
+  const { deps, calls } = fake(() => Response.json({ status: true }))
+  const response = await sendLinkFromForm(
+    post(
+      '/sign-in/link',
+      { email: ' reader@example.org ', next: '/commons?tab=windows' },
+      {
+        origin: APP,
+        'x-forwarded-for': '203.0.113.9',
+        cookie: 'a=b'
+      }
+    ),
+    deps
+  )
+  expect(response.status).toBe(303)
+  expect(response.headers.get('location')).toBe(
+    '/sign-in?state=link-sent&until=2026-11-13T02%3A25%3A00.000Z&next=%2Fcommons%3Ftab%3Dwindows'
+  )
+  expect(calls).toHaveLength(1)
+  expect(calls[0]!.url).toBe(`${APP}/api/auth/sign-in/magic-link`)
+  expect(calls[0]!.body).toEqual({
+    email: 'reader@example.org',
+    callbackURL: '/api/auth/continue?next=%2Fcommons%3Ftab%3Dwindows'
+  })
+  expect(calls[0]!.headers.get('x-forwarded-for')).toBe('203.0.113.9')
+  expect(calls[0]!.headers.get('cookie')).toBe('a=b')
+  expect(calls[0]!.headers.get('origin')).toBe(APP)
+})
+
+test('each refusal says what happened in a state the page renders, never a status', async () => {
+  const cases: Array<[Response, string]> = [
+    [
+      new Response(null, { status: 429, headers: { 'Retry-After': '600' } }),
+      'state=send-limited&retry=2026-11-13T02%3A20%3A00.000Z'
+    ],
+    [new Response(null, { status: 429 }), 'state=send-limited'],
+    [Response.json({ code: 'VALIDATION_ERROR' }, { status: 400 }), 'state=email-invalid'],
+    [Response.json({ code: 'EMAIL_NOT_SENT' }, { status: 502 }), 'state=send-failed'],
+    [new Response(null, { status: 500 }), 'state=send-failed']
+  ]
+  for (const [answer, location] of cases) {
+    const { deps } = fake(() => answer)
+    const response = await sendLinkFromForm(post('/sign-in/link', { email: 'reader@example.org' }), deps)
+    expect(response.headers.get('location')).toBe(`/sign-in?${location}`)
+  }
+})
+
+test('a malformed address or a cross-site post never reaches Better Auth', async () => {
+  const { deps, calls } = fake(() => Response.json({ status: true }))
+  const invalid = await sendLinkFromForm(post('/sign-in/link', { email: 'not-an-email', next: '//evil.example' }), deps)
+  expect(invalid.headers.get('location')).toBe('/sign-in?state=email-invalid')
+  const forged = await sendLinkFromForm(
+    post('/sign-in/link', { email: 'reader@example.org' }, { origin: 'https://evil.example' }),
+    deps
+  )
+  expect(forged.status).toBe(403)
+  expect(calls).toHaveLength(0)
+})
+
+test('Google without script hands the browser to Google with Better Auth’s state cookie, or says it failed', async () => {
+  const { deps, calls } = fake(
+    () =>
+      new Response(JSON.stringify({ url: 'https://accounts.google.com/o/oauth2/auth?state=s', redirect: true }), {
+        headers: { 'content-type': 'application/json', 'set-cookie': '__Secure-better-auth.state=s; Path=/; HttpOnly' }
+      })
+  )
+  const response = await startGoogleFromForm(post('/sign-in/google', { next: '/new' }), deps)
+  expect(response.status).toBe(303)
+  expect(response.headers.get('location')).toBe('https://accounts.google.com/o/oauth2/auth?state=s')
+  expect(response.headers.getSetCookie()).toEqual(['__Secure-better-auth.state=s; Path=/; HttpOnly'])
+  expect(calls[0]!.body).toEqual({ provider: 'google', callbackURL: '/api/auth/continue?next=%2Fnew' })
+
+  const failed = fake(() => Response.json({ message: 'Provider not found' }, { status: 404 }))
+  const refused = await startGoogleFromForm(post('/sign-in/google', {}), failed.deps)
+  expect(refused.headers.get('location')).toBe('/sign-in?state=google-failed')
+})

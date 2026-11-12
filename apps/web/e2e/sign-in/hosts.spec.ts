@@ -84,7 +84,9 @@ test.describe('sign-in under HOST_MODE=multi', () => {
       headers: { host: APP_HOST, cookie: secure },
       maxRedirects: 0
     })
-    expect(response.status()).toBe(307)
-    expect(response.headers().location).toBe('/api/auth/continue?next=%2Fnew')
+    // The page streams, so the redirect rides in the document for the client to follow, and no form is drawn.
+    const html = await response.text()
+    expect(html).toContain('NEXT_REDIRECT;replace;/api/auth/continue?next=%2Fnew;307;')
+    expect(html).not.toContain('name="email"')
   })
 })

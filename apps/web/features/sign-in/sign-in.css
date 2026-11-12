@@ -1,0 +1,390 @@
+/*
+ * The sign-in page: the form column on the Dusk ground beside the room, a surface holding one photograph of Bukit
+ * Jalil in the enormous capsule and the day strip under it, where a sent link's window appears. On a phone the
+ * photograph is a short capsule on top, the form follows, and the strip is the last band.
+ *
+ * The page has its own layout: the shared auth column (globals.css, used by device, invite and consent) gives way to
+ * it only where the sign-in page is inside, as the subscriber data page widens it.
+ */
+[data-surface='auth']:has([data-sign-in-page]) {
+  padding: 0;
+}
+.auth-column:has(> [data-sign-in-page]) {
+  width: 100%;
+}
+
+.sign-in {
+  --m: clamp(1rem, 1.67vw, 1.5rem);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'photo'
+    'column'
+    'strip'
+    'credit';
+  align-content: start;
+  min-height: 100svh;
+  padding: var(--m);
+  box-sizing: border-box;
+  color: var(--ink);
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  line-height: 1.5;
+}
+
+/* The form column: the wordmark, then what this is, then the one form and the other ways in, then the legal line. */
+.sign-in-column {
+  grid-area: column;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sign-in-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(100%, 26.5rem);
+  min-width: 0;
+  margin-inline: auto;
+  padding-top: 20px;
+  overflow-wrap: anywhere;
+}
+
+.sign-in-brand {
+  display: inline-flex;
+  align-self: flex-start;
+  min-height: 48px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 9999px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  text-decoration: none;
+}
+.sign-in-brand img {
+  display: block;
+  width: 28px;
+  height: 28px;
+}
+
+.sign-in-head {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sign-in-title {
+  margin: 0 0 0 -0.04em;
+  font-size: clamp(2.5rem, 1.3rem + 3.2vw, 4rem);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+/* "Sign in or create your account" holds two lines in the column at the next step down. */
+.sign-in-title[data-long] {
+  font-size: clamp(2rem, 1rem + 2.4vw, 3rem);
+  line-height: 1.08;
+}
+.sign-in-lead {
+  max-width: 24ch;
+  margin: 0;
+  font-size: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+.sign-in-reason,
+.sign-in-unavailable,
+.sign-in-note {
+  margin: 0;
+  font-weight: 500;
+}
+
+.sign-in-form,
+.sign-in-others,
+.sign-in-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sign-in .sign-in-label {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.sign-in .sign-in-hint,
+.sign-in .sign-in-field-error {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.sign-in .sign-in-field-error {
+  font-weight: 600;
+}
+.sign-in .sign-in-hint {
+  color: var(--muted-foreground);
+}
+
+/* "or": a quiet word between the email link and the other two ways in, no rule either side. */
+.sign-in-or {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.sign-in-sent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sign-in-sent-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 1rem + 1.6vw, 2.25rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.sign-in-sent-title:focus:not(:focus-visible) {
+  outline: none;
+}
+.sign-in-sent-to,
+.sign-in-sent-again {
+  margin: 0;
+}
+
+.sign-in-legal,
+.sign-in-credit {
+  margin: 0;
+  text-wrap: pretty;
+  color: var(--muted-foreground);
+  font-size: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  line-height: 1.5;
+}
+.sign-in-legal a,
+.sign-in-credit a,
+.sign-in-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+.sign-in-credit a {
+  color: inherit;
+}
+.sign-in-switch {
+  margin: 0;
+}
+.sign-in-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+@media (pointer: coarse) {
+  .sign-in-legal a,
+  .sign-in-credit a {
+    display: inline-block;
+    padding-block: 10px;
+  }
+}
+@media (hover: hover) {
+  .sign-in-legal a:hover,
+  .sign-in-credit a:hover,
+  .sign-in-link:hover {
+    text-decoration-thickness: 2px;
+  }
+  .sign-in-brand:hover span {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+  }
+}
+
+/* The room. On a phone its parts are the page's own bands: the photograph on top, the strip and the credit last. */
+.sign-in-room {
+  display: contents;
+}
+.sign-in-photo {
+  grid-area: photo;
+  position: relative;
+  height: clamp(7.5rem, 4rem + 14vw, 12rem);
+  margin-right: calc(-1 * var(--m));
+  overflow: clip;
+}
+/* The capsule runs past the edge that crops it, as the landing's room does; the picture fills what shows. */
+.sign-in-capsule {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 160%;
+  overflow: clip;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+.sign-in-capsule img {
+  display: block;
+  width: calc(100% / 1.6);
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 52%;
+}
+
+.sign-in-strip {
+  grid-area: strip;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(100%, 26.5rem);
+  min-width: 0;
+  margin: 56px auto 0;
+}
+.sign-in-strip-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.sign-in-strip-caption > :last-child {
+  color: var(--muted-foreground);
+}
+[data-sign-in-strip='link'] .sign-in-strip-caption > :first-child {
+  font-weight: 600;
+}
+.sign-in-track {
+  position: relative;
+  height: 40px;
+  border: var(--edge-width) solid var(--edge);
+  border-radius: 9999px;
+  background: var(--surface);
+}
+/* The link's window: the one capsule on the strip, inverted, from now to the link's end; it narrows as time runs out. */
+.sign-in-window {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  min-width: 4px;
+  border-radius: 9999px;
+  background: var(--ink);
+}
+.sign-in-now {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--ink);
+  transform: translateX(-50%);
+}
+.sign-in-credit {
+  grid-area: credit;
+  width: min(100%, 26.5rem);
+  margin: 16px auto 0;
+}
+
+@media (min-width: 1024px) {
+  .sign-in {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-areas: 'column room';
+    column-gap: var(--m);
+  }
+  .sign-in-column {
+    justify-content: center;
+    padding-block: 32px;
+  }
+  .sign-in-stack {
+    padding-top: 0;
+  }
+  .sign-in-room {
+    grid-area: room;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: calc(100svh - 2 * var(--m));
+    padding: 32px;
+    border: var(--edge-width) solid var(--edge);
+    border-radius: 16px;
+    box-sizing: border-box;
+    background: var(--surface);
+    overflow: clip;
+  }
+  .sign-in-photo {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 240px;
+    margin-right: -32px;
+  }
+  .sign-in-strip,
+  .sign-in-credit {
+    width: auto;
+    margin: 0;
+  }
+  .sign-in-strip {
+    margin-top: 12px;
+  }
+  .sign-in-track {
+    background: var(--raised);
+  }
+}
+
+/* The entrance: CSS only, transform and opacity, the column's parts 70ms apart and the room with them; visible without it. */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion='reduce']) :is(.sign-in-brand, .sign-in-head, .sign-in-form, .sign-in-unavailable) {
+    animation: sign-in-rise 700ms var(--ease) both;
+  }
+  html:not([data-motion='reduce']) .sign-in-head {
+    animation-delay: 70ms;
+  }
+  html:not([data-motion='reduce']) :is(.sign-in-form, .sign-in-unavailable) {
+    animation-delay: 140ms;
+  }
+  html:not([data-motion='reduce']) :is(.sign-in-others, .sign-in-switch, .sign-in-legal) {
+    animation: sign-in-rise 700ms var(--ease) 210ms both;
+  }
+  html:not([data-motion='reduce']) .sign-in-capsule {
+    animation: sign-in-room 1100ms var(--ease) 120ms both;
+  }
+  html:not([data-motion='reduce']) :is(.sign-in-strip, .sign-in-credit) {
+    animation: sign-in-rise 700ms var(--ease) 280ms both;
+  }
+  html:not([data-motion='reduce']) .sign-in-window {
+    animation: sign-in-window 500ms var(--ease) both;
+  }
+}
+@keyframes sign-in-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes sign-in-room {
+  from {
+    opacity: 0;
+    transform: translateX(6%);
+  }
+}
+@keyframes sign-in-window {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+@media (forced-colors: active) {
+  /* A hovered capsule takes Highlight; its label takes the pair's text colour, as a selected segment does. */
+  .sign-in [data-slot='button']:not(:disabled):hover {
+    forced-color-adjust: none;
+    border-color: HighlightText;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .sign-in-window,
+  .sign-in-now {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .sign-in-track {
+    border: 2px solid CanvasText;
+  }
+}

@@ -1,8 +1,10 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { connection } from 'next/server'
 import { getPrincipal } from '../../lib/principal'
 import { prefersMalay } from '../../lib/preferred-language'
 import { signInLinks } from './links'
+import { offeredMethods } from './methods'
 import { continuePath, resolveAuthState, safeNext, type AuthSearchParams } from './model'
 import { SignInPanel } from './panel'
 
@@ -15,7 +17,20 @@ export async function accountRoute(mode: 'sign-in' | 'sign-up', searchParams: Pr
   // A guest stays: sign-up is how a guest account converts (#97 tracks `from_guest`).
   if (principal?.kind === 'session' && !principal.isGuest) redirect(continuePath(next))
 
-  const state = mode === 'sign-in' ? resolveAuthState(params) : { kind: 'form' as const }
+  // The strip's clock and a sent link's state are this request's: render now, never from a prerender.
+  await connection()
+  const now = new Date()
+  const state = mode === 'sign-in' ? resolveAuthState(params, now) : { kind: 'form' as const }
   const locale = prefersMalay((await headers()).get('accept-language')) ? 'ms' : 'en'
-  return <SignInPanel mode={mode} next={next} state={state} links={signInLinks(locale)} locale={locale} />
+  return (
+    <SignInPanel
+      mode={mode}
+      next={next}
+      state={state}
+      links={signInLinks(locale)}
+      methods={await offeredMethods()}
+      now={now.toISOString()}
+      locale={locale}
+    />
+  )
 }
