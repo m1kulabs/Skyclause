@@ -62,14 +62,14 @@ export function PhoneMenu({ scope, now }: { scope: ShellScope; now: string }) {
       className="shell-sheet"
       trigger={
         <Button ref={trigger} variant="secondary" className="shell-phone-menu">
-          <MenuIcon aria-hidden="true" />
+          <MenuIcon data-icon="inline-start" aria-hidden="true" />
           <span>{t('app-shell.menu', {}, locale)}</span>
         </Button>
       }
     >
       <div className="shell-sheet-tools">
         <Button variant="secondary" onClick={searchFromSheet}>
-          <SearchIcon aria-hidden="true" />
+          <SearchIcon data-icon="inline-start" aria-hidden="true" />
           <span>{t('app-shell.palette', {}, locale)}</span>
         </Button>
         <p className="shell-live">

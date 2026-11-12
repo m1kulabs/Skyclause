@@ -289,12 +289,12 @@ export function BundleDetail({ bundleId, actionsRef, initial, locale = 'en' }: B
     <div className="bundle-item">
       <nav className="bundle-phone-nav" aria-label={labels.item}>
         <Button variant="ghost" onClick={() => show('list')}>
-          <ArrowLeftIcon aria-hidden="true" />
+          <ArrowLeftIcon data-icon="inline-start" aria-hidden="true" />
           {t('bundles.back_to_list', {}, locale)}
         </Button>
         <Button variant="ghost" onClick={() => show('details')}>
           {t(normal ? 'bundles.open_trace' : 'bundles.open_details', {}, locale)}
-          <ArrowRightIcon aria-hidden="true" />
+          <ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
         </Button>
       </nav>
       <header className="bundle-item-head">
@@ -563,7 +563,7 @@ export function BundleDetail({ bundleId, actionsRef, initial, locale = 'en' }: B
     <div className="bundle-details">
       <nav className="bundle-phone-nav" aria-label={labels.details}>
         <Button variant="ghost" onClick={() => show('item')}>
-          <ArrowLeftIcon aria-hidden="true" />
+          <ArrowLeftIcon data-icon="inline-start" aria-hidden="true" />
           {t('bundles.back_to_calls', {}, locale)}
         </Button>
       </nav>
