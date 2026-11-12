@@ -1033,8 +1033,9 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
  * The phone list: at 640px and below a table with data-phone="list" (the default), or any table holding a row marked
  * data-phone-row (a row component that brings its own table, such as the signal-health row), turns each row into a
  * two-line item.
- * Line one is the cell with phone="primary" (the first cell unless another says so) and the one with phone="end"; line
- * two is every other cell, 13px muted, each led by its `label` when it has one. phone="hide" drops a cell. The header
+ * Line one is the cell with phone="primary" (the first cell unless another says so) and the one with phone="end" (under
+ * the name when the two do not fit side by side); line two is every other cell, 13px muted, each led by its `label` when
+ * it has one. phone="hide" drops a cell. The header
  * stays in the document for assistive technology and leaves the screen. The empty ::after is a full-width item that
  * breaks line one from line two without adding height.
  */
@@ -1126,6 +1127,8 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     > :is(td, th)[data-phone='primary'] {
     order: 0;
     flex: 1 1 0;
+    /* Room for a name: an end mark that does not fit beside it moves under it instead. */
+    min-width: min(6rem, 100%);
     margin-top: 0;
     font-size: 14px;
     line-height: 20px;
@@ -1136,8 +1139,9 @@ tbody > tr[data-slot='table-row'][data-state='selected'] {
     > tr
     > :is(td, th)[data-phone='end'] {
     order: 1;
-    flex: 0 1 auto;
-    max-width: 60%;
+    /* A capsule never wraps or shrinks; a longer locale's mark takes its own width, on a line of its own if need be. */
+    flex: 0 0 auto;
+    max-width: 100%;
     margin-top: 0;
     margin-inline-start: auto;
     font-size: 14px;
