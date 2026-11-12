@@ -115,13 +115,21 @@ export function OAuthConsentForm({
         <p className="auth-hint">{t('oauth.consent.projectChoice', {}, locale)}</p>
         {details.link ? (
           <label className="auth-check">
-            <input type="checkbox" name="project_ids" value={details.link.projectId} checked readOnly />
+            <input
+              className="native-check"
+              type="checkbox"
+              name="project_ids"
+              value={details.link.projectId}
+              checked
+              readOnly
+            />
             <span>{details.link.projectName}</span>
           </label>
         ) : (
           <>
             <label className="auth-check">
               <input
+                className="native-check"
                 type="checkbox"
                 name="all_projects"
                 value="true"
@@ -134,6 +142,7 @@ export function OAuthConsentForm({
               projects.map((project) => (
                 <label key={project.id} className="auth-check">
                   <input
+                    className="native-check"
                     type="checkbox"
                     name="project_ids"
                     value={project.id}
@@ -166,6 +175,7 @@ export function OAuthConsentForm({
         {requestedScopes.map((scope) => (
           <label key={scope} className="auth-check">
             <input
+              className="native-check"
               type="checkbox"
               name="scopes"
               value={scope}

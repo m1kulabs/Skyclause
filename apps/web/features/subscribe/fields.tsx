@@ -101,6 +101,7 @@ export function Fields({
         {windows.map((window) => (
           <label key={window.id} className="auth-check auth-window">
             <input
+              className="native-check"
               type="checkbox"
               name="window_ids"
               value={window.id}
@@ -118,6 +119,7 @@ export function Fields({
           {noticeChannels.map((channel) => (
             <label key={channel} className="auth-check">
               <input
+                className="native-check"
                 type="checkbox"
                 name="channels"
                 value={channel}

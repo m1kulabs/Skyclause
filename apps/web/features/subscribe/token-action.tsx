@@ -78,6 +78,7 @@ export function TokenAction({
               {(['keep', 'shift', 'shuttle'] as const).map((option) => (
                 <label key={option} className="auth-check">
                   <input
+                    className="native-check"
                     type="radio"
                     name="reply"
                     value={option}
@@ -110,6 +111,7 @@ export function TokenAction({
               {(['yes', 'no'] as const).map((option) => (
                 <label key={option} className="auth-check">
                   <input
+                    className="native-check"
                     type="radio"
                     name="answer"
                     value={option}

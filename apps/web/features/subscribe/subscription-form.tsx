@@ -183,6 +183,7 @@ export function SubscriptionForm({ token, locale }: { token: string; locale: 'en
                     </p>
                     <label className="auth-check">
                       <input
+                        className="native-check"
                         type="checkbox"
                         name="consent"
                         checked={consent}

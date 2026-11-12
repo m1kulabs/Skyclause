@@ -1,8 +1,8 @@
 /*
  * The auth column: one calm column on the Dusk ground for everyone who is not yet inside the app. Text 17 to 19px in full
  * ink, one h1 that says what the page is, fields with their label above and their error beside, capsule controls with
- * one primary by inversion. Native checkboxes, radios and selects are drawn here so the 2px edge and the ink fill match
- * the rest of the world; they stay native, so they work without script and keep their form semantics.
+ * one primary by inversion. Checkboxes and radios are native (`native-check`) and the select is drawn here at the public
+ * 48px, so they work without script and keep their form semantics.
  */
 .auth-page {
   display: grid;
@@ -236,52 +236,6 @@
   padding-top: 0;
 }
 
-.auth-check input[type='checkbox'],
-.auth-check input[type='radio'] {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: none;
-  display: grid;
-  place-content: center;
-  width: 24px;
-  height: 24px;
-  margin: 0;
-  border: 2px solid var(--control-edge);
-  border-radius: 4px;
-  background: var(--field);
-  cursor: pointer;
-}
-
-.auth-check input[type='radio'] {
-  border-radius: 9999px;
-}
-
-.auth-check input::before {
-  content: '';
-  width: 12px;
-  height: 12px;
-  background: var(--ground);
-  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-  transform: scale(0);
-}
-
-.auth-check input[type='radio']::before {
-  width: 10px;
-  height: 10px;
-  border-radius: 9999px;
-  clip-path: none;
-}
-
-.auth-check input:checked {
-  border-color: var(--ink);
-  background: var(--ink);
-}
-
-.auth-check input:checked::before {
-  transform: scale(1);
-}
-
-.auth-check input:disabled,
 .auth-check:has(input:disabled) {
   cursor: not-allowed;
   opacity: 0.6;
@@ -338,16 +292,5 @@
 @media (max-width: 420px) {
   .auth-pair {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (forced-colors: active) {
-  .auth-check input:checked {
-    background: Highlight;
-    border-color: Highlight;
-  }
-
-  .auth-check input::before {
-    background: HighlightText;
   }
 }
