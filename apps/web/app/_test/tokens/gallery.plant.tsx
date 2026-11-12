@@ -451,6 +451,19 @@ export function Gallery() {
             </Field>
           ))}
           <Field>
+            <FieldLabel htmlFor="native-pack-pick">Native select</FieldLabel>
+            <select id="native-pack-pick" name="native-pack-pick" autoComplete="off" className="native-select">
+              <option value="sky">Sky</option>
+              <option value="crowd">Crowd</option>
+            </select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="native-pack-off">Native select, disabled</FieldLabel>
+            <select id="native-pack-off" name="native-pack-off" autoComplete="off" className="native-select" disabled>
+              <option value="sky">Sky</option>
+            </select>
+          </Field>
+          <Field>
             <FieldLabel htmlFor="window-notes">Notes for approvers</FieldLabel>
             <Textarea id="window-notes" name="window-notes" autoComplete="off" defaultValue="Exit through gate A." />
           </Field>
@@ -462,6 +475,26 @@ export function Gallery() {
             <div className="flex items-center gap-2">
               <Checkbox id="notify-rota" name="notify-rota" />
               <Label htmlFor="notify-rota">Notify the rota</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="native-notify" name="native-notify" className="native-check" defaultChecked />
+              <Label htmlFor="native-notify">Native checkbox, checked</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="native-quiet" name="native-quiet" className="native-check" />
+              <Label htmlFor="native-quiet">Native checkbox</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="radio" id="native-pack-sky" name="native-pack" className="native-check" defaultChecked />
+              <Label htmlFor="native-pack-sky">Native radio, selected</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="radio" id="native-pack-crowd" name="native-pack" className="native-check" />
+              <Label htmlFor="native-pack-crowd">Native radio</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="native-off" name="native-off" className="native-check" disabled />
+              <Label htmlFor="native-off">Native checkbox, disabled</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch id="send-push" name="send-push" defaultChecked />

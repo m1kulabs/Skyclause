@@ -1,74 +1,134 @@
-/* eslint-disable skyclause-i18n/no-literal-jsx -- Landing copy is the DESIGN copy deck verbatim (English P1; Malay LND-7 P2). Images are cropped-only Wikimedia Commons files loaded lazily. */
-import './landing.css'
-import { JPS_SOURCE_URL, replaySlice, WINDOW_1530_FROM, WINDOW_1530_TO, CLAUSE_SPAN_FROM, CLAUSE_SPAN_TO } from './data'
-import { LandingStrip } from './strip'
+/* eslint-disable skyclause-i18n/no-literal-jsx, @next/next/no-img-element -- Landing copy is English in the component (no Malay landing route; LND-7 is P2). Self-hosted, pre-sized pictures; next/image would add client script. */
+import type { ReactNode } from 'react'
+import type { LatestCallRead } from '../landing-hero/evaluate'
+import { CalendarFragment, LedgerFragment, LiveGrades, NoticeFragment, TERMS_SERVICE } from './fragments'
+import { JPS_SOURCE_URL } from './data'
+import type { GradesState } from './grades'
+import { photo, srcSetOf, type PhotoKey } from './photos'
+import { Words } from './words'
 
-// Showcase: "One window, three moments" — three 640px copies, middle reveals inputs on focus or click.
-// LOC-6 outranks the copy deck: every printed time carries MYT (also satisfies expectZonedTimes).
-export function Showcase() {
-  const before = replaySlice('2026-11-02T14:00:00+08:00', '2026-11-02T14:55:00+08:00')
-  const crossing = replaySlice('2026-11-02T14:00:00+08:00', '2026-11-02T15:00:00+08:00')
-  const after = replaySlice('2026-11-02T14:00:00+08:00', '2026-11-02T16:00:00+08:00')
-  return (
-    <section aria-labelledby="showcase-heading" className="landing-section landing-reveal-0">
-      <div className="landing-inner">
-        <h2 id="showcase-heading" className="landing-head landing-reveal-0">
-          One window, three moments
-        </h2>
-        <p className="landing-soft landing-reveal-1" data-source={JPS_SOURCE_URL}>
-          The 15:30 MYT release wave on 2 November 2026, three verdicts.
-        </p>
-      </div>
-      <div className="landing-copies landing-reveal-2" role="list" aria-label="One window, three moments">
-        <article role="listitem" className="landing-copy" aria-label="Before">
-          <h3>Before</h3>
-          <p data-source={JPS_SOURCE_URL}>Normal · 29.5 mm in 60 min · Lebat starts at 31 mm</p>
-          <LandingStrip
-            from="2026-11-02T14:00:00+08:00"
-            to="2026-11-02T14:55:00+08:00"
-            rain60={before}
-            windowSpan={null}
-          />
-        </article>
-        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The middle copy reveals inputs on focus/click. */}
-        <article role="listitem" className="landing-copy landing-middle" aria-label="Crossing" tabIndex={0}>
-          <h3>Crossing</h3>
-          <p data-source={JPS_SOURCE_URL}>Commute disruption · Storm confirmed · 39.0 mm in 60 min (Lebat)</p>
-          <LandingStrip
-            from="2026-11-02T14:00:00+08:00"
-            to="2026-11-02T15:00:00+08:00"
-            rain60={crossing}
-            windowSpan={{ from: WINDOW_1530_FROM, to: WINDOW_1530_TO }}
-            crimsonWindow
-          />
-          <div className="landing-middle-details">
-            <p data-source={JPS_SOURCE_URL}>
-              Gauge <span translate="no">0232901RF</span>, reading 15:00 MYT, 5 min old at the 15:05 MYT poll; clause
-              span 15:00 MYT–16:30 MYT, from 30 minutes before to 60 minutes after the window ends; Lebat 31–60 mm
-            </p>
-            <p data-source="clock:Asia/Kuala_Lumpur">
-              Clause span <time dateTime={CLAUSE_SPAN_FROM}>15:00 MYT</time>–
-              <time dateTime={CLAUSE_SPAN_TO}>16:30 MYT</time>
-            </p>
-          </div>
-        </article>
-        <article role="listitem" className="landing-copy" aria-label="After">
-          <h3>After</h3>
-          <p data-source={JPS_SOURCE_URL}>
-            Commute disruption holds · 24.0 mm in 60 min; the window&rsquo;s span peaked at 59.5 mm at 15:35 MYT
+interface RecordItem {
+  id: string
+  name: string
+  fact: ReactNode
+  picture: PhotoKey
+  object: ReactNode
+}
+
+// "Object on a disc", with the capsule in place of the disc: the record's four parts as a list; choosing one swaps the
+// object (an interface fragment) and the photograph inside the capsule. Radios drive it, so it works without script.
+export function Showcase({
+  now,
+  latestCall,
+  calendarSource,
+  grades,
+  gradesSource
+}: {
+  now: Date
+  latestCall: LatestCallRead
+  calendarSource: string
+  grades: GradesState
+  gradesSource: string
+}) {
+  const items: RecordItem[] = [
+    {
+      id: 'ledger',
+      name: 'The ledger entry',
+      fact: 'Append-only: every run, call, edit, approval, send, delay and grade, exportable on every plan.',
+      picture: 'storm',
+      object: <LedgerFragment />
+    },
+    {
+      id: 'notice',
+      name: 'The notice',
+      fact: 'Sent only after approval, to people who need no account, with a way to unsubscribe.',
+      picture: 'lrtPlatform',
+      object: <NoticeFragment />
+    },
+    {
+      id: 'calendar',
+      name: 'The conditions calendar',
+      fact: 'One calendar per project of approved calls and surge nights, to subscribe to in any calendar app.',
+      picture: 'persiaran',
+      object: <CalendarFragment now={now} latestCall={latestCall} source={calendarSource} />
+    },
+    {
+      id: 'grade',
+      name: 'The grade',
+      fact: (
+        <>
+          Every call is graded after the fact, rejected calls included, and published with n.{' '}
+          <LiveGrades grades={grades} source={gradesSource} />
+        </>
+      ),
+      picture: 'rain',
+      object: (
+        <div className="frag" data-ui="grade-record">
+          <p className="frag-tag" data-source={JPS_SOURCE_URL}>
+            <span className="frag-badge">Replay</span>
+            <span>The input a grade reads, 2 November 2026</span>
           </p>
-          <LandingStrip
-            from="2026-11-02T14:00:00+08:00"
-            to="2026-11-02T16:00:00+08:00"
-            rain60={after}
-            windowSpan={null}
-          />
-        </article>
+          <p className="frag-figure" data-source={JPS_SOURCE_URL}>
+            <span data-numeric>59.5</span>
+            <span className="frag-unit">mm at 15:35 MYT</span>
+          </p>
+          <p className="frag-meta" data-source={TERMS_SERVICE}>
+            Sky windows are graded nightly at 23:55 MYT against the gauge and APIMS, with a grade by 06:45 MYT.
+          </p>
+        </div>
+      )
+    }
+  ]
+  return (
+    <section id="record" className="record" aria-labelledby="record-heading" data-reveal-section>
+      <div className="record-stage">
+        <div className="record-capsule" data-reveal>
+          {items.map((item) => {
+            const entry = photo(item.picture)
+            return (
+              <img
+                key={item.id}
+                className="record-photo record-item"
+                data-item={item.id}
+                src={entry.src}
+                srcSet={srcSetOf(entry)}
+                sizes="(min-width: 1024px) 64vw, 100vw"
+                width={entry.width}
+                height={entry.height}
+                alt={entry.alt}
+                loading="lazy"
+                decoding="async"
+              />
+            )
+          })}
+        </div>
+        <div className="record-objects" data-reveal>
+          {items.map((item) => (
+            <div key={item.id} className="record-object record-item" data-item={item.id}>
+              {item.object}
+            </div>
+          ))}
+        </div>
+        <div className="record-facts" data-reveal>
+          {items.map((item) => (
+            <div key={item.id} className="record-fact record-item" data-item={item.id} data-source={TERMS_SERVICE}>
+              {item.fact}
+            </div>
+          ))}
+        </div>
       </div>
-      <p className="landing-inner landing-soft" data-source={JPS_SOURCE_URL}>
-        Replay of 2 November 2026 from the JPS 5-minute series; 60-minute totals are our arithmetic. Clause engine
-        verdict: not reviewed, not sent.
-      </p>
+      <fieldset className="record-index">
+        <legend className="sr-only">Parts of the record</legend>
+        <h2 id="record-heading" className="record-heading" data-words>
+          <Words text="What the record keeps" />
+        </h2>
+        {items.map((item, index) => (
+          <label key={item.id} className="record-name" data-reveal>
+            <input type="radio" name="record" value={item.id} defaultChecked={index === 0} className="record-radio" />
+            <span>{item.name}</span>
+          </label>
+        ))}
+      </fieldset>
     </section>
   )
 }

@@ -76,7 +76,6 @@ const textPairs: Array<[string, string]> = [
   ['muted-foreground', 'card'],
   ['muted-foreground', 'popover'],
   ['muted-foreground', 'muted'],
-  ['sidebar-foreground', 'sidebar'],
   ['landing-foreground', 'landing-background'],
   ['landing-muted-foreground', 'landing-surface'],
   ['landing-field-foreground', 'landing-field'],
