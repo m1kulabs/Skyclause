@@ -1,5 +1,6 @@
 import {
   createNativeWindowSeries,
+  getProjectRecord,
   resolveWindowLocalSpan,
   windowLocalSpan,
   WindowLocalTimeError,
@@ -8,6 +9,7 @@ import {
   type WindowMutationInsert
 } from '@skyclause/db'
 import type { ServiceContext } from '../../tenancy'
+import { ApiError } from '../../problems'
 import type { LocalSpan, NativeRule } from './calendar-types'
 import { expandWeeklyDates, validateRecurrence } from './recurrence'
 import { invalidField, invalidWindow, validateFields } from './fields'
@@ -138,10 +140,12 @@ export async function createWindowSeries(
   )
   if (!occurrences.length)
     throw invalidField('/recurrence', 'The recurrence has no occurrences in the allowed horizon.')
+  const project = await getProjectRecord(ctx.tx, input.projectId)
+  if (!project) throw new ApiError(404, 'not-found', 'The project is unavailable.')
   const horizon = await windowLocalSpan(ctx.tx, {
     startsAt: access.now,
     endsAt: new Date(access.now.getTime() + 90 * 86400000),
-    tz: body.tz
+    tz: project.project.timeZone
   })
   const rows = await createNativeWindowSeries(
     ctx.tx,

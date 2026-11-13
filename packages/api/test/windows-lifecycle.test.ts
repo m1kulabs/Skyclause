@@ -5,6 +5,8 @@ import {
   domainEvent,
   icsFeed,
   ledgerEntry,
+  listDueNativeWindowSeries,
+  windowLocalSpan,
   readWindowSeriesDefinition,
   window,
   windowSeries,
@@ -993,3 +995,66 @@ test('a same-day ambiguous fall-back time still resolves to the future standard-
     '2026-10-25T01:30:00.000Z'
   )
 })
+
+test.each([
+  {
+    projectTz: 'UTC',
+    declarationTz: 'Asia/Kuala_Lumpur',
+    starts: '2026-11-15T20:00:00Z',
+    checked: '2026-11-15',
+    next: '2026-11-16T00:00:00Z'
+  },
+  {
+    projectTz: 'Asia/Kuala_Lumpur',
+    declarationTz: 'UTC',
+    starts: '2026-11-15T17:00:00Z',
+    checked: '2026-11-16',
+    next: '2026-11-16T16:00:00Z'
+  }
+])(
+  'creation and due discovery use project timezone: $projectTz / $declarationTz',
+  async ({ projectTz, declarationTz, starts, checked, next }) => {
+    const p = await run((tx) => makeProject(tx, { timeZone: projectTz }))
+    const now = new Date('2026-11-15T16:30:00Z')
+    const app = createTestApi({ deps: testDeps({ withTenant, now: () => now }) }).v1
+    const response = await apiRequest(app, {
+      as: editor(),
+      org: ORG,
+      method: 'POST',
+      path: `/v1/projects/${p.id}/windows`,
+      idempotencyKey: randomUUID(),
+      body: fields({
+        starts_at: starts,
+        ends_at: new Date(Date.parse(starts) + 3600000).toISOString(),
+        tz: declarationTz,
+        recurrence: {
+          frequency: 'weekly',
+          days_of_week: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+          count: 120,
+          skip_dates: []
+        }
+      })
+    })
+    expect(response.status).toBe(201)
+    const view = (await response.json()) as View
+    const seriesId = view.series_id!
+    const [series] = await run((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, seriesId)))
+    const horizon = await run((tx) =>
+      windowLocalSpan(tx, { startsAt: now, endsAt: new Date(now.getTime() + 90 * 86400000), tz: projectTz })
+    )
+    const frontier = new Date(Date.parse(`${horizon.date}T00:00:00Z`) + horizon.endDayOffset * 86400000)
+      .toISOString()
+      .slice(0, 10)
+    expect(series).toMatchObject({ checkedOn: checked, materialisedUntil: frontier })
+    const principal = systemPrincipal('windows-due')
+    const inTenant = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId: testOrg(ORG).id, principal }, fn)
+    expect(await inTenant((tx) => listDueNativeWindowSeries(tx, { projectId: p.id, now, limit: 2 }))).toEqual([])
+    const nextNow = new Date(next)
+    expect(await inTenant((tx) => listDueNativeWindowSeries(tx, { projectId: p.id, now: nextNow, limit: 2 }))).toEqual([
+      seriesId
+    ])
+    const before = await members(seriesId)
+    await inTenant((tx) => extendDueWindowSeries({ tx, principal }, { projectId: p.id, seriesId, now: nextNow }))
+    expect((await members(seriesId)).length).toBeGreaterThan(before.length)
+  }
+)
