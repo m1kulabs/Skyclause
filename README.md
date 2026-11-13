@@ -19,7 +19,7 @@
     <br />
     <a href="https://skyclause.m1ku.tech"><strong>Live Demo &rarr;</strong></a>
     &middot;
-    <a href="/docs/demo/prelim/deck/skyclause-pitch-deck.pdf">Pitch Deck</a>
+    <a href="https://youtu.be/s_09LAGOaG0">Demo Video</a>
     &middot;
     <a href="https://github.com/m1kulabs/Skyclause/issues/new?labels=bug">Report a Bug</a>
     <br />
