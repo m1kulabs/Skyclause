@@ -247,7 +247,7 @@ test('when the run fails, it says so in plain words and offers a new ask', async
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1_000)
   })
-  expect(status()).toBe('The run failed; ask again.')
+  expect(status()).toBe('The run failed, so no bundle was drafted. Ask again.')
   expect(onDrafted).not.toHaveBeenCalled()
   expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
   expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
@@ -346,7 +346,7 @@ test('with the outcome still unknown at ASK_WAIT_MS, it says it is still being d
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1)
   })
-  expect(status()).toBe('It is still being drafted; the bundle shows in the list when it is ready.')
+  expect(status()).toBe('Still drafting. Reload the page in a few minutes to see the bundle.')
   expect(status()).not.toContain('No bundle was drafted')
   expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
 
@@ -538,7 +538,7 @@ async function askMs() {
 test.each([
   ['drafted', 'Sudah didraf. Berkas baharu ada dalam senarai di bawah.'],
   ['no_draft', 'Tiada berkas didraf. Semak sumber pek, kemudian minta lagi.'],
-  ['failed', 'Larian gagal; minta lagi.']
+  ['failed', 'Larian gagal, jadi tiada berkas didraf. Minta lagi.']
 ] as const)('in Malay, run status %s renders the Malay sentence without raw terms', async (runStatus, sentence) => {
   vi.mocked(overviewApi)
     .mockResolvedValueOnce(runRecord('queued') as never)
@@ -563,6 +563,6 @@ test('in Malay, ASK_WAIT_MS with unknown outcome renders the still-drafting Mala
   await act(async () => {
     await vi.advanceTimersByTimeAsync(ASK_WAIT_MS)
   })
-  expect(status()).toBe('Masih sedang didraf; berkas dipaparkan dalam senarai apabila sedia.')
+  expect(status()).toBe('Masih didraf. Muat semula halaman dalam beberapa minit untuk melihat berkas.')
   expect(document.body.textContent).not.toMatch(/No bundle|running|019a55e0/i)
 })
