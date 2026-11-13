@@ -45,6 +45,8 @@
   "ask_call_cancel": "Batal",
   "ask_call_drafted": "Sudah didraf. Berkas baharu ada dalam senarai di bawah.",
   "ask_call_no_draft": "Tiada berkas didraf. Semak sumber pek, kemudian minta lagi.",
+  "ask_call_run_failed": "Larian gagal; minta lagi.",
+  "ask_call_still_drafting": "Masih sedang didraf; berkas dipaparkan dalam senarai apabila sedia.",
   "ask_call_retry": "Cuba lagi",
   "ask_call_unavailable": "Permintaan keputusan belum tersedia.",
   "ask_call_budget": "Tiada lagi keputusan boleh diminta hari ini. Permintaan dibuka semula pada {time}.",

@@ -3,7 +3,7 @@ import { getProject } from '@skyclause/contracts/api/v1/projects'
 import { listProjects } from '@skyclause/contracts/api/v1/projects'
 import { streamBundles, listProjectBundles } from '@skyclause/contracts/api/v1/bundles'
 import { listProjectDays } from '@skyclause/contracts/api/v1/days'
-import { createRun } from '@skyclause/contracts/api/v1/runs'
+import { createRun, getRun } from '@skyclause/contracts/api/v1/runs'
 import { listNights } from '@skyclause/contracts/api/v1/nights'
 import { listProjectSources } from '@skyclause/contracts/api/v1/sources'
 import { getProjectStrip } from '@skyclause/contracts/api/v1/strip'
@@ -91,7 +91,8 @@ export const overviewOperations = {
       createRun.responses[202].content['application/json'].schema
     ),
     idempotent: createRun['x-skyclause'].idempotent
-  }
+  },
+  getRun: operation(getRun, { params: getRun.request.params }, getRun.responses[200].content['application/json'].schema)
 }
 
 export const overviewApi = createApiFetch(overviewOperations)
