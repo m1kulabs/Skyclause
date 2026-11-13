@@ -652,6 +652,72 @@ test('member windows in Commons use the genuine unavailable budget gate', async 
   expect(await withTenant({ orgId: testOrg(slug).id, principal }, (tx) => tx.select().from(windowSeries))).toEqual([])
 })
 
+test.each([
+  { name: 'URL', body: { url: 'https://calendar.example.org/schedule.ics' } },
+  {
+    name: 'empty file',
+    body: { file: { name: 'empty.ics', content: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n' } }
+  },
+  {
+    name: 'all-skipped file',
+    body: {
+      file: {
+        name: 'skipped.ics',
+        content:
+          'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:missing-title\r\nDTSTART:20261115T100000Z\r\nDTEND:20261115T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
+      }
+    }
+  },
+  {
+    name: 'out-of-range file',
+    body: {
+      file: {
+        name: 'past.ics',
+        content:
+          'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:past\r\nDTSTART:20200101T100000Z\r\nDTEND:20200101T110000Z\r\nSUMMARY:Past\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
+      }
+    }
+  }
+])('Commons member cannot activate $name without the real budget policy', async ({ body }) => {
+  const slug = 'commons'
+  const principal = asApiKey({ org: slug, role: 'editor', scopes: ['read', 'draft'] })
+  const orgId = testOrg(slug).id
+  const inCommons = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal }, fn)
+  const target = await inCommons(makeProject)
+  const { can } = (await import(new URL('../../auth/src/can.ts', import.meta.url).href)) as {
+    can: import('@skyclause/contracts').Can
+  }
+  let requests = 0
+  const app = createTestApi({
+    deps: testDeps({
+      withTenant,
+      can,
+      now: () => now,
+      calendarTransport: {
+        assertPublicUrl: async (url) => ({ url: new URL(url), addresses: ['192.0.2.1'] }),
+        safeFetch: async () => {
+          requests++
+          throw new Error('unexpected HTTP')
+        }
+      }
+    })
+  }).v1
+  const response = await apiRequest(app, {
+    as: principal,
+    org: slug,
+    method: 'POST',
+    path: `/v1/projects/${target.id}/ics-feeds`,
+    body,
+    idempotencyKey: randomUUID()
+  })
+  expect(response.status).toBe(501)
+  expect(await response.json()).toMatchObject({ owner: 'd-guest-rules' })
+  expect(requests).toBe(0)
+  expect(await inCommons((tx) => tx.select().from(icsFeed).where(eq(icsFeed.projectId, target.id)))).toEqual([])
+  expect(await inCommons((tx) => tx.select().from(window).where(eq(window.projectId, target.id)))).toEqual([])
+  expect(await inCommons((tx) => tx.select().from(domainEvent).where(eq(domainEvent.projectId, target.id)))).toEqual([])
+})
+
 test('a series edit validates every effective override before changing any member or metadata', async () => {
   const view = await create({ recurrence: { ...rule, count: 3, skip_dates: [] } })
   const rows = await members(view.series_id!)

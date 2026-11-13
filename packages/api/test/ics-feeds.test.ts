@@ -200,6 +200,22 @@ test('URL registration is pending, creates no windows, performs no HTTP and repl
   expect(await tenant((tx) => tx.select().from(window).where(eq(window.projectId, p.id)))).toHaveLength(0)
 })
 
+test('ordinary member may import an empty calendar without creating windows', async () => {
+  const p = await project()
+  const app = createTestApi({ deps: testDeps({ withTenant, recordAudit, now: () => now, can: canonicalCan }) }).v1
+  const response = await apiRequest(app, {
+    as: asApiKey({ org: ORG, role: 'editor', scopes: ['read', 'draft'] }),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/ics-feeds`,
+    idempotencyKey: randomUUID(),
+    body: { file: { name: 'empty.ics', content: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n' } }
+  })
+  expect(response.status).toBe(201)
+  expect(await response.json()).toMatchObject({ status: 'ready' })
+  expect(await tenant((tx) => tx.select().from(window).where(eq(window.projectId, p.id)))).toEqual([])
+})
+
 test('file import applies its occurrences before returning ready without HTTP', async () => {
   const p = await project()
   const api = createTestApi({

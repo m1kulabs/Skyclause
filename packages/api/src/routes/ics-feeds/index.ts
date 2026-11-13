@@ -1,3 +1,4 @@
+import { NotBuiltError } from '@skyclause/contracts'
 import type { Handlers } from '..'
 import { createIcsFeed, deleteIcsFeed, getIcsFeed, listIcsFeeds } from '../../services/ics-feeds'
 import { inTenant } from '../../tenancy'
@@ -8,7 +9,7 @@ async function safeCalendarRequest<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation()
   } catch (error) {
-    if (error instanceof ApiError) throw error
+    if (error instanceof ApiError || error instanceof NotBuiltError) throw error
     // Database and transport errors can embed source identifiers or capability URLs.
     throw new ApiError(500, 'internal-error', 'The calendar request failed.')
   }

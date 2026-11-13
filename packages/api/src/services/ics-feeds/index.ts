@@ -1,6 +1,7 @@
 import { SCOPE_STATEMENTS, type Can, type Operations, type Page } from '@skyclause/contracts'
 import { createIcsFeed as createRoute, listIcsFeeds as route } from '@skyclause/contracts/api/v1/ics-feeds'
 import {
+  assertBudgetEligibility,
   getIcsFeedRecord,
   getProjectRecord,
   ICS_FEED_ERRORS,
@@ -59,6 +60,7 @@ export async function createIcsFeed(
   await openProject(ctx, input.projectId, 'window.declare', access)
   const provenance = declarer(ctx.principal)
   const body = parseInput(createRoute.request.body.content['application/json'].schema, input.body)
+  await assertBudgetEligibility(ctx.tx, ctx.principal)
   if ('url' in body) {
     let url: URL
     try {
