@@ -612,7 +612,15 @@ export function ProjectOverview({
           askable
             ? {
                 sentence: t('overview.first_run_next_ask', {}, locale),
-                action: <AskForCall org={org} projectId={data.project.id} drafted={refresh} locale={locale} />
+                action: (
+                  <AskForCall
+                    org={org}
+                    projectId={data.project.id}
+                    drafted={refresh}
+                    onDrafted={() => setRefresh((current) => current + 1)}
+                    locale={locale}
+                  />
+                )
               }
             : {
                 sentence: t('overview.first_run_next_declare', {}, locale),
@@ -896,7 +904,15 @@ export function ProjectOverview({
         id="overview-bundle"
         title={t('overview.bundle', {}, locale)}
         action={
-          askable ? <AskForCall org={org} projectId={data.project.id} drafted={refresh} locale={locale} /> : undefined
+          askable ? (
+            <AskForCall
+              org={org}
+              projectId={data.project.id}
+              drafted={refresh}
+              onDrafted={() => setRefresh((current) => current + 1)}
+              locale={locale}
+            />
+          ) : undefined
         }
       >
         {!data.bundles.ok && !latestBundle ? (
