@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { NotBuiltError } from '@skyclause/contracts'
 import { UnsafeUrlError } from '@skyclause/config/net'
 import {
   allocateCalendarIds,
@@ -36,7 +37,13 @@ const DEFAULT_TIME_MARGIN_DAYS = 3
 /** HTTP has already completed; parsing, local resolution and atomic apply use this tenant transaction. */
 export async function applyCalendar(
   ctx: ServiceContext,
-  input: { feedId: string; claimId?: string; result: FetchResult; now: Date; memberAccess?: WindowsAccess }
+  input: {
+    feedId: string
+    claimId?: string
+    result: FetchResult
+    now: Date
+    memberAccess?: Pick<WindowsAccess, 'now' | 'budget'>
+  }
 ) {
   return mutateIcsFeed(
     ctx.tx,
@@ -47,12 +54,18 @@ export async function applyCalendar(
       ...(input.memberAccess
         ? {
             beforeApply: async (creates: readonly WindowMutationInsert[], tx: ServiceContext['tx']) => {
-              for (const _ of creates) await consumeWindowBudget({ ...ctx, tx }, input.memberAccess!)
+              for (let i = 0; i < Math.max(ctx.principal.kind === 'system' ? 1 : 0, creates.length); i++)
+                await consumeWindowBudget({ ...ctx, tx }, input.memberAccess!)
             }
           }
         : {})
     },
     async ({ feed, series, members }, tx) => {
+      if (
+        ctx.principal.kind === 'system' &&
+        members.some((row) => row.guest || row.shareLinkId || row.via === 'guest' || row.via === 'share')
+      )
+        throw unavailable()
       const planContext = { ...ctx, tx }
       const source = provenance.safeParse(feed.provenance)
       if (!source.success) throw unavailable()
@@ -227,7 +240,7 @@ export async function applyCalendar(
 /** Persist a fixed code only; never persist or log an exception that may contain a capability URL. */
 export async function recordCalendarFailure(
   ctx: ServiceContext,
-  input: { feedId: string; claimId: string; now: Date; error: unknown }
+  input: { feedId: string; claimId: string; now: Date; error: unknown; phase?: 'fetch' | 'apply' }
 ) {
   const code =
     input.error instanceof UnsafeUrlError
@@ -236,13 +249,16 @@ export async function recordCalendarFailure(
         ? 'missing-document'
         : input.error instanceof CalendarHttpError
           ? 'fetch-failed'
-          : input.error instanceof WindowStateConflict ||
+          : input.error instanceof NotBuiltError ||
+              input.error instanceof WindowStateConflict ||
               (input.error instanceof ApiError && input.error.status === 409)
             ? 'unavailable'
             : input.error instanceof CalendarDecodeError ||
                 input.error instanceof CalendarParseError ||
                 input.error instanceof ApiError
               ? 'parse-failed'
-              : 'fetch-failed'
+              : input.phase === 'apply'
+                ? 'unavailable'
+                : 'fetch-failed'
   return recordIcsFeedError(ctx.tx, { feedId: input.feedId, claimId: input.claimId, now: input.now, code })
 }

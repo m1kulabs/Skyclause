@@ -8,3 +8,5 @@ export {
   type Validators
 } from './fetch-ics'
 export { applyCalendar, recordCalendarFailure } from './apply-calendar'
+
+export { extendDueWindowSeries, recordNativeWindowFailure } from './due-native'

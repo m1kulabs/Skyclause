@@ -1,4 +1,4 @@
-import { type Page, type Principal } from '@skyclause/contracts'
+import { NotBuiltError, type Page, type Principal } from '@skyclause/contracts'
 import { listIcsFeeds as route } from '@skyclause/contracts/api/v1/ics-feeds'
 import { recordAudit, withTenant, type Tx } from '@skyclause/db'
 import { makeIcsFeed, makeOrganization, makeProject, makeWindow } from '@skyclause/db/test/factories/index'
@@ -770,6 +770,22 @@ test('failure records a fixed code without losing the last successful document o
     refreshClaim: null
   })
   expect(stored?.lastError).not.toContain('secret')
+})
+
+test('a missing policy is recorded as unavailable, not a failed fetch', async () => {
+  const p = await project()
+  const claimId = randomUUID()
+  const feed = await tenant((tx) =>
+    makeIcsFeed(tx, { projectId: p.id, refreshClaim: claimId, nextRefreshAt: new Date(now.getTime() + 3_600_000) })
+  )
+  await tenant((tx) =>
+    recordCalendarFailure(
+      { tx, principal: viewer },
+      { feedId: feed.id, claimId, now, error: new NotBuiltError('d-guest-rules') }
+    )
+  )
+  const [stored] = await tenant((tx) => tx.select().from(icsFeed).where(eq(icsFeed.id, feed.id)))
+  expect(stored!.lastError).toBe(JSON.stringify({ version: 1, code: 'unavailable' }))
 })
 
 test('304 without an authoritative document fails without cancelling existing windows', async () => {

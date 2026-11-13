@@ -1,6 +1,7 @@
 import { and, asc, eq, isNotNull, isNull, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Tx } from '../client'
+import { projectGate } from '../gate'
 import { icsFeed, window, windowSeries } from '../schema'
 import { importedWindowDefinitionSchema } from '../windows/lifecycle'
 import { windowPatchDifference, writeWindowChange } from '../windows/mutations'
@@ -75,6 +76,7 @@ export async function allocateCalendarIds(tx: Tx, count: number): Promise<{ revi
 /** Default one immediately attemptable lease; SKIP LOCKED keeps concurrent claimers disjoint. */
 export async function claimDueIcsFeeds(tx: Tx, input: IcsFeedClaimOptions): Promise<IcsFeedClaim[]> {
   const orgId = windowTenant(tx)
+  if ((await projectGate(tx, input.projectId)) !== 'open') return []
   const limit = input.limit ?? 1
   if (!Number.isInteger(limit) || limit < 1 || limit > 10)
     throw new Error('calendar claim limit must be between 1 and 10')
@@ -300,6 +302,7 @@ export async function mutateIcsFeed(
     await lockWindowParentSet(child, { feedIds: [input.feedId] })
     const feed = await getIcsFeedRecord(child, input.feedId)
     if (!validFence(feed, input)) return { status: 'stale' }
+    if (input.claimId && (await projectGate(child, feed.projectId)) !== 'open') return { status: 'stale' }
     const series = await child
       .select()
       .from(windowSeries)
@@ -327,6 +330,7 @@ export async function mutateIcsFeed(
     const changedIds = changes.map((change) => (change.kind === 'create' ? change.values.id! : change.id)).sort()
     if (changedIds.length > MAX_CHANGED) throw new Error('calendar change set exceeds 20000 IDs')
     const { revision } = await allocateCalendarIds(child, 0)
+    if (input.claimId && (await projectGate(child, feed.projectId)) !== 'open') return { status: 'stale' }
     await input.beforeApply?.(
       changes.flatMap((change) => (change.kind === 'create' ? [change.values] : [])),
       child

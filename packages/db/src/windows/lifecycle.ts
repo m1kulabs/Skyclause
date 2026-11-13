@@ -2,9 +2,11 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Operations } from '@skyclause/contracts'
 import type { Tx } from '../client'
-import { icsFeed, window, windowSeries } from '../schema'
+import { icsFeed, project, window, windowSeries } from '../schema'
+import { windowLocalSpan } from './calendar-time'
 import type { WindowRow } from './index'
-import { lockWindowParents, windowTenant } from './repository'
+import { lockWindowParents, lockWindowParentSet, withWindowLockSavepoint, windowTenant } from './repository'
+import { projectGate } from '../gate'
 import { writeWindowChange } from './mutations'
 import type { WindowChange, WindowMutationInsert } from './types'
 
@@ -233,4 +235,94 @@ export async function createNativeWindowSeries(
   const rows: WindowRow[] = []
   for (const values of creates) rows.push(await writeWindowChange(tx, { kind: 'create', values, now: input.now }))
   return rows
+}
+
+/** Lock a native parent and all retained identities before planning and applying an extension. */
+export async function mutateNativeWindowSeries(
+  tx: Tx,
+  input: { projectId: string; seriesId: string; now: Date },
+  plan: (
+    state: { series: WindowSeriesRow; members: WindowRow[] },
+    child: Tx
+  ) => Promise<{
+    creates: WindowMutationInsert[]
+    checkedOn: string
+    materialisedUntil: string
+  }>,
+  beforeApply: (creates: readonly WindowMutationInsert[], child: Tx) => Promise<void>
+): Promise<number> {
+  return withWindowLockSavepoint(tx, async (child) => {
+    const orgId = windowTenant(child)
+    if ((await projectGate(child, input.projectId)) !== 'open') return 0
+    await lockWindowParentSet(child, { seriesIds: [input.seriesId] })
+    const [series] = await child
+      .select()
+      .from(windowSeries)
+      .where(
+        and(
+          eq(windowSeries.orgId, orgId),
+          eq(windowSeries.id, input.seriesId),
+          eq(windowSeries.projectId, input.projectId)
+        )
+      )
+    if (!series || series.cancelledAt || series.icsFeedId) return 0
+    const members = await child
+      .select()
+      .from(window)
+      .where(and(eq(window.orgId, orgId), eq(window.seriesId, series.id)))
+      .orderBy(window.id)
+      .limit(20_001)
+    if (members.length > 20_000) throw new WindowStateConflict('Native series membership exceeds the work limit.')
+    await lockWindowParentSet(child, { windowIds: members.map((row) => row.id) })
+    const proposed = await plan({ series, members }, child)
+    if (series.checkedOn === proposed.checkedOn) return 0
+    for (const values of proposed.creates) {
+      if (values.projectId !== input.projectId || values.seriesId !== series.id || values.icsFeedId)
+        throw new Error('native extension escaped its parent')
+    }
+    if ((await projectGate(child, input.projectId)) !== 'open') return 0
+    await beforeApply(proposed.creates, child)
+    for (const values of proposed.creates) await writeWindowChange(child, { kind: 'create', values, now: input.now })
+    await child
+      .update(windowSeries)
+      .set({
+        checkedOn: proposed.checkedOn,
+        materialisedUntil: proposed.materialisedUntil,
+        lastError: null,
+        updatedAt: input.now
+      })
+      .where(and(eq(windowSeries.orgId, orgId), eq(windowSeries.id, series.id)))
+    return proposed.creates.length
+  })
+}
+
+/** Record failure only after a rolled-back attempt, without changing the successful frontier. */
+export async function recordNativeSeriesFailure(tx: Tx, input: { projectId: string; seriesId: string; now: Date }) {
+  return withWindowLockSavepoint(tx, async (child) => {
+    const orgId = windowTenant(child)
+    if ((await projectGate(child, input.projectId)) !== 'open') return
+    await lockWindowParentSet(child, { seriesIds: [input.seriesId] })
+    const [series] = await child
+      .select()
+      .from(windowSeries)
+      .where(
+        and(
+          eq(windowSeries.orgId, orgId),
+          eq(windowSeries.id, input.seriesId),
+          eq(windowSeries.projectId, input.projectId)
+        )
+      )
+    if (!series || series.cancelledAt || series.icsFeedId) return
+    const [owner] = await child
+      .select({ timeZone: project.timeZone })
+      .from(project)
+      .where(and(eq(project.orgId, orgId), eq(project.id, input.projectId)))
+    if (!owner) return
+    const local = await windowLocalSpan(child, { startsAt: input.now, endsAt: input.now, tz: owner.timeZone })
+    if (series.checkedOn === local.date) return
+    await child
+      .update(windowSeries)
+      .set({ lastError: 'extension-failed', updatedAt: input.now })
+      .where(and(eq(windowSeries.orgId, orgId), eq(windowSeries.id, series.id)))
+  })
 }

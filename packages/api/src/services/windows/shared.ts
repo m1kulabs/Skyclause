@@ -113,7 +113,7 @@ export async function openWindow(ctx: ServiceContext, id: string, access: Window
   return row
 }
 
-export async function consumeWindowBudget(ctx: ServiceContext, access: WindowsAccess) {
+export async function consumeWindowBudget(ctx: ServiceContext, access: Pick<WindowsAccess, 'now' | 'budget'>) {
   const budget = await (access.budget ?? budgetGate).consume(ctx.tx, ctx.principal, 'window')
   if (!budget.ok)
     throw new ApiError(

@@ -110,6 +110,8 @@ export {
   createNativeWindowSeries,
   getWindowRecord,
   mutateWindowSet,
+  mutateNativeWindowSeries,
+  recordNativeSeriesFailure,
   readWindowSeriesDefinition,
   WindowStateConflict
 } from './lifecycle'
@@ -121,3 +123,5 @@ export type {
   ImportedWindowDefinition,
   WindowSeriesDefinition
 } from './lifecycle'
+
+export { listWindowDueProjects, listDueNativeWindowSeries } from './due'

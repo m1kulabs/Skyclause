@@ -78,7 +78,9 @@ export function expandWeeklyDates(rule: NativeRule, anchor: LocalDate, through: 
   const skipped = new Set(rule.skip_dates)
   const dates: LocalDate[] = []
   let scheduled = 0
+  let steps = 0
   for (let timestamp = parseLocalDate(anchor)!; timestamp <= end; timestamp += 86400000) {
+    if (++steps > 100_000) throw new RangeError('Native recurrence work limit exceeded')
     const date = new Date(timestamp)
     if (!selected.has(weekdays[date.getUTCDay()]!)) continue
     scheduled += 1

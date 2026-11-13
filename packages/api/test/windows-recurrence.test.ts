@@ -40,6 +40,20 @@ describe('native weekly recurrence', () => {
     expect(expandWeeklyDates(counted, anchor, '2027-06-01')).toEqual(dates)
   })
 
+  test('refuses excessive historical enumeration without returning a partial schedule', () => {
+    const old = { ...rule, days_of_week: ['monday'] as const, until: '9999-12-31', skip_dates: [] }
+    expect(() =>
+      expandWeeklyDates({ ...old, days_of_week: [...old.days_of_week] }, '0001-01-01', '9999-12-31')
+    ).toThrow('Native recurrence work limit exceeded')
+    expect(
+      expandWeeklyDates(
+        { ...old, days_of_week: [...old.days_of_week], until: undefined, count: 1 },
+        '0001-01-01',
+        '9999-12-31'
+      )
+    ).toEqual(['0001-01-01'])
+  })
+
   test('skipping the anchor consumes count and never creates a replacement', () => {
     const skippedAnchor = { ...rule, until: undefined, count: 1, skip_dates: [anchor] }
     expect(expandWeeklyDates(skippedAnchor, anchor, '2026-12-31')).toEqual([])

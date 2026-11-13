@@ -28,6 +28,7 @@ import { retention } from './retention'
 import { defineRegistry } from './server'
 import { sliPart } from './sli'
 import { sources } from './sources'
+import { windows } from './windows'
 
 const definitions = installedIndicatorDefinitions(productionIndicatorProviders())
 setGradeEngine({
@@ -60,5 +61,6 @@ export const registry = defineRegistry([
   dataRights, // a-data-rights
   retention, // a-retention
   outlook, // c-crowd-outlook
-  sliPart // a-observability
+  sliPart, // a-observability
+  windows // b-windows-api
 ])
