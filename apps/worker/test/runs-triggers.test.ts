@@ -308,6 +308,36 @@ describe('window.created, .updated and .cancelled', () => {
     expect(rows[0]!.windowIds).toEqual(ids)
   })
 
+  test('out-of-order calendar revisions coalesce by immutable revision', async () => {
+    const p = await project()
+    const feed = await inOrg((tx) => makeIcsFeed(tx, { projectId: p.id }))
+    const w = await inOrg((tx) => makeWindow(tx, { projectId: p.id, via: 'ics', icsFeedId: feed.id }))
+    const older = '018f0000-0000-7000-8000-000000000004'
+    const newer = '018f0000-0000-7000-8000-000000000005'
+    const emit = (revision: string) =>
+      inOrg((tx) =>
+        emitEvent(tx, {
+          projectId: p.id,
+          type: 'window.updated',
+          data: {
+            window_id: w.id,
+            via: 'ics',
+            times_changed: true,
+            series_id: null,
+            calendar: { feed_id: feed.id, revision, window_ids: [w.id] }
+          }
+        })
+      )
+    const first = await emit(older)
+    const second = await emit(newer)
+    await dispatchEvent(registry.events, second.id)
+    await dispatchEvent(registry.events, first.id)
+    const [queued] = await runsOf(p.id)
+    expect(queued!.dedupeKey).toBe(`calendar:${feed.id}:${newer}`)
+    expect(queued!.coalescedKeys).toContain(`calendar:${feed.id}:${older}`)
+    expect(queued!.windowIds).toEqual([w.id])
+  })
+
   test('a representative forwards the full maximum calendar set into the first run', async () => {
     const p = await project()
     const feed = await inOrg((tx) => makeIcsFeed(tx, { projectId: p.id }))
