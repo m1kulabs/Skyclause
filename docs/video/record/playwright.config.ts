@@ -4,7 +4,7 @@ import { defineConfig } from '@playwright/test'
 import { join, resolve } from 'node:path'
 
 const VIDEO_ROOT = resolve(import.meta.dirname, '..')
-const STORAGE_STATE = join(VIDEO_ROOT, 'record/.state/google.json')
+const STORAGE_STATE = join(VIDEO_ROOT, 'record/.state/app.json')
 
 const parts = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Kuala_Lumpur',
@@ -35,8 +35,11 @@ export default defineConfig({
     viewport: { width: 1920, height: 1080 },
     deviceScaleFactor: 1,
     timezoneId: 'Asia/Kuala_Lumpur',
+    // Native date fields then read 13/11/2026, as a Malaysian browser shows them, not 11/13/2026.
+    locale: 'en-MY',
     ...(existsSync(STORAGE_STATE) ? { storageState: STORAGE_STATE } : {}),
-    launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', '--disable-audio-output'] },
+    // --lang sets the browser's own UI language, which native date fields follow (the page locale does not).
+    launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', '--disable-audio-output', '--lang=en-MY'] },
     trace: 'off',
     video: 'off',
     screenshot: 'off'
