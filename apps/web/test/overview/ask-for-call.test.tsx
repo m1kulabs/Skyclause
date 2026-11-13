@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { ApiProblem } from '../../lib/api-fetch'
 import { ASK_WAIT_MS, AskForCall } from '../../features/overview/ask-for-call'
 import { overviewApi, overviewOperations } from '../../features/overview/operations'
@@ -9,6 +9,10 @@ import { overviewApi, overviewOperations } from '../../features/overview/operati
 vi.mock('../../features/overview/operations', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../features/overview/operations')>()
   return { ...actual, overviewApi: vi.fn() }
+})
+
+beforeEach(() => {
+  vi.useFakeTimers()
 })
 
 afterEach(() => {
@@ -19,11 +23,19 @@ afterEach(() => {
 
 const status = () => screen.getByRole('status').textContent
 
-/** Opens the confirmation and presses Ask. */
+/** Fires a click and flushes pending microtasks, 0ms timers, and passive effects. */
+async function clickAndFlush(target: HTMLElement) {
+  await act(async () => {
+    fireEvent.click(target)
+    await vi.advanceTimersByTimeAsync(0)
+  })
+}
+
+/** Opens the confirmation, presses Ask, and flushes the request and passive effects. */
 async function ask() {
   fireEvent.click(screen.getByRole('button', { name: 'Ask for a call' }))
-  const dialog = await screen.findByRole('alertdialog')
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Ask' }))
+  const dialog = screen.getByRole('alertdialog')
+  await clickAndFlush(within(dialog).getByRole('button', { name: 'Ask' }))
 }
 
 function within(element: HTMLElement) {
@@ -54,11 +66,11 @@ test('the status line is mounted before anything happens, so each change is anno
 test('asking first confirms what it starts; Cancel starts nothing', async () => {
   render(<AskForCall org="pilot" projectId="project-id" locale="en" />)
   fireEvent.click(screen.getByRole('button', { name: 'Ask for a call' }))
-  const dialog = await screen.findByRole('alertdialog')
+  const dialog = screen.getByRole('alertdialog')
   expect(dialog.textContent).toContain('Ask for a call now?')
   expect(dialog.textContent).toContain('Skyclause drafts a bundle for the approver to review.')
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-  await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+  await clickAndFlush(within(dialog).getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('alertdialog')).toBeNull()
   expect(overviewApi).not.toHaveBeenCalled()
 })
 
@@ -66,7 +78,7 @@ test('a confirmed ask starts one Sky run and holds the control at Asked… until
   vi.mocked(overviewApi).mockResolvedValue({} as never)
   const { rerender } = render(<AskForCall org="pilot" projectId="project-id" drafted={0} locale="en" />)
   await ask()
-  await waitFor(() => expect(status()).toBe('Asked. The bundle shows here once it is drafted.'))
+  expect(status()).toBe('Asked. The bundle shows here once it is drafted.')
   expect(overviewApi).toHaveBeenCalledWith('createRun', {
     org: 'pilot',
     params: { id: 'project-id' },
@@ -80,22 +92,29 @@ test('a confirmed ask starts one Sky run and holds the control at Asked… until
 
   // The overview's bundle stream saw bundle.drafted.
   rerender(<AskForCall org="pilot" projectId="project-id" drafted={1} locale="en" />)
-  await waitFor(() => expect(status()).toBe('Drafted. The new bundle is in the list below.'))
+  expect(status()).toBe('Drafted. The new bundle is in the list below.')
   expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ASK_WAIT_MS)
+  })
+  expect(status()).toBe('Drafted. The new bundle is in the list below.')
 })
 
 test('with no bundle in time, the status says so and the control is offered again with a new ask', async () => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
   vi.mocked(overviewApi).mockResolvedValue({} as never)
   render(<AskForCall org="pilot" projectId="project-id" drafted={0} locale="en" />)
   await ask()
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Asked…' })).toBeTruthy())
+  expect(screen.getByRole('button', { name: 'Asked…' })).toBeTruthy()
   await act(async () => {
-    vi.advanceTimersByTime(ASK_WAIT_MS)
+    await vi.advanceTimersByTimeAsync(ASK_WAIT_MS - 1)
+  })
+  expect(status()).toBe('Asked. The bundle shows here once it is drafted.')
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1)
   })
   expect(status()).toBe("No bundle was drafted. Check the pack's sources, then ask again.")
   await ask()
-  await waitFor(() => expect(overviewApi).toHaveBeenCalledTimes(2))
+  expect(overviewApi).toHaveBeenCalledTimes(2)
   expect(keyOf(1)).not.toBe(keyOf(0))
 })
 
@@ -105,9 +124,9 @@ test('Try again repeats the same ask with the same key, so a lost answer never s
     .mockResolvedValueOnce({} as never)
   render(<AskForCall org="pilot" projectId="project-id" locale="en" />)
   await ask()
-  await waitFor(() => expect(status()).toBe('Couldn’t ask for a call just now.'))
-  fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-  await waitFor(() => expect(status()).toBe('Asked. The bundle shows here once it is drafted.'))
+  expect(status()).toBe('Couldn’t ask for a call just now.')
+  await clickAndFlush(screen.getByRole('button', { name: 'Try again' }))
+  expect(status()).toBe('Asked. The bundle shows here once it is drafted.')
   expect(overviewApi).toHaveBeenCalledTimes(2)
   expect(keyOf(1)).toBe(keyOf(0))
 })
@@ -179,7 +198,7 @@ test.each([
   vi.mocked(overviewApi).mockRejectedValue(error)
   render(<AskForCall org="pilot" projectId="project-id" locale="en" />)
   await ask()
-  await waitFor(() => expect(status()).toBe(sentence))
+  expect(status()).toBe(sentence)
   expect(document.body.textContent).not.toContain(String(error.body.detail))
   expect(screen.queryByRole('button', { name: 'Try again' }) !== null).toBe(retry)
 })
@@ -190,7 +209,7 @@ test('a 501 says asking is not available yet, offers no Retry, and takes the con
   )
   render(<AskForCall org="pilot" projectId="project-id" locale="en" />)
   await ask()
-  await waitFor(() => expect(status()).toBe('Asking for a call is not available yet.'))
+  expect(status()).toBe('Asking for a call is not available yet.')
   expect(document.body.textContent).not.toMatch(/not built|d-guest-rules|501/)
   expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Ask for a call' })).toBeNull()
@@ -202,9 +221,9 @@ test('in Malay every sentence is Malay', async () => {
   )
   render(<AskForCall org="pilot" projectId="project-id" locale="ms" />)
   fireEvent.click(screen.getByRole('button', { name: 'Minta keputusan' }))
-  const dialog = await screen.findByRole('alertdialog')
+  const dialog = screen.getByRole('alertdialog')
   expect(dialog.textContent).toContain('Minta keputusan sekarang?')
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Minta' }))
-  await waitFor(() => expect(status()).toBe('Projek ini diarkibkan, jadi keputusan tidak boleh diminta.'))
+  await clickAndFlush(within(dialog).getByRole('button', { name: 'Minta' }))
+  expect(status()).toBe('Projek ini diarkibkan, jadi keputusan tidak boleh diminta.')
   expect(document.body.textContent).not.toContain('archived')
 })
