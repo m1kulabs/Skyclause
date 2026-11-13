@@ -2,8 +2,8 @@
   "strip": {
     "summary_live": "Strip langsung hingga {to}. {crossing}. {count} bacaan.",
     "summary_live_one": "Strip langsung hingga {to}. {crossing}. 1 bacaan.",
-    "summary_ahead": "Strip langsung hingga {to}. Tetingkap bermula pada {start}. {count} bacaan.",
-    "summary_ahead_one": "Strip langsung hingga {to}. Tetingkap bermula pada {start}. 1 bacaan.",
+    "summary_ahead": "Strip langsung hingga {to}. Jendela masa bermula pada {start}. {count} bacaan.",
+    "summary_ahead_one": "Strip langsung hingga {to}. Jendela masa bermula pada {start}. 1 bacaan.",
     "summary_replay": "Ulangan {source}, dirakam {captured}. {crossing}. {count} bacaan.",
     "summary_replay_one": "Ulangan {source}, dirakam {captured}. {crossing}. 1 bacaan.",
     "crossing": "Lebat dicapai pada {time} ({value} mm dalam 60 min)",
