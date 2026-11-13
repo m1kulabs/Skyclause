@@ -300,8 +300,9 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   expect(verdictCalls()).toEqual([])
   expect(log.filter((line) => line.includes(`${MARKETING}/v1/`))).toEqual([])
   expect(standIn.log.filter((entry) => entry.caller === 'browser')).toEqual([])
-  // The server asked once, on first paint, and drew the replay from its 501.
-  expect(standIn.log.filter((entry) => entry.caller === 'server' && entry.path === EVALUATE)).toHaveLength(1)
+  // The server asked once per page load (first paint and the reload; this harness shares no reads) and drew the
+  // replay from each 501.
+  expect(standIn.log.filter((entry) => entry.caller === 'server' && entry.path === EVALUATE)).toHaveLength(2)
   await keepLog('requests-unavailable.log', [
     ...log,
     '--- stand-in API',
