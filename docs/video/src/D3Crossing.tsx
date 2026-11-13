@@ -1,7 +1,9 @@
 import { Easing, interpolate, useCurrentFrame } from 'remotion'
 import replayData from './data/replay-2nov.json'
+import { Glyph } from './Glyph'
 import { FPS } from './lib'
-import { font, theme } from './theme'
+import { ReplayBadge } from './overlays'
+import { dusk, EASE, font, mode } from './theme'
 
 // The crux of the video: the 2 November replay of gauge 0232901RF, drawn only from replay-2nov.json.
 // Beats, in seconds: 0–7 the bars rise to 14:55 and hold on Normal; 8–14 the 15:00 bar lands and the hour crosses
@@ -20,7 +22,7 @@ const r1455 = readings.find((r) => hhmm(r.timestamp) === '14:55')!
 const r1500 = readings.find((r) => hhmm(r.timestamp) === '15:00')!
 
 // Chart geometry, in the chart's own pixels.
-const C = { w: 1160, h: 640, left: 64, right: 24, top: 40 }
+const C = { w: 1100, h: 640, left: 64, right: 24, top: 40 }
 const plotW = C.w - C.left - C.right
 const total = { top: C.top, h: 330 }
 const bars = { top: 450, h: 140 }
@@ -30,19 +32,32 @@ const yBar = (mm: number) => bars.top + bars.h - (mm / 10) * bars.h
 
 const ease = (frame: number, [from, to]: readonly [number, number]) =>
   interpolate(frame, [from * FPS, to * FPS], [0, 1], {
-    easing: Easing.bezier(0.16, 1, 0.3, 1),
+    easing: Easing.bezier(...EASE),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp'
   })
 
-const label = (px: number, py: number, value: string, size = 22, fill: string = theme.secondary, weight = 400) => (
-  <text x={px} y={py} fill={fill} fontFamily={font.sans} fontSize={size} fontWeight={weight}>
+const label = (
+  px: number,
+  py: number,
+  value: string,
+  size = 22,
+  fill: string = dusk.inkMuted,
+  weight = 400,
+  family: string = font.sans
+) => (
+  <text x={px} y={py} fill={fill} fontFamily={family} fontSize={size} fontWeight={weight}>
     {value}
   </text>
 )
 
-export const D3Crossing = () => {
-  const frame = useCurrentFrame()
+// Replay is styled apart (DESIGN.md, Data visualisation): dashed lines and hollow marks.
+const replayDash = '16 9'
+
+// `clipFrame` draws one clip frame, for the Demo's D3 beat, which holds frames to land the narration (src/demo/d3.ts).
+export const D3Crossing: React.FC<{ clipFrame?: number }> = ({ clipFrame }) => {
+  const current = useCurrentFrame()
+  const frame = clipFrame ?? current
   const rise = ease(frame, T.rise)
   const cross = ease(frame, T.cross)
   const flipped = frame >= T.flip * FPS
@@ -62,11 +77,10 @@ export const D3Crossing = () => {
   const head = points[points.length - 1]!
   const inLebat = cross >= 0.62
   const clock = frame < T.cross[0] * FPS ? '14:55' : flipped ? '15:05' : '15:00'
-  const hour =
-    cross > 0
-      ? r1455.rolling_60min_mm + (r1500.rolling_60min_mm - r1455.rolling_60min_mm) * cross
-      : r1455.rolling_60min_mm
+  // Only stored readings print: 29.5 until the poll clock reads 15:00, then 39.0 in that same frame. Never a tween.
+  const hour = frame < T.cross[0] * FPS ? r1455.rolling_60min_mm : r1500.rolling_60min_mm
   const waveX = x(at('2026-11-02T15:30:00'))
+  const verdict = flipped ? mode.commuteDisruption : mode.normal
 
   return (
     <div
@@ -75,42 +89,31 @@ export const D3Crossing = () => {
         height: 1080,
         position: 'relative',
         overflow: 'hidden',
-        background: theme.landingBackground,
-        color: theme.landingForeground,
-        fontFamily: font.sans,
-        fontVariantNumeric: 'tabular-nums'
+        background: dusk.ground,
+        color: dusk.ink,
+        fontFamily: font.sans
       }}
     >
+      {/* The Replay mark is on every frame of the clip, so it never fades in. */}
+      <ReplayBadge x={96} y={64} />
+
       {/* Header */}
-      <div style={{ position: 'absolute', left: 96, top: 72, opacity: intro }}>
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 10,
-            fontFamily: font.mono,
-            fontSize: 22,
-            color: theme.warning,
-            background: '#2a2416',
-            padding: '8px 16px',
-            borderRadius: 6
-          }}
-        >
-          <span style={{ width: 9, height: 9, borderRadius: 9, background: theme.warning }} />
-          Replay (2 Nov 2026)
-        </div>
-        <div style={{ marginTop: 26, fontSize: 64, fontWeight: 600, letterSpacing: '-0.035em', lineHeight: 1 }}>
+      <div style={{ position: 'absolute', left: 96, top: 148, opacity: intro }}>
+        <div style={{ fontSize: 64, fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1 }}>
           15:30 release wave
         </div>
-        <div style={{ marginTop: 14, fontSize: 26, color: theme.landingMuted }}>
-          Monday 2 November 2026 · gauge <span style={{ fontFamily: font.mono }}>0232901RF</span>, Sg. Kuyoh di LRT
-          Bukit Jalil
+        <div style={{ marginTop: 16, fontSize: 26, color: dusk.inkMuted }}>
+          Monday 2 November 2026 · gauge <span translate="no">0232901RF</span>, Sg. Kuyoh di LRT Bukit Jalil
         </div>
       </div>
-      <div style={{ position: 'absolute', right: 96, top: 72, textAlign: 'right', opacity: intro }}>
-        <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '0.14em', color: theme.landingMuted }}>POLL</div>
-        <div style={{ fontSize: 112, fontWeight: 300, letterSpacing: '-0.045em', lineHeight: 1 }}>{clock}</div>
-        <div style={{ fontSize: 22, color: theme.landingMuted }}>MYT</div>
+      <div style={{ position: 'absolute', right: 96, top: 64, textAlign: 'right', opacity: intro }}>
+        <div style={{ fontSize: 22, fontWeight: 500, color: dusk.inkMuted }}>Poll</div>
+        <div
+          style={{ fontFamily: font.figures, fontSize: 112, fontWeight: 400, letterSpacing: '-0.02em', lineHeight: 1 }}
+        >
+          {clock}
+        </div>
+        <div style={{ marginTop: 6, fontSize: 22, color: dusk.inkMuted }}>MYT</div>
       </div>
 
       {/* Chart */}
@@ -127,46 +130,85 @@ export const D3Crossing = () => {
           y={yTotal(60)}
           width={plotW}
           height={yTotal(31) - yTotal(60)}
-          fill={inLebat ? '#2a2416' : '#17150f'}
+          fill={inLebat ? dusk.raised : dusk.surface}
         />
-        {label(C.left + 16, yTotal(31) - 14, 'Lebat · 31–60 mm in an hour (JPS)', 20, theme.warning)}
+        <line
+          x1={C.left}
+          x2={C.left + plotW}
+          y1={yTotal(31)}
+          y2={yTotal(31)}
+          stroke={dusk.inkMuted}
+          strokeWidth={2}
+          strokeDasharray="8 6"
+        />
+        {label(
+          C.left + 16,
+          yTotal(31) - 14,
+          'Lebat · 31–60 mm in an hour (JPS)',
+          20,
+          inLebat ? dusk.ink : dusk.inkMuted,
+          500
+        )}
         {[0, 20, 40, 60].map((mm) => (
           <g key={mm}>
-            <line x1={C.left} x2={C.left + plotW} y1={yTotal(mm)} y2={yTotal(mm)} stroke={theme.grid} />
-            {label(C.left - 44, yTotal(mm) + 7, String(mm), 20, theme.muted)}
+            {mm === 0 ? null : (
+              <line
+                x1={C.left}
+                x2={C.left + plotW}
+                y1={yTotal(mm)}
+                y2={yTotal(mm)}
+                stroke={dusk.raised}
+                strokeWidth={2}
+              />
+            )}
+            {label(C.left - 44, yTotal(mm) + 7, String(mm), 20, dusk.inkMuted, 400, font.figures)}
           </g>
         ))}
-        {label(C.left, C.top - 14, 'Rain in the last 60 minutes, mm', 20, theme.muted)}
-        {label(C.left, bars.top - 16, 'Rain per 5 minutes, mm (0–10)', 20, theme.muted)}
-        <line x1={C.left} x2={C.left + plotW} y1={bars.top + bars.h} y2={bars.top + bars.h} stroke={theme.grid} />
+        {label(C.left, C.top - 14, 'Rain in the last 60 minutes, mm', 20)}
+        {label(C.left, bars.top - 16, 'Rain per 5 minutes, mm (0–10)', 20)}
+        <line
+          x1={C.left}
+          x2={C.left + plotW}
+          y1={bars.top + bars.h}
+          y2={bars.top + bars.h}
+          stroke={dusk.raised}
+          strokeWidth={2}
+        />
         {[...shown, ...(growing ? [growing] : [])].map((r) => {
           const bw = (plotW / 24) * 0.66
           const cx = x(at(r.timestamp))
+          const last = hhmm(r.timestamp) === '15:00'
+          const top = yBar(r.rain_mm)
           return (
             <rect
               key={r.timestamp}
-              x={cx - bw}
-              y={yBar(r.rain_mm)}
-              width={bw}
-              height={bars.top + bars.h - yBar(r.rain_mm)}
-              fill={hhmm(r.timestamp) === '15:00' ? theme.landingForeground : theme.secondary}
+              x={cx - bw + 1}
+              y={top + 1}
+              width={bw - 2}
+              height={Math.max(0, bars.top + bars.h - top - 1)}
+              fill="none"
+              stroke={last ? dusk.ink : dusk.inkMuted}
+              strokeWidth={last ? 3 : 2}
             />
           )
         })}
         {['14:00', '14:30', '15:00', '15:30', '16:00'].map((t) => (
-          <g key={t}>{label(x(at(`2026-11-02T${t}:00`)) - 28, bars.top + bars.h + 36, t, 20, theme.muted)}</g>
+          <g key={t}>
+            {label(x(at(`2026-11-02T${t}:00`)) - 28, bars.top + bars.h + 36, t, 20, dusk.inkMuted, 400, font.figures)}
+          </g>
         ))}
-        <path d={path} fill="none" stroke={theme.landingForeground} strokeWidth="4" strokeLinejoin="round" />
-        <circle cx={head[0]} cy={head[1]} r="9" fill={theme.landingForeground} />
+        <path
+          d={path}
+          fill="none"
+          stroke={dusk.ink}
+          strokeWidth="4"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          strokeDasharray={replayDash}
+        />
+        <circle cx={head[0]} cy={head[1]} r="9" fill={dusk.ground} stroke={dusk.ink} strokeWidth={3} />
         {cross === 0 && rise > 0.98
-          ? label(
-              head[0] - 300,
-              head[1] + 44,
-              `14:55 · ${r1455.rolling_60min_mm.toFixed(1)} mm`,
-              26,
-              theme.landingForeground,
-              500
-            )
+          ? label(head[0] - 300, head[1] + 44, `14:55 · ${r1455.rolling_60min_mm.toFixed(1)} mm`, 26, dusk.ink, 500)
           : null}
         {cross >= 1
           ? label(
@@ -174,55 +216,78 @@ export const D3Crossing = () => {
               head[1] - 22,
               `15:00 · ${r1500.rolling_60min_mm.toFixed(1)} mm · Lebat`,
               28,
-              theme.landingForeground,
+              dusk.ink,
               600
             )
           : null}
-        <line x1={waveX} x2={waveX} y1={C.top} y2={bars.top + bars.h} stroke={theme.crimsonOnDark} strokeWidth="2" />
-        {label(waveX + 14, C.top + 22, '15:30 · 89 sessions end', 22, theme.crimsonOnDark)}
+        <line x1={waveX} x2={waveX} y1={C.top} y2={bars.top + bars.h} stroke={dusk.ink} strokeWidth="2" />
+        {label(waveX + 14, C.top + 22, '15:30 · 89 sessions end', 22, dusk.ink, 500)}
       </svg>
 
       {/* Verdict */}
-      <div style={{ position: 'absolute', left: 1316, top: 362, width: 508 }}>
-        <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '0.14em', color: theme.landingMuted }}>
-          CLAUSE ENGINE VERDICT
-        </div>
+      <div style={{ position: 'absolute', left: 1256, top: 362, width: 568 }}>
+        <div style={{ fontSize: 22, fontWeight: 500, color: dusk.inkMuted }}>Clause engine verdict</div>
         <div
           style={{
             marginTop: 22,
-            fontSize: flipped ? 76 : 96,
-            fontWeight: flipped ? 600 : 300,
-            letterSpacing: '-0.04em',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 16,
+            height: 92,
+            padding: '0 30px 0 26px',
+            borderRadius: 9999,
+            background: verdict.fill,
+            color: verdict.ink,
+            boxSizing: 'border-box',
+            border: `2px solid ${verdict.edge}`,
+            fontSize: 48,
+            fontWeight: 500,
+            letterSpacing: '-0.02em',
             lineHeight: 1,
+            whiteSpace: 'nowrap',
             opacity: flipped ? flip : 1,
-            transform: `translateY(${flipped ? (1 - flip) * 24 : 0}px)`
+            translate: `0 ${flipped ? (1 - flip) * 24 : 0}px`
           }}
         >
-          <span style={{ fontSize: '0.5em', verticalAlign: '0.35em', marginRight: 18 }}>{flipped ? '▲' : '○'}</span>
+          <Glyph name={flipped ? 'filled_triangle' : 'ring'} size={36} />
           {flipped ? 'Commute disruption' : 'Normal'}
         </div>
         <div
           style={{
-            marginTop: 26,
-            height: 1,
-            width: `${(flipped ? flip : 0) * 100}%`,
-            background: theme.crimsonOnDark
+            marginTop: 28,
+            height: 4,
+            width: '100%',
+            borderRadius: 9999,
+            background: dusk.ink,
+            transformOrigin: 'left center',
+            scale: `${flipped ? flip : 0} 1`
           }}
         />
-        <div style={{ marginTop: 24, fontSize: 26, lineHeight: 1.5, color: theme.secondary }}>
+        <div style={{ marginTop: 24, fontSize: 26, lineHeight: 1.5, color: dusk.ink }}>
           {flipped ? (
             <span style={{ opacity: flip }}>
               Storm confirmed · gauge 39.0 mm in 60 min to 15:00 (Lebat) · 5 min old at the 15:05 poll
             </span>
           ) : (
-            <span>{hour.toFixed(1)} mm in the last hour. Lebat starts at 31 mm.</span>
+            <span>
+              <span style={{ fontFamily: font.figures }}>{hour.toFixed(1)}</span>
+              {'\u00a0'}mm in the last hour. Lebat starts at 31{'\u00a0'}mm.
+            </span>
           )}
         </div>
         <div style={{ marginTop: 44, opacity: lead }}>
-          <div style={{ fontSize: 112, fontWeight: 300, letterSpacing: '-0.045em', lineHeight: 1 }}>
-            25<span style={{ fontSize: 44, marginLeft: 8, color: theme.secondary }}>min</span>
+          <div
+            style={{
+              fontFamily: font.figures,
+              fontSize: 112,
+              fontWeight: 400,
+              letterSpacing: '-0.02em',
+              lineHeight: 1
+            }}
+          >
+            25<span style={{ fontFamily: font.sans, fontSize: 44, marginLeft: 10, color: dusk.inkMuted }}>min</span>
           </div>
-          <div style={{ marginTop: 10, fontSize: 26, color: theme.secondary }}>before 89 sessions end at 15:30.</div>
+          <div style={{ marginTop: 10, fontSize: 26, color: dusk.ink }}>before 89 sessions end at 15:30.</div>
         </div>
       </div>
 
@@ -235,9 +300,7 @@ export const D3Crossing = () => {
           display: 'flex',
           justifyContent: 'space-between',
           fontSize: 20,
-          color: theme.landingMuted,
-          borderTop: `1px solid ${theme.border}`,
-          paddingTop: 18
+          color: dusk.inkMuted
         }}
       >
         <span>
