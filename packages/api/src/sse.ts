@@ -27,15 +27,19 @@ const format = ({ seq, event, data }: SseMessage) =>
 export function sseResponse(o: SseOptions): Response {
   const encoder = new TextEncoder()
   let stop = () => {}
+  let waiting: SseMessage[] | null = []
+  let emit: (message: SseMessage) => void = () => {}
+  // Subscribed before the stream exists: a listener that refuses (the hub isn't built, say) throws from here, so the
+  // route answers with a problem. Thrown inside `start`, it would break a response already sent as 200.
+  const unlisten = o.listen((message) => (waiting ? waiting.push(message) : emit(message)))
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false
       let lastSeq = -Infinity
-      let waiting: SseMessage[] | null = []
       const write = (text: string) => {
         if (!closed) controller.enqueue(encoder.encode(text))
       }
-      const emit = (message: SseMessage) => {
+      emit = (message) => {
         if (message.seq !== undefined) {
           if (message.seq <= lastSeq) return
           lastSeq = message.seq
@@ -57,7 +61,6 @@ export function sseResponse(o: SseOptions): Response {
       // The lifetime is set first, so at 5 minutes the stream ends before a 20th heartbeat.
       const lifetime = setTimeout(stop, SSE_LIFETIME_MS)
       const heartbeat = setInterval(() => write(': heartbeat\n\n'), SSE_HEARTBEAT_MS)
-      const unlisten = o.listen((message) => (waiting ? waiting.push(message) : emit(message)))
       o.signal?.addEventListener('abort', stop, { once: true })
       if (o.signal?.aborted) return stop()
 
@@ -69,7 +72,7 @@ export function sseResponse(o: SseOptions): Response {
         controller.error(error)
         return
       }
-      const pending = waiting
+      const pending = waiting ?? []
       waiting = null
       for (const message of pending) emit(message)
     },

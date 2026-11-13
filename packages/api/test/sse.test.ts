@@ -95,3 +95,15 @@ it('stops listening when the client goes away', async () => {
   expect((await reader.read()).done).toBe(true)
   expect(unlisten).toHaveBeenCalledOnce()
 })
+
+it('throws when the listener refuses, before any response exists, and leaves no timer running', () => {
+  const refusal = new Error('the hub is not built')
+  expect(() =>
+    sseResponse({
+      listen: () => {
+        throw refusal
+      }
+    })
+  ).toThrow(refusal)
+  expect(vi.getTimerCount()).toBe(0)
+})
