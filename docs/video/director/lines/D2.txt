@@ -1,0 +1,5 @@
+From there, Skyclause watches that window. Three public feeds.
+The rain gauge by the LRT, every five minutes. Storm warnings, every ten. The haze index, every hour.
+You see this column? Every reading carries its age.
+Here's the thing. If a feed goes quiet, we don't show you an old number. We say "No call".
+Because nobody can defend a decision made on stale data.

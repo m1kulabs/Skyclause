@@ -1,0 +1,1 @@
+Once a call's approved, the notice goes out by email. This is the wording the replay produces. What the call is, which window, and why. No notice has gone out from this project yet, and the page says so. It works with a calendar feed too. No app to install.

@@ -1,0 +1,145 @@
+# Slide voice captions, one cue per line, under its file's heading.
+# Source: voice/processed/transcripts/S<nn>.txt (what was said), with plain
+# mishearings fixed from the director script. S04, S07 and S09 were checked
+# against a second, local transcription (faster-whisper small.en) at 05:43 MYT.
+# S08's line "And every call stays on the record, graded every morning against
+# the gauge." was cut from the voice at 05:44 MYT (skyclause-de, grading paused, #426).
+
+## S01
+Hi, we are team Miku.
+Every campus has a weather app. Every student has one in their pocket.
+But when a storm hits at half past three,
+not one of them can tell you who made the call or where it's written down.
+Until now, nobody could. So, we built Skyclause.
+Weather apps give you readings.
+Skyclause turns them into one approved call for your class,
+sends everyone the same notice, and keeps the evidence.
+
+## S02
+Picture this: it's a Monday, 3:25.
+Your lecture ends in 5 minutes, and the sky over Bukit Jalil has just gone black.
+Do you run for the LRT? Wait it out? Is your next class even on?
+Nobody tells you, so you check your phone, your group chat, the window,
+then you walk out anyway.
+That's exactly what happened on the 2nd of November.
+63 millimetres of rain in 2 hours.
+At half past three, 89 classes let out, straight into it.
+Worse, it keeps happening. 77.5 millimetres, 3 days earlier.
+LRT Bukit Jalil's fare gates under water in May.
+Unhealthy air near campus on 20 of 31 days, from early October into November.
+For an international student, that's not trivial.
+Fall below 80% attendance, and your student pass is on the line.
+Schools shut down above 180 on the haze index. Universities? None.
+The result? Every lecturer decides alone.
+Every student guesses, and nobody writes any of it down.
+
+## S03
+Who is Skyclause for?
+Well, club organisers for their evening events,
+and commuting students before the half past three wave.
+Most importantly, nothing goes out until one person in charge that day says yes.
+And we start small, with one pilot.
+A window is simply a stretch of time someone is responsible for,
+like the moment a class lets out.
+Our first one is a weekday 3:30 release by LRT Bukit Jalil,
+with a campus office like Student Affairs naming the person who says yes.
+
+## S04
+Now you might be thinking, why not just use Google Weather?
+Because a weather app answers one question: what's the weather?
+A campus needs three: will the storm or the haze hit when my class lets out?
+What do we do about it? And who decided?
+That's Skyclause. Public signals in, one approved call out.
+In practice, it reads the real rain gauge by the LRT every five minutes.
+That's MET storm warnings and the haze index,
+and Gemini on Vertex AI drafts the calls.
+Every day on its own, and every call sealed on the record.
+
+## S05
+One more word before the loop.
+A clause is the condition behind a call,
+like more than 31 millimetres of rain in an hour.
+Here's the whole loop. You declare a window.
+Skyclause watches the rain gauge, the storm warnings and the haze index.
+The clause decides, and Gemini drafts the call.
+One person approves, the notice goes out by email and calendar,
+and the call goes on the record.
+Now, what if a feed goes quiet? No call, never an old number.
+And no call doesn't mean clear skies.
+It means we don't have fresh evidence, so we say so.
+
+## S06
+Let's watch one window from the gauge to the record.
+
+## S07
+Let's be fair to the weather apps.
+Google, MET, AirVisual, they are great at telling you what the sky is doing.
+But on the 2nd of November, those apps were all there,
+and 89 classes still let out into the storm,
+because knowing the weather was never the problem.
+Deciding what to do about it was.
+And the lecturers' group chat today, that means checking the feeds,
+agreeing what to do, typing the message
+and digging up the evidence later, if anyone asks.
+With Skyclause, one person reviews one draft and says yes.
+The notice and its evidence stay together.
+Here's what Skyclause does that they don't.
+First, it knows your timetable.
+Not just rain in KL today, but rain at 3:30 when your class lets out.
+Second, it puts a person in charge.
+One call, one yes, and everyone hears the same thing.
+Third, it's honest when it's blind.
+If a reading is late, it says so, instead of showing you an old number.
+Last, it remembers.
+Every call is written down and checked against what actually fell the next morning.
+Five things. We looked hard, and no other app does all of them.
+
+## S08
+What does that change for a campus?
+Time. On the 2nd of November,
+Skyclause flips the verdict 25 minutes before the wave,
+enough for one person to make the call and for every student to hear it first.
+Reach. Every weekday evening between half past four and quarter past seven,
+up to 174 sessions end, right by that one station.
+One call covers them all.
+Proof: we ran a month of haze, 5 October to 3 November,
+back through the same clauses.
+On 9 of 22 weekdays, Skyclause would have called hybrid classes early.
+Even better: there's no app to install,
+just email and the calendar students already use.
+Next, we bring the call into APSpace,
+right beside the timetable students already check on their way to class.
+No new app to open, just the one they already live in.
+Looking ahead, in 3 months, Skyclause is calling the monsoon.
+In 6, a campus can show exactly what it decided and why.
+
+## S09
+Under the hood, it runs on Google Cloud.
+Cloud Scheduler wakes our source adapters on Cloud Run.
+Publish-subscribe and Cloud Tasks carry every reading with its age to the clause engine.
+Gemini on Vertex AI drafts, a person approves,
+and the record is sealed in Postgres with its keys in Cloud KMS.
+Behind all of it, more than 4,400 automated tests pass,
+many of them on real captures of the public feeds.
+
+## S10
+Who pays for all this? Never students.
+Clubs use it free, and that's how it spreads.
+Every club brings its members onto the calendar.
+Instead, the money comes from the office that answers for the call:
+Student Affairs, campus operations,
+the inbox that fills up when 89 classes walk into a storm.
+We're starting at 99 ringgit a month for an office, against about 45 to run it.
+A whole campus is 990, for up to 25,000 people, about 4 sen each,
+and the pilot has to prove the time it saves before anyone pays.
+Our first step is right here: one APU office signs a pilot.
+In three months, we measure the hours saved. In six, it renews.
+Then the next campus down the line.
+
+## S11
+Skyclause, the call for every window.
+Signals in, one person approves, and every call on the record.
+We are looking for one APU office to own that pilot.
+In three months, we'll measure the staff time saved and how fast the notice lands.
+In six, it earns its renewal.
+Scan to try the prototype or read the code. Thank you.
