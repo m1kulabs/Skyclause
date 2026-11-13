@@ -274,13 +274,6 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   await expect(answered).toHaveText(windowLine('17:45', '19:15'))
   await expect(page).toHaveURL(new RegExp(`/\\?date=${chosen}&start=17%3A45&end=19%3A15$`))
   await settled()
-  // A reload, or the link shared, opens the same window, still with the replay and no verdict asked for.
-  await page.reload()
-  await expect(dates.nth(1).locator('input')).toBeChecked()
-  await expect(form.getByLabel('Window start')).toHaveValue('17:45')
-  await expect(form.getByLabel('Window end')).toHaveValue('19:15')
-  await expect(answered).toHaveText(windowLine('17:45', '19:15'))
-  await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
   const capsule = (await band(page).locator('[data-state]').boundingBox())!
   await page.mouse.move(capsule.x + capsule.width / 2, capsule.y + capsule.height / 2)
   await page.mouse.down()
@@ -292,6 +285,15 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   await settled()
   await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
   expect(await photoBottom(page)).toBe(edge)
+  // A reload, or the link shared, opens the same window, still with the replay and no verdict asked for.
+  const kept = (await band(page).getAttribute('aria-valuetext'))!
+  await expect(page).toHaveURL(new RegExp(`/\\?date=${chosen}&start=\\d\\d%3A\\d\\d&end=\\d\\d%3A\\d\\d$`))
+  await page.reload()
+  await expect(dates.nth(1).locator('input')).toBeChecked()
+  await expect(band(page)).toHaveAttribute('aria-valuetext', kept)
+  const [start, end] = kept.match(/\d\d:\d\d/g)!
+  await expect(answered).toHaveText(windowLine(start!, end!))
+  await expect(form.getByText(REPLAY_LEAD)).toBeVisible()
 
   // A minute of idling runs no refresh either.
   await page.waitForTimeout(61_000)
