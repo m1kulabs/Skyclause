@@ -473,7 +473,7 @@ describe('bounded ICS normalization', () => {
     ).toHaveLength(10000)
   })
 
-  test('the exact historical iterator ceiling is accepted and excluded positions still count', async () => {
+  test('accepts the exact 100,000 historical iterator ceiling', async () => {
     expect(
       (
         await parseCalendar(
@@ -482,6 +482,9 @@ describe('bounded ICS normalization', () => {
         )
       ).occurrences
     ).toEqual([])
+  })
+
+  test('rejects 100,001 historical iterator positions even when excluded', async () => {
     const exclusions = Array.from({ length: 100001 }, (_, index) =>
       new Date(Date.parse('2020-01-01T09:00:00Z') + index * 1000)
         .toISOString()
