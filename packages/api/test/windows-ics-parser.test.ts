@@ -1,5 +1,8 @@
 import ICAL from 'ical.js'
 import { spawn } from 'node:child_process'
+import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import type { CalendarOptions } from '../src/services/windows/calendar-types'
@@ -60,13 +63,17 @@ async function rejected(text: string) {
   }
 }
 
-async function isolated(text: string) {
+async function isolated(text: string, childPath = process.env.PATH) {
   const fixture = fileURLToPath(new URL('./fixtures/windows-ics-isolated.ts', import.meta.url))
   return new Promise<{
     timedOut: boolean
     output: { occurrences?: number; skipped?: number; protected?: number; error?: boolean }
   }>((resolve, reject) => {
-    const child = spawn('rtk', ['proxy', 'bun', fixture], { detached: true, stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn('bun', [fixture], {
+      detached: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PATH: childPath }
+    })
     let timedOut = false
     let stdout = ''
     let stderr = ''
@@ -93,6 +100,23 @@ async function isolated(text: string) {
     child.stdin.end(JSON.stringify({ text }))
   })
 }
+
+test('isolated parser runs with Bun and Node on a PATH that has no RTK', async () => {
+  const bun = process.env.PATH?.split(delimiter)
+    .map((dir) => join(dir, 'bun'))
+    .find((path) => existsSync(path))
+  if (!bun) throw new Error('Bun runtime is required by the parser fixture')
+  const path = mkdtempSync(join(tmpdir(), 'calendar-test-path-'))
+  try {
+    symlinkSync(realpathSync(bun), join(path, 'bun'))
+    symlinkSync(process.execPath, join(path, 'node'))
+    expect(existsSync(join(path, 'rtk'))).toBe(false)
+    const result = await isolated(calendar(event()), path)
+    expect(result).toMatchObject({ timedOut: false, output: { occurrences: 1 } })
+  } finally {
+    rmSync(path, { recursive: true, force: true })
+  }
+})
 
 const dstZone = [
   'BEGIN:VTIMEZONE',
