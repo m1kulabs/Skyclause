@@ -2,7 +2,13 @@ export { ac, roles } from './access'
 export { apiKeyManager } from './api-keys'
 export { can } from './can'
 export { authHandler, getSessionForRequest, type AuthSettings, type RequestAuthSession } from './instance'
-export { deviceAuthorizationPageData, pageAccountEmail, pagePrincipal, type DeviceAuthorizationPageData } from './pages'
+export {
+  deviceAuthorizationPageData,
+  pageAccountEmail,
+  pagePrincipal,
+  signInLinkUntil,
+  type DeviceAuthorizationPageData
+} from './pages'
 export { resolvePrincipal } from './principal'
 export { signInMethods, type SignInMethods } from './sign-in-methods'
 export { completeOAuthConsent, getOAuthConsentDetails, oauthManagement } from './oauth'
