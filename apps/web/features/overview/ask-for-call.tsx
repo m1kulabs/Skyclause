@@ -31,7 +31,9 @@ type AskState =
   | { kind: 'asking' }
   | { kind: 'asked'; runId: string | null }
   | { kind: 'drafted' }
-  | { kind: 'no-draft' }
+  | { kind: 'no-draft-budget' }
+  | { kind: 'no-draft-validation' }
+  | { kind: 'no-draft-other' }
   | { kind: 'run-failed' }
   | { kind: 'still-drafting' }
   // `retry` repeats the same ask; `newKey` when the key itself was refused. `unavailable` takes the control away.
@@ -41,17 +43,27 @@ type AskState =
 const STATE_SENTENCE_KEY = {
   asked: 'overview.ask_call_done',
   drafted: 'overview.ask_call_drafted',
-  'no-draft': 'overview.ask_call_no_draft',
+  'no-draft-budget': 'overview.ask_call_budget_no_time',
+  'no-draft-validation': 'overview.ask_call_no_draft_validation',
+  'no-draft-other': 'overview.ask_call_no_draft_other',
   'run-failed': 'overview.ask_call_run_failed',
   'still-drafting': 'overview.ask_call_still_drafting',
   unavailable: 'overview.ask_call_unavailable'
 } as const
 
-const RUN_OUTCOME_STATE = {
-  drafted: 'drafted',
-  no_draft: 'no-draft',
-  failed: 'run-failed'
+const NO_DRAFT_REASON_STATE = {
+  budget: 'no-draft-budget',
+  validation: 'no-draft-validation'
 } as const
+
+function runOutcomeState(status: 'drafted' | 'no_draft' | 'failed', reason: string | null): AskState {
+  if (status === 'drafted') return { kind: 'drafted' }
+  if (status === 'failed') return { kind: 'run-failed' }
+  if (reason === 'budget' || reason === 'validation') {
+    return { kind: NO_DRAFT_REASON_STATE[reason] }
+  }
+  return { kind: 'no-draft-other' }
+}
 
 function statusSentence(state: AskState, locale: Locale): string {
   if (state.kind === 'failed') return state.sentence
@@ -126,6 +138,8 @@ export function AskForCall({
   const draftedAtAsk = useRef(drafted)
   const mounted = useRef(true)
   const outcomeResolved = useRef(false)
+  const pollNowRef = useRef<(() => void) | null>(null)
+  const pollStoppedRef = useRef(false)
   const onDraftedRef = useRef(onDrafted)
 
   useEffect(() => {
@@ -151,6 +165,7 @@ export function AskForCall({
       })
       if (!mounted.current) return
       outcomeResolved.current = false
+      pollStoppedRef.current = false
       setState({ kind: 'asked', runId: typeof run?.id === 'string' && run.id ? run.id : null })
     } catch (error) {
       if (!mounted.current) return
@@ -168,12 +183,7 @@ export function AskForCall({
     void send()
   }
 
-  useEffect(() => {
-    if (state.kind === 'asked' && drafted > draftedAtAsk.current) {
-      outcomeResolved.current = true
-      setState({ kind: 'drafted' })
-    }
-  }, [drafted, state.kind])
+  const runId = state.kind === 'asked' ? state.runId : null
 
   useEffect(() => {
     if (state.kind !== 'asked') return
@@ -184,55 +194,102 @@ export function AskForCall({
     return () => clearTimeout(timer)
   }, [state.kind])
 
-  const runId = state.kind === 'asked' ? state.runId : null
-
   useEffect(() => {
-    if (state.kind !== 'asked' || !runId) return
+    if (state.kind !== 'asked' || !runId) {
+      pollNowRef.current = null
+      return
+    }
     let active = true
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout> | undefined
+    let inFlight = false
+    let repollQueued = false
+
+    const clearTimer = () => {
+      if (timer !== undefined) {
+        clearTimeout(timer)
+        timer = undefined
+      }
+    }
 
     const schedule = (delayMs: number) => {
       if (!active) return
+      clearTimer()
       timer = setTimeout(() => {
+        timer = undefined
         void poll()
       }, delayMs)
     }
 
     async function poll() {
       if (!active || outcomeResolved.current) return
+      inFlight = true
       try {
         const run = await overviewApi('getRun', {
           org,
           params: { id: runId! },
           signal: controller.signal
         })
+        inFlight = false
         if (!active || outcomeResolved.current) return
         if (run.status === 'drafted' || run.status === 'no_draft' || run.status === 'failed') {
           outcomeResolved.current = true
           active = false
-          setState({ kind: RUN_OUTCOME_STATE[run.status] })
+          pollNowRef.current = null
+          setState(runOutcomeState(run.status, run.reason))
           if (run.status === 'drafted') onDraftedRef.current?.()
+          return
+        }
+        if (repollQueued) {
+          repollQueued = false
+          void poll()
           return
         }
         schedule(RUN_POLL_INTERVAL_MS)
       } catch (error) {
+        inFlight = false
         if (!active || controller.signal.aborted || outcomeResolved.current) return
         if (isQuietPollStop(error)) {
           active = false
+          pollStoppedRef.current = true
+          pollNowRef.current = null
           return
         }
+        repollQueued = false
         schedule(pollErrorDelayMs(error))
       }
+    }
+
+    pollNowRef.current = () => {
+      if (!active || outcomeResolved.current) return
+      if (inFlight) {
+        repollQueued = true
+        return
+      }
+      clearTimer()
+      void poll()
     }
 
     schedule(RUN_POLL_FIRST_MS)
     return () => {
       active = false
-      if (timer !== undefined) clearTimeout(timer)
+      pollNowRef.current = null
+      clearTimer()
       controller.abort()
     }
   }, [state.kind, runId, org])
+
+  // Two AskForCall controls share `drafted`: a control with a known runId polls its own run instead of assuming success.
+  useEffect(() => {
+    if (state.kind !== 'asked' || drafted <= draftedAtAsk.current) return
+    draftedAtAsk.current = drafted
+    if (!runId || pollStoppedRef.current) {
+      outcomeResolved.current = true
+      setState({ kind: 'drafted' })
+      return
+    }
+    pollNowRef.current?.()
+  }, [drafted, state.kind, runId])
 
   const busy = state.kind === 'asking' || state.kind === 'asked'
   const label =

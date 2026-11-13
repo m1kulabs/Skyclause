@@ -115,8 +115,8 @@ test('asking first confirms what it starts; Cancel starts nothing', async () => 
   expect(overviewApi).not.toHaveBeenCalled()
 })
 
-test('a confirmed ask starts one Sky run and holds the control at Asked… until a bundle drafts', async () => {
-  vi.mocked(overviewApi).mockResolvedValue(runRecord('queued') as never)
+test('a confirmed ask starts one Sky run and holds the control at Asked… until a bundle drafts when no run id is known', async () => {
+  vi.mocked(overviewApi).mockResolvedValue(runRecord('queued', { id: '' }) as never)
   const { rerender } = render(<AskForCall org="pilot" projectId="project-id" drafted={0} locale="en" />)
   await ask()
   expect(status()).toBe('Asked. The bundle shows here once it is drafted.')
@@ -131,7 +131,7 @@ test('a confirmed ask starts one Sky run and holds the control at Asked… until
   fireEvent.click(held)
   expect(overviewApi).toHaveBeenCalledTimes(1)
 
-  // The overview's bundle stream saw bundle.drafted.
+  // With no run id, the overview's bundle stream seeing bundle.drafted still confirms the ask.
   rerender(<AskForCall org="pilot" projectId="project-id" drafted={1} locale="en" />)
   expect(status()).toBe('Drafted. The new bundle is in the list below.')
   expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
@@ -202,37 +202,49 @@ test('when the run drafts, polling confirms at 1 s / 2 s, calls onDrafted once, 
   expect(callsFor('getRun')).toHaveLength(3)
 })
 
-test('when the run ends without a bundle, it says so within the first polls and offers the control again', async () => {
-  const onDrafted = vi.fn()
-  vi.mocked(overviewApi)
-    .mockResolvedValueOnce(runRecord('queued') as never)
-    .mockResolvedValueOnce(runRecord('running') as never)
-    .mockResolvedValueOnce(runRecord('no_draft', { reason: 'budget' }) as never)
+test.each([
+  ['budget', 'No more calls can be asked for today.'],
+  ['validation', 'No bundle was drafted: the draft did not pass its checks. Ask again.'],
+  ['provider_error', 'No bundle was drafted this time. Ask again in a few minutes.'],
+  [null, 'No bundle was drafted this time. Ask again in a few minutes.'],
+  ['unknown_reason', 'No bundle was drafted this time. Ask again in a few minutes.']
+] as const)(
+  'when the run ends without a bundle (%s), it maps the reason within the first polls and offers the control again',
+  async (reason, sentence) => {
+    const onDrafted = vi.fn()
+    vi.mocked(overviewApi)
+      .mockResolvedValueOnce(runRecord('queued') as never)
+      .mockResolvedValueOnce(runRecord('running') as never)
+      .mockResolvedValueOnce(runRecord('no_draft', { reason }) as never)
 
-  render(<AskForCall org="pilot" projectId="project-id" drafted={0} onDrafted={onDrafted} locale="en" />)
-  await ask()
+    render(<AskForCall org="pilot" projectId="project-id" drafted={0} onDrafted={onDrafted} locale="en" />)
+    await ask()
 
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1_000)
-  })
-  expect(callsFor('getRun')).toHaveLength(1)
-  expect(status()).toBe('Asked. The bundle shows here once it is drafted.')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+    expect(callsFor('getRun')).toHaveLength(1)
+    expect(status()).toBe('Asked. The bundle shows here once it is drafted.')
 
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(2_000)
-  })
-  expect(callsFor('getRun')).toHaveLength(2)
-  expect(status()).toBe("No bundle was drafted. Check the pack's sources, then ask again.")
-  expect(onDrafted).not.toHaveBeenCalled()
-  expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
-  expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
-  expect(document.body.textContent).not.toMatch(/no_draft|budget|019a55e0-0000-7000-8000-000000000099/)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000)
+    })
+    expect(callsFor('getRun')).toHaveLength(2)
+    expect(status()).toBe(sentence)
+    expect(status()).not.toContain("Check the pack's sources")
+    expect(onDrafted).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+    expect(document.body.textContent).not.toMatch(
+      /no_draft|budget|validation|provider_error|unknown_reason|019a55e0-0000-7000-8000-000000000099/
+    )
 
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(ASK_WAIT_MS)
-  })
-  expect(callsFor('getRun')).toHaveLength(2)
-})
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ASK_WAIT_MS)
+    })
+    expect(callsFor('getRun')).toHaveLength(2)
+  }
+)
 
 test('when the run fails, it says so in plain words and offers a new ask', async () => {
   const onDrafted = vi.fn()
@@ -346,7 +358,7 @@ test('with the outcome still unknown at ASK_WAIT_MS, it says it is still being d
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1)
   })
-  expect(status()).toBe('Still drafting. Reload the page in a few minutes to see the bundle.')
+  expect(status()).toBe("The run's result is not available yet. Reload the page in a few minutes to check again.")
   expect(status()).not.toContain('No bundle was drafted')
   expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
 
@@ -390,12 +402,40 @@ test('unmount stops polling and ignores an in-flight getRun response', async () 
   expect(onDrafted).not.toHaveBeenCalled()
 })
 
-test('the stream confirming first makes later polls change nothing', async () => {
+test('when a control knows its run id and drafted rises while its own run answers failed, it polls at once and shows the run failure', async () => {
+  const onDrafted = vi.fn()
+  vi.mocked(overviewApi)
+    .mockResolvedValueOnce(runRecord('queued') as never)
+    .mockResolvedValueOnce(runRecord('failed', { reason: 'shadow_failed' }) as never)
+
+  const { rerender } = render(
+    <AskForCall org="pilot" projectId="project-id" drafted={0} onDrafted={onDrafted} locale="en" />
+  )
+  await ask()
+  expect(callsFor('getRun')).toHaveLength(0)
+
+  // Another control on the page finished and incremented the shared drafted count before our 1 s poll timer.
+  await act(async () => {
+    rerender(<AskForCall org="pilot" projectId="project-id" drafted={1} onDrafted={onDrafted} locale="en" />)
+  })
+  expect(callsFor('getRun')).toHaveLength(1)
+  expect(status()).toBe('The run failed, so no bundle was drafted. Ask again.')
+  expect(onDrafted).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Ask for a call' })).toHaveProperty('disabled', false)
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ASK_WAIT_MS)
+  })
+  expect(callsFor('getRun')).toHaveLength(1)
+})
+
+test('when a control knows its run id, a rising drafted count while polling lets its own run decide instead of declaring drafted', async () => {
   const onDrafted = vi.fn()
   const inFlight = deferred<ReturnType<typeof runRecord>>()
   vi.mocked(overviewApi)
     .mockResolvedValueOnce(runRecord('queued') as never)
     .mockImplementationOnce(() => inFlight.promise as never)
+    .mockResolvedValueOnce(runRecord('no_draft', { reason: 'validation' }) as never)
 
   const { rerender } = render(
     <AskForCall org="pilot" projectId="project-id" drafted={0} onDrafted={onDrafted} locale="en" />
@@ -408,15 +448,14 @@ test('the stream confirming first makes later polls change nothing', async () =>
   expect(callsFor('getRun')).toHaveLength(1)
 
   rerender(<AskForCall org="pilot" projectId="project-id" drafted={1} onDrafted={onDrafted} locale="en" />)
-  expect(status()).toBe('Drafted. The new bundle is in the list below.')
+  expect(status()).toBe('Asked. The bundle shows here once it is drafted.')
 
   await act(async () => {
-    inFlight.resolve(runRecord('no_draft'))
-    await vi.advanceTimersByTimeAsync(20_000)
+    inFlight.resolve(runRecord('running'))
   })
-  expect(status()).toBe('Drafted. The new bundle is in the list below.')
+  expect(callsFor('getRun')).toHaveLength(2)
+  expect(status()).toBe('No bundle was drafted: the draft did not pass its checks. Ask again.')
   expect(onDrafted).not.toHaveBeenCalled()
-  expect(callsFor('getRun')).toHaveLength(1)
 })
 
 test('Try again repeats the same ask with the same key, so a lost answer never starts a second run', async () => {
@@ -536,24 +575,32 @@ async function askMs() {
 }
 
 test.each([
-  ['drafted', 'Sudah didraf. Berkas baharu ada dalam senarai di bawah.'],
-  ['no_draft', 'Tiada berkas didraf. Semak sumber pek, kemudian minta lagi.'],
-  ['failed', 'Larian gagal, jadi tiada berkas didraf. Minta lagi.']
-] as const)('in Malay, run status %s renders the Malay sentence without raw terms', async (runStatus, sentence) => {
-  vi.mocked(overviewApi)
-    .mockResolvedValueOnce(runRecord('queued') as never)
-    .mockResolvedValueOnce(runRecord(runStatus, { reason: 'provider_error' }) as never)
+  ['drafted', null, 'Sudah didraf. Berkas baharu ada dalam senarai di bawah.'],
+  ['no_draft', 'budget', 'Tiada lagi keputusan boleh diminta hari ini.'],
+  ['no_draft', 'validation', 'Tiada berkas didraf: draf tidak lulus semakannya. Minta lagi.'],
+  ['no_draft', 'provider_error', 'Tiada berkas didraf kali ini. Minta lagi dalam beberapa minit.'],
+  ['no_draft', null, 'Tiada berkas didraf kali ini. Minta lagi dalam beberapa minit.'],
+  ['failed', 'shadow_failed', 'Larian gagal, jadi tiada berkas didraf. Minta lagi.']
+] as const)(
+  'in Malay, run status %s (%s) renders the Malay sentence without raw terms',
+  async (runStatus, reason, sentence) => {
+    vi.mocked(overviewApi)
+      .mockResolvedValueOnce(runRecord('queued') as never)
+      .mockResolvedValueOnce(runRecord(runStatus, { reason }) as never)
 
-  render(<AskForCall org="pilot" projectId="project-id" drafted={0} locale="ms" />)
-  await askMs()
-  expect(status()).toBe('Sudah diminta. Berkas dipaparkan di sini selepas didraf.')
+    render(<AskForCall org="pilot" projectId="project-id" drafted={0} locale="ms" />)
+    await askMs()
+    expect(status()).toBe('Sudah diminta. Berkas dipaparkan di sini selepas didraf.')
 
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1_000)
-  })
-  expect(status()).toBe(sentence)
-  expect(document.body.textContent).not.toMatch(/provider_error|no_draft|failed|drafted|019a55e0/i)
-})
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+    expect(status()).toBe(sentence)
+    expect(document.body.textContent).not.toMatch(
+      /provider_error|validation|budget|shadow_failed|no_draft|failed|drafted|019a55e0/i
+    )
+  }
+)
 
 test('in Malay, ASK_WAIT_MS with unknown outcome renders the still-drafting Malay sentence', async () => {
   vi.mocked(overviewApi).mockResolvedValue(runRecord('running') as never)
@@ -563,6 +610,6 @@ test('in Malay, ASK_WAIT_MS with unknown outcome renders the still-drafting Mala
   await act(async () => {
     await vi.advanceTimersByTimeAsync(ASK_WAIT_MS)
   })
-  expect(status()).toBe('Masih didraf. Muat semula halaman dalam beberapa minit untuk melihat berkas.')
+  expect(status()).toBe('Hasil larian belum tersedia. Muat semula halaman dalam beberapa minit untuk menyemak semula.')
   expect(document.body.textContent).not.toMatch(/No bundle|running|019a55e0/i)
 })
