@@ -28,6 +28,11 @@ export function connection(login: Login, purpose?: 'account-security') {
   const name = `DATABASE_URL_${login}`
   const url = process.env[name]
   if (!url) throw new Error(`${name} is not set`)
+  return pooled(login, url, purpose)
+}
+
+/** The pool for `url`, made once per URL and purpose. */
+function pooled(login: Login, url: string, purpose?: 'account-security') {
   const key = purpose ? `${purpose}:${url}` : url
   let found = connections.get(key)
   if (!found) {
@@ -81,9 +86,13 @@ const sharedConnection = new AsyncLocalStorage<{ shared: Shared; inside: boolean
  * share, one transaction at a time; it goes back to the pool when `fn` settles. For a batch run whose handlers must share
  * one connection (D45, #235). On it, call `withTenant` after `withSystem` returns, not inside its callback: a nested
  * call would need a second connection, so it throws, as does a call made after `fn` settles.
+ *
+ * With `drill`, it is the restore drill's connection (#224): DATABASE_URL_SYSTEM's, on the compute at `drill.host` when
+ * one is given (a branch), with every transaction read-only, and it closes when `fn` settles instead of going back to the
+ * pool. Only `system` calls go there; any other login's don't.
  */
-export async function shareSystemConnection<T>(fn: () => Promise<T>): Promise<T> {
-  const client = await connection('SYSTEM').pool.connect()
+export async function shareSystemConnection<T>(fn: () => Promise<T>, drill?: { host: string | null }): Promise<T> {
+  const client = await (drill ? drillSystem(drill.host) : connection('SYSTEM')).pool.connect()
   const shared: Shared = { db: drizzle(client, { schema }), tail: Promise.resolve(), ended: false }
   sharedClients.set(client, shared)
   try {
@@ -99,10 +108,24 @@ export async function shareSystemConnection<T>(fn: () => Promise<T>): Promise<T>
     return result
   } finally {
     await shared.tail
-    // Passing the error discards the client; its permanent logging listener stays owned by the pool.
-    client.release(shared.failure)
+    // Passing the error discards the client; its permanent logging listener stays owned by the pool. The drill's client is
+    // discarded too, as the drill deletes the branch next.
+    client.release(shared.failure ?? (drill ? true : undefined))
     sharedClients.delete(client)
   }
+}
+
+/**
+ * DATABASE_URL_SYSTEM's pool read-only, its own apart from the writing one, with the host swapped when given: a Neon
+ * branch keeps its parent's logins and passwords.
+ */
+function drillSystem(host: string | null) {
+  const url = process.env.DATABASE_URL_SYSTEM
+  if (!url) throw new Error('DATABASE_URL_SYSTEM is not set')
+  const drill = new URL(url)
+  if (host) drill.hostname = host
+  drill.searchParams.set('options', '-c default_transaction_read_only=on')
+  return pooled('SYSTEM', drill.href)
 }
 
 async function run<T, P extends Principal | null>(
