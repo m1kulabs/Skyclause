@@ -3,7 +3,15 @@ import { brandStates, type BrandState } from '@skyclause/elements'
 import { formatClock, formatTime } from '@skyclause/i18n/format'
 import { Glyph } from '../brand/glyph'
 import { t } from './catalogue'
-import { CAPSULE_MIN_PX, CLOCK_SOURCE, DAY_MIN, localDateOf, windowInstants, type HeroWindow } from './window-model'
+import {
+  CAPSULE_MIN_PX,
+  CLOCK_SOURCE,
+  DAY_MIN,
+  dayBounds,
+  localDateOf,
+  windowInstants,
+  type HeroWindow
+} from './window-model'
 import styles from './hero.module.css'
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
@@ -20,9 +28,25 @@ export interface HeroBandProps {
   now: string
 }
 
+/** The day's hours under a strip: midnight, every six hours, and midnight again, each a `<time>` of that instant. */
+function Ticks({ midnight }: { midnight: number }) {
+  return (
+    <div className={styles.ticks} data-source={CLOCK_SOURCE}>
+      {TICKS.map((hour) => {
+        const at = new Date(midnight + hour * 3_600_000).toISOString()
+        return (
+          <time key={hour} dateTime={at} style={{ left: `${((hour / 24) * 100).toFixed(3)}%` }}>
+            {hour === 24 ? t('landing-hero.midnight', {}, 'en') : formatClock(at, 'en')}
+          </time>
+        )
+      })}
+    </div>
+  )
+}
+
 /**
- * The hero's stripe band: one day of 24 hours as alternating bars, and the visitor's window lying on it as the capsule.
- * The track is the slider; the capsule is its picture. Without a verdict the capsule is the ink of a selection.
+ * The window panel's day strip: one day of 24 hours as alternating bars, and the visitor's window lying on it as the
+ * capsule. The track is the slider; the capsule is its picture. Without a verdict the capsule is the ink of a selection.
  */
 export function HeroBand({ win, state, sliderProps, sliderRef, now }: HeroBandProps) {
   const instants = windowInstants(win)
@@ -72,16 +96,39 @@ export function HeroBand({ win, state, sliderProps, sliderRef, now }: HeroBandPr
       <p id="hero-strip-help" className="sr-only" data-source={CLOCK_SOURCE}>
         {t('landing-hero.strip_help', {}, 'en')}
       </p>
-      <div className={styles.ticks} data-source={CLOCK_SOURCE}>
-        {TICKS.map((hour) => {
-          const at = new Date(midnight + hour * 3_600_000).toISOString()
-          return (
-            <time key={hour} dateTime={at} style={{ left: `${((hour / 24) * 100).toFixed(3)}%` }}>
-              {hour === 24 ? t('landing-hero.midnight', {}, 'en') : formatClock(at, 'en')}
-            </time>
-          )
-        })}
+      <Ticks midnight={midnight} />
+    </div>
+  )
+}
+
+/**
+ * The replay's own day under its answer: a dashed strip of that date with the replayed window on it as a hollow
+ * capsule in its mode's tone and glyph, so the window and the verdict read together and never as today's strip. It
+ * pictures the line beside it, which says the same in words, so assistive technology skips it.
+ */
+export function ReplayBand({ from, to, state }: { from: string; to: string; state: BrandState }) {
+  const fromAt = Date.parse(from)
+  const midnight = Date.parse(dayBounds({ date: localDateOf(new Date(fromAt)) }).from)
+  const left = ((fromAt - midnight) / 86_400_000) * 100
+  const width = ((Date.parse(to) - fromAt) / 86_400_000) * 100
+  return (
+    <div className={styles.replayBand} aria-hidden="true" data-replay-band>
+      <div className={styles.replayTrack}>
+        <span className={styles.hours}>
+          {HOURS.map((hour) => (
+            <span key={hour} className={styles.hour} />
+          ))}
+        </span>
+        <span
+          className={styles.replayCapsule}
+          data-tone={brandStates[state].tone}
+          data-state={state}
+          style={{ left: `${left.toFixed(3)}%`, width: `max(${CAPSULE_MIN_PX}px, ${width.toFixed(3)}%)` }}
+        >
+          <Glyph state={state} width={12} height={12} />
+        </span>
       </div>
+      <Ticks midnight={midnight} />
     </div>
   )
 }

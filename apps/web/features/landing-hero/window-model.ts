@@ -1,5 +1,5 @@
 import { t } from '@skyclause/i18n'
-import { formatNumber, formatTime } from '@skyclause/i18n/format'
+import { formatDateLong, formatNumber, formatTime } from '@skyclause/i18n/format'
 import type { BlockedInput, ClauseResult, InputValue, Mode, Pack, Verdicts } from '@skyclause/contracts/api/shared'
 import type { StripInput } from '@skyclause/elements'
 import { indicatorName } from '../data-components/indicator-names'
@@ -161,6 +161,19 @@ export function windowInstants(win: HeroWindow): { from: string; to: string } {
   }
 }
 
+/**
+ * The picker's line while live verdicts are not open: the chosen window in words, in the replay's own format so the two
+ * compare at a glance, and what happens with it.
+ */
+export function windowLineOf(win: HeroWindow): string {
+  const { from, to } = windowInstants(win)
+  return t(
+    'landing-hero.window_line',
+    { date: formatDateLong(from, 'en'), start: formatTime(from, 'en'), end: formatTime(to, 'en') },
+    'en'
+  )
+}
+
 export function dayBounds(win: { date: string }): { from: string; to: string } {
   const [y, m, d] = win.date.split('-').map(Number)
   const fromMs = Date.UTC(y!, m! - 1, d!) - MYT_OFFSET_MS
@@ -271,9 +284,12 @@ export function clauseNameOf(key: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
-/** An indicator by the product's one name for it (data components' `indicatorName`), never its registry key. */
+/**
+ * An indicator by the product's one name for it (data components' `indicatorName`), never its registry key. The public
+ * page drops the internal scope qualifier the app's names carry ("Rain in the last 60 minutes (site)").
+ */
 export function inputNameOf(name: string): string {
-  return indicatorName(name, 'en')
+  return indicatorName(name, 'en').replace(/ \(site\)$/, '')
 }
 
 /** A name inside a sentence: its first letter lowered unless it opens an acronym ("MET warning in force"). */
@@ -319,9 +335,11 @@ export function ageMinutesOf(input: Pick<InputValue, 'age_s' | 'observed_at'>, e
     : t('format.ageMinute', { value: minutes }, 'en')
 }
 
+/** A reading with its unit; rain prints to a tenth of a millimetre ("39.0 mm"), as every other figure on the page does. */
 export function valueOf(input: Pick<InputValue, 'value' | 'unit'>): string | null {
   if (input.value === null || input.value === undefined) return null
-  const text = typeof input.value === 'number' ? formatNumber(input.value, 'en') : String(input.value)
+  const digits = input.unit === 'mm' ? { minimumFractionDigits: 1, maximumFractionDigits: 1 } : undefined
+  const text = typeof input.value === 'number' ? formatNumber(input.value, 'en', digits) : String(input.value)
   return t('landing-hero.input_value', { value: text, unit: input.unit }, 'en')
 }
 

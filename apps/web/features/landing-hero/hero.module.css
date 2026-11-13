@@ -1,35 +1,32 @@
 /*
- * Hero, "striped card beside the room". The card (surface tone, one radius) holds the day strip as its stripe band,
- * the name, the h1, one sentence and the action. The room holds Bukit Jalil's sky inside the enormous capsule,
- * cropped by the viewport's right edge, and the window form with the verdict on a solid panel. Page tokens (margins,
- * steps, easing) come from features/landing/landing.css on `.landing`. Phones: room, card (overlapping it), panel.
+ * Hero, "card beside the panel, then the room". The card (surface tone, one radius) holds the live time, the name, the
+ * h1, one sentence and the action. The solid panel leads with the verdict, then the visitor's window: the day strip
+ * (its stripe band), the dates and the times. The room, Bukit Jalil's sky inside the enormous capsule cropped by the
+ * viewport's right edge, closes the hero. The source order is the reading order at every width. Page tokens (margins,
+ * steps, easing) come from features/landing/landing.css on `.landing`. Phones: card, panel, a shorter room.
  */
 
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'room' 'band' 'facts' 'copy' 'panel';
+  grid-template-areas: 'facts' 'copy' 'panel' 'room';
   padding: var(--m);
 }
 
 .card {
-  grid-row: 2 / 5;
+  grid-row: 1 / 3;
   grid-column: 1;
-  margin-top: -24px;
   border-radius: var(--r);
   background: var(--surface);
   position: relative;
   z-index: 1;
 }
 
-/* The stripe band: 24 hours of one day, and the window lying on it. */
+/* The window's day strip: 24 hours of one day, and the window lying on it. */
 .band {
-  grid-area: band;
   position: relative;
-  z-index: 2;
   display: grid;
   gap: 8px;
-  padding: 4px 20px 0;
 }
 
 .track {
@@ -157,13 +154,22 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 32px 20px 28px;
+  padding: 20px 20px 24px;
 }
 
+/* On a phone the outlined name gives its line to the action and the answer; the page title and the footer carry it. */
 .wordmark {
-  display: block;
+  display: none;
   width: clamp(170px, 21vw, 300px);
   color: var(--ink);
+}
+@media (min-width: 640px) {
+  .wordmark {
+    display: block;
+  }
+  .wordmark + .title {
+    margin-top: 24px;
+  }
 }
 .wordmark svg {
   display: block;
@@ -172,7 +178,7 @@
 }
 
 .title {
-  margin: 24px 0 0;
+  margin: 0;
   margin-left: -0.04em;
   font-size: var(--step-display);
   font-weight: 500;
@@ -188,7 +194,7 @@
 }
 
 .lead {
-  margin: 28px 0 0;
+  margin: 20px 0 0;
   max-width: 36ch;
   font-size: var(--step-lead);
   line-height: 1.35;
@@ -199,8 +205,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 28px;
-  margin-top: 32px;
+  gap: 4px 24px;
+  margin-top: 24px;
 }
 
 .links {
@@ -224,12 +230,12 @@
   }
 }
 
-/* The room: the enormous capsule holding the photographs, cropped by the viewport's right edge. */
+/* The room: the enormous capsule holding the photographs, cropped by the viewport's right edge; last in the hero. */
 .room {
   grid-area: room;
   position: relative;
-  height: 48svh;
-  min-height: 280px;
+  height: clamp(200px, 30svh, 300px);
+  margin-top: var(--gap);
   margin-right: calc(-1 * var(--m));
   overflow: clip;
 }
@@ -272,7 +278,7 @@
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  margin: 14px 0 0;
+  margin: calc(var(--gap) + 14px) 0 0;
   padding: 0 16px 0 14px;
   border-radius: 9999px;
   background: var(--ground);
@@ -339,11 +345,12 @@ html[data-motion='reduce'] .pause {
   display: none;
 }
 
-/* The window form and the verdict, on a solid panel. */
+/* The verdict, then the window form, on a solid panel. */
 .panel {
   grid-area: panel;
   display: grid;
-  gap: 20px;
+  align-content: start;
+  gap: 28px;
   margin-top: var(--gap);
   padding: 20px;
   border-radius: var(--r);
@@ -352,14 +359,21 @@ html[data-motion='reduce'] .pause {
   line-height: 1.45;
 }
 
+/* Your window: the day strip, the dates and the times, then the line that answers each change. */
+.window {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .dates {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 /*
  * On a phone the eight dates are one strip of capsules that scrolls sideways (the legend stays above it), so the times
@@ -389,7 +403,7 @@ html[data-motion='reduce'] .pause {
 }
 .legend {
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   padding: 0;
   font-size: var(--step-body);
   font-weight: 600;
@@ -467,9 +481,21 @@ html[data-motion='reduce'] .pause {
   color: var(--ink-muted);
 }
 .zone {
-  flex: 1 1 8rem;
+  flex: 1 1 16rem;
   margin: 0 0 12px;
   color: var(--ink-muted);
+  text-wrap: pretty;
+}
+/* The picker's answer while live verdicts are not open: in the ink, holding three lines (four on a phone) beside or
+   under the fields, so a longer date never moves the photograph. */
+.zone[data-window-line] {
+  min-height: calc(3 * 1.45em);
+  color: var(--ink);
+}
+@media (max-width: 639.98px) {
+  .zone[data-window-line] {
+    min-height: calc(4 * 1.45em);
+  }
 }
 /* A typed time the parser cannot read: the rule replaces the zone line in its own slot, in the ink at weight. */
 .zone[data-invalid] {
@@ -492,18 +518,13 @@ html[data-motion='reduce'] .pause {
 
 /*
  * The answer's slot (the readings strip and the readout) keeps at least the replay's height, so a failure or a rate
- * limit never moves the photograph above it or the card beside it; the picker then holds the tallest answer shown.
+ * limit never moves the window form under it or the photograph; the picker then holds the tallest answer shown.
  */
 .answer {
   display: grid;
   align-content: start;
   gap: 20px;
   min-height: 20rem;
-}
-@media (min-width: 640px) {
-  .answer {
-    min-height: 15rem;
-  }
 }
 .readout {
   display: grid;
@@ -575,14 +596,75 @@ html[data-motion='reduce'] .pause {
 .retry:active {
   transform: scale(0.97);
 }
-/* The replay, while live verdicts are not open: what this is and why, its window, then the verdict as read. */
+/* The replay, while live verdicts are not open: the call and its window first, what fired on which reading, the
+   label, then the replay's own date and window on a dashed strip of that day. */
 .replay {
   display: grid;
   gap: 10px;
   justify-items: start;
 }
-.replayLead {
+/* The call as the product says it, at the statement step: the mode's capsule (glyph and word), and what it is for. */
+.statement {
+  font-size: var(--step-statement);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.statement :global(.status-mark) {
+  min-height: 0;
+  vertical-align: baseline;
+}
+.statement :global(.mode-badge-pill) {
+  gap: 0.25em;
+  min-height: 0;
+  padding: 0.02em 0.42em 0.06em 0.3em;
+  font-size: inherit;
+  line-height: 1.15;
+}
+.statement :global(.mode-badge-pill svg) {
+  width: 0.6em;
+  height: 0.6em;
+}
+.replay > .fired {
+  margin-top: 2px;
+  font-size: var(--step-body);
+}
+.replayDay {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+}
+/* The replay's day: dashed where today's strip is solid, its window a hollow capsule in the mode's tone. */
+.replayBand {
+  display: grid;
+  gap: 6px;
+}
+.replayTrack {
+  position: relative;
+  height: 28px;
+  box-sizing: border-box;
+  border: 2px dashed var(--ink-muted);
+  border-radius: 9999px;
+}
+.replayCapsule {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px dashed var(--tone);
+  border-radius: 9999px;
+  background: var(--surface);
+  color: var(--tone);
+}
+/* Why the answer is a replay: last and small. */
+.replayNote {
   max-width: 62ch;
+  color: var(--ink-muted);
   text-wrap: pretty;
 }
 .replayWindow {
@@ -663,51 +745,45 @@ html[data-motion='reduce'] .pause {
 }
 
 @media (min-width: 1024px) {
+  /* The card and the panel side by side, then the room across the full width: it closes the first screen. */
   .hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto 1fr auto;
     grid-template-areas:
-      'band room'
-      'facts room'
-      'copy room'
-      'copy panel';
+      'facts panel'
+      'copy  panel'
+      'room  room';
     column-gap: var(--gap);
-    min-height: 100svh;
     box-sizing: border-box;
   }
   .card {
-    grid-row: 1 / 5;
+    grid-row: 1 / 3;
     grid-column: 1;
-    margin-top: 0;
   }
-  /* On the card the time sits centred in whatever stretch the strip and the name leave between them. */
   .facts {
-    align-self: center;
-    padding: 32px 40px;
-  }
-  .band {
     padding: 40px 40px 0;
   }
-  .track {
-    height: 56px;
-  }
-  .capsule {
-    top: 7px;
-    bottom: 7px;
-  }
+  /* The words sit under the time, so the action stays on the first screen however tall the panel beside them is. */
   .copy {
-    align-self: end;
-    padding: 40px;
+    align-self: start;
+    padding: 48px 40px 40px;
   }
   .room {
-    height: auto;
-    min-height: 0;
+    height: clamp(280px, 42svh, 480px);
   }
   .panel {
+    margin-top: 0;
     padding: 24px 28px;
   }
+  .track {
+    height: 48px;
+  }
+  .capsule {
+    top: 6px;
+    bottom: 6px;
+  }
   .answer {
-    min-height: 13rem;
+    min-height: 0;
   }
 }
 

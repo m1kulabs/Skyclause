@@ -4,7 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import axe from 'axe-core'
 import '../../features/landing-hero/catalogue'
 import { HeroReadout } from '../../features/landing-hero/readout'
-import { ReplayAnswer } from '../../features/landing-hero/replay-answer'
+import { ReplayAnswer, ReplayNote } from '../../features/landing-hero/replay-answer'
 import type { EvaluateResult } from '../../features/landing-hero/evaluate'
 import type { Verdict } from '@skyclause/contracts/api/shared'
 import { input } from './fixtures'
@@ -141,7 +141,7 @@ describe('HeroReadout', () => {
     )
     expect(screen.getByText('No call for Storm confirmed: gauge 0232901RF silent since 15:00 MYT')).toBeTruthy()
     expect(screen.getByText('Surge evaluates from 22:00 MYT')).toBeTruthy()
-    expect(document.body.textContent).not.toContain('39 mm')
+    expect(document.body.textContent).not.toMatch(/\b39(?:\.0)? mm/)
     await expectAxeClean()
   })
 
@@ -244,7 +244,7 @@ describe('HeroReadout', () => {
     expect(screen.queryByText(/No approved call yet/)).toBeNull()
   })
 
-  test('while live verdicts are not open, the answer is the labelled 2 November replay, with no error or Retry', async () => {
+  test('while live verdicts are not open, the answer is the 2 November replay led by its call, the note last', async () => {
     render(
       <HeroReadout
         result={{ kind: 'unavailable' }}
@@ -253,39 +253,62 @@ describe('HeroReadout', () => {
         calendarQuery="/v1/public/x/y/calendar-entries?limit=1"
         rainAnimated={false}
         replay={<ReplayAnswer />}
+        replayNote={<ReplayNote />}
       />
     )
-    // One plain sentence: what this is and what is not open yet.
-    expect(
-      screen.getByText(
-        'Live verdicts for the window you pick are not open yet, so this is 2 November, replayed from the JPS gauge’s readings.'
-      )
-    ).toBeTruthy()
-    const mark = document.querySelector('[data-replay-mark]')!
-    expect(mark.textContent).toBe('Replay')
-    expect(mark.closest('[data-source]')?.getAttribute('data-source')).toBe(
-      'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75'
-    )
-    // The replay's window, its verdict as a mode with glyph and word, the fired clause, and the input with its age.
-    expect(screen.getByText('Monday 2 November 2026, 15:30 MYT to 15:45 MYT')).toBeTruthy()
-    const mode = document.querySelector('[data-pack="sky"] .status-mark')!
+    const JPS = 'https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75'
+    const note =
+      'Live verdicts for the window you pick are not open yet, so this is 2 November, replayed from the JPS gauge’s readings.'
+    // The call leads, as the product says it: the mode with its glyph and word, and the window it is for.
+    const statement = document.querySelector('[data-statement]')!
+    expect(statement.textContent!.replace(/\s+/g, ' ')).toBe('Commute disruption for the 15:30 MYT release wave')
+    const mode = statement.querySelector('[data-pack="sky"] .status-mark, .status-mark')!
+    expect(statement.getAttribute('data-pack')).toBe('sky')
     expect(mode.getAttribute('data-state')).toBe('commute_disruption')
     expect(mode.textContent).toBe('Commute disruption')
     expect(mode.querySelector('svg')).toBeTruthy()
-    expect(screen.getByText('Storm confirmed fired')).toBeTruthy()
-    const gauge = document.querySelector(
-      'li[data-source="https://infobanjirjpskl.water.gov.my/Rainfall/GetRainfallGraph/75"]'
-    )!
-    expect(gauge.textContent).toContain('39 mm')
+    // Then the clause that fired on the gauge's reading, the label, the replay's date and window, and the note, in order.
+    const text = document.body.textContent!.replace(/\s+/g, ' ')
+    const order = [
+      'Commute disruption for the 15:30 MYT release wave',
+      'Storm confirmed fired',
+      'Rain gauge 0232901RF:',
+      'Clause engine verdict: not reviewed, not sent',
+      'Monday 2 November 2026, 15:30 MYT to 15:45 MYT',
+      'Approved calls show here once the conditions calendar opens.',
+      note
+    ].map((part) => text.indexOf(part))
+    expect(order.every((at) => at >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    const gauge = document.querySelector(`li[data-source="${JPS}"]`)!
+    expect(gauge.textContent).toContain('39.0 mm in 60 min')
     expect(gauge.textContent).toContain('0232901RF')
     expect(gauge.textContent).toContain('5 min old')
-    expect(screen.getByText('Clause engine verdict: not reviewed, not sent')).toBeTruthy()
+    const source = screen.getByRole('link', { name: 'JPS gauge page for gauge 0232901RF, in a new tab' })
+    expect(source.textContent).toBe('JPS gauge page')
+    expect(source.getAttribute('href')).toBe(JPS)
     expect(screen.getByText('Evaluated 15:05 MYT')).toBeTruthy()
+    const mark = document.querySelector('[data-replay-mark]')!
+    expect(mark.textContent).toBe('Replay')
+    expect(mark.closest('[data-source]')?.getAttribute('data-source')).toBe(JPS)
+    // The replay's own day: a strip of 2 November with its window as a capsule in the mode, a picture of the line above.
+    const band = document.querySelector('[data-replay-band]')!
+    expect(band.getAttribute('aria-hidden')).toBe('true')
+    expect(band.querySelector('[data-state="commute_disruption"]')).toBeTruthy()
+    expect(band.querySelector('time')?.getAttribute('datetime')).toBe('2026-11-01T16:00:00.000Z')
+    // The note says why, last and small, in the product's words.
+    const readout = document.querySelector('[data-rain-animated]')!
+    expect(readout.lastElementChild?.textContent).toBe(note)
+    // Every numeral sits inside an element that names its source.
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    while (walker.nextNode()) {
+      const node = walker.currentNode
+      if (/\d/.test(node.textContent ?? '')) expect(node.parentElement!.closest('[data-source]')).toBeTruthy()
+    }
     // Nothing to retry and nothing a visitor should read as a fault.
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
     expect(document.body.textContent).not.toMatch(/\b50\d\b|not built|\bAPI\b|Couldn’t/)
     // LND-3 holds here too; a calendar the API does not serve yet says what will show, never n=0.
-    expect(screen.getByText('Approved calls show here once the conditions calendar opens.')).toBeTruthy()
     expect(screen.queryByText(/n=0/)).toBeNull()
     await expectAxeClean()
   })
@@ -336,8 +359,9 @@ describe('HeroReadout', () => {
       />
     )
     expect(screen.getByText('Storm confirmed fired')).toBeTruthy()
+    // The public page drops the app's internal scope qualifier ("(site)").
     expect(screen.getByText('Rain in the last 60 minutes')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/storm_confirmed|site\.rain_60m_mm/)
-    expect(screen.getByRole('link', { name: 'Open source: Rain in the last 60 minutes, in a new tab' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Source page for Rain in the last 60 minutes, in a new tab' })).toBeTruthy()
   })
 })
