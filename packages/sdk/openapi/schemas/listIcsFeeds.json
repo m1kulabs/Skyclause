@@ -69,9 +69,76 @@
                       },
                       "filename": {
                         "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": ["class", "event", "commute_wave"]
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": ["pending", "ready", "error", "removed"]
+                      },
+                      "refreshed_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "last_attempt_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "deleted_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time"
+                      },
+                      "last_error": {
+                        "type": ["object", "null"],
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["code", "detail"],
+                        "additionalProperties": false
+                      },
+                      "skipped": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "uid": {
+                              "type": ["string", "null"]
+                            },
+                            "recurrence_id": {
+                              "type": ["string", "null"]
+                            },
+                            "pointer": {
+                              "type": "string"
+                            },
+                            "detail": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["uid", "recurrence_id", "pointer", "detail"],
+                          "additionalProperties": false
+                        }
                       }
                     },
-                    "required": ["id", "project_id", "url"]
+                    "required": [
+                      "id",
+                      "project_id",
+                      "url",
+                      "kind",
+                      "status",
+                      "refreshed_at",
+                      "last_attempt_at",
+                      "deleted_at",
+                      "last_error",
+                      "skipped"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "next_cursor": {

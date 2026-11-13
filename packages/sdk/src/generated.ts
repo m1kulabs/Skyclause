@@ -1,4 +1,4 @@
-export const OPENAPI_SHA256 = 'f49c0e88879b9c988592bbaf390903c82e4524a169e3f9f2ef011038e9844905' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
+export const OPENAPI_SHA256 = '1c6807a14b9b0e4449b12e8503f0892d854cade5d1d8c82258ff99722cdc8920' as const // gitleaks:allow -- a SHA-256 of openapi.json, not a secret.
 
 export const OPERATION_IDS = [
   'getProjectAnalysis',
@@ -36,6 +36,7 @@ export const OPERATION_IDS = [
   'listGrades',
   'listIcsFeeds',
   'createIcsFeed',
+  'getIcsFeed',
   'deleteIcsFeed',
   'getProjectIndicators',
   'ingestReadings',
@@ -600,13 +601,22 @@ export type OperationRequests = {
     body?:
       | {
           url: string
+          kind?: 'class' | 'event' | 'commute_wave'
         }
       | {
+          kind?: 'class' | 'event' | 'commute_wave'
           file: {
             name: string
             content: string
           }
         }
+    idempotencyKey?: string
+    signal?: AbortSignal
+  }
+  getIcsFeed: {
+    params: {
+      id: string
+    }
     idempotencyKey?: string
     signal?: AbortSignal
   }
@@ -4040,6 +4050,21 @@ export type OperationResponses = {
       project_id: string
       url: string | null
       filename?: string
+      kind: 'class' | 'event' | 'commute_wave'
+      status: 'pending' | 'ready' | 'error' | 'removed'
+      refreshed_at: string | null
+      last_attempt_at: string | null
+      deleted_at: string | null
+      last_error: {
+        code: string
+        detail: string
+      } | null
+      skipped: Array<{
+        uid: string | null
+        recurrence_id: string | null
+        pointer: string
+        detail: string
+      }>
     }>
     next_cursor: string | null
   }
@@ -4048,12 +4073,63 @@ export type OperationResponses = {
     project_id: string
     url: string | null
     filename?: string
+    kind: 'class' | 'event' | 'commute_wave'
+    status: 'pending' | 'ready' | 'error' | 'removed'
+    refreshed_at: string | null
+    last_attempt_at: string | null
+    deleted_at: string | null
+    last_error: {
+      code: string
+      detail: string
+    } | null
+    skipped: Array<{
+      uid: string | null
+      recurrence_id: string | null
+      pointer: string
+      detail: string
+    }>
+  }
+  getIcsFeed: {
+    id: string
+    project_id: string
+    url: string | null
+    filename?: string
+    kind: 'class' | 'event' | 'commute_wave'
+    status: 'pending' | 'ready' | 'error' | 'removed'
+    refreshed_at: string | null
+    last_attempt_at: string | null
+    deleted_at: string | null
+    last_error: {
+      code: string
+      detail: string
+    } | null
+    skipped: Array<{
+      uid: string | null
+      recurrence_id: string | null
+      pointer: string
+      detail: string
+    }>
   }
   deleteIcsFeed: {
     id: string
     project_id: string
     url: string | null
     filename?: string
+    kind: 'class' | 'event' | 'commute_wave'
+    status: 'pending' | 'ready' | 'error' | 'removed'
+    refreshed_at: string | null
+    last_attempt_at: string | null
+    deleted_at: string | null
+    last_error: {
+      code: string
+      detail: string
+    } | null
+    skipped: Array<{
+      uid: string | null
+      recurrence_id: string | null
+      pointer: string
+      detail: string
+    }>
   }
   getProjectIndicators: {
     project_id: string
@@ -6690,6 +6766,11 @@ export type OperationResponses = {
               via: 'form' | 'ics' | 'm365' | 'api' | 'cli' | 'mcp' | 'guest' | 'share'
               times_changed: boolean
               series_id: string | null
+              calendar?: {
+                feed_id: string
+                revision: string
+                window_ids?: Array<string>
+              }
             }
           }
         | {
@@ -6703,6 +6784,11 @@ export type OperationResponses = {
               via: 'form' | 'ics' | 'm365' | 'api' | 'cli' | 'mcp' | 'guest' | 'share'
               times_changed: boolean
               series_id: string | null
+              calendar?: {
+                feed_id: string
+                revision: string
+                window_ids?: Array<string>
+              }
             }
           }
         | {
@@ -6716,6 +6802,11 @@ export type OperationResponses = {
               via: 'form' | 'ics' | 'm365' | 'api' | 'cli' | 'mcp' | 'guest' | 'share'
               times_changed: boolean
               series_id: string | null
+              calendar?: {
+                feed_id: string
+                revision: string
+                window_ids?: Array<string>
+              }
             }
           }
         | {
@@ -7027,6 +7118,7 @@ export type OperationMetadataById = {
   listGrades: { method: 'GET'; path: '/v1/projects/{id}/grades'; idempotent: false; eventStream: false }
   listIcsFeeds: { method: 'GET'; path: '/v1/projects/{id}/ics-feeds'; idempotent: false; eventStream: false }
   createIcsFeed: { method: 'POST'; path: '/v1/projects/{id}/ics-feeds'; idempotent: true; eventStream: false }
+  getIcsFeed: { method: 'GET'; path: '/v1/ics-feeds/{id}'; idempotent: false; eventStream: false }
   deleteIcsFeed: { method: 'DELETE'; path: '/v1/ics-feeds/{id}'; idempotent: false; eventStream: false }
   getProjectIndicators: { method: 'GET'; path: '/v1/projects/{id}/indicators'; idempotent: false; eventStream: false }
   ingestReadings: { method: 'POST'; path: '/v1/ingest/{sourceId}'; idempotent: true; eventStream: false }
@@ -7222,6 +7314,7 @@ export const OPERATIONS = {
   listGrades: { method: 'GET', path: '/v1/projects/{id}/grades', idempotent: false, eventStream: false },
   listIcsFeeds: { method: 'GET', path: '/v1/projects/{id}/ics-feeds', idempotent: false, eventStream: false },
   createIcsFeed: { method: 'POST', path: '/v1/projects/{id}/ics-feeds', idempotent: true, eventStream: false },
+  getIcsFeed: { method: 'GET', path: '/v1/ics-feeds/{id}', idempotent: false, eventStream: false },
   deleteIcsFeed: { method: 'DELETE', path: '/v1/ics-feeds/{id}', idempotent: false, eventStream: false },
   getProjectIndicators: { method: 'GET', path: '/v1/projects/{id}/indicators', idempotent: false, eventStream: false },
   ingestReadings: { method: 'POST', path: '/v1/ingest/{sourceId}', idempotent: true, eventStream: false },
@@ -7361,6 +7454,7 @@ export type RequiredOperationId =
   | 'listGrades'
   | 'listIcsFeeds'
   | 'createIcsFeed'
+  | 'getIcsFeed'
   | 'deleteIcsFeed'
   | 'getProjectIndicators'
   | 'ingestReadings'

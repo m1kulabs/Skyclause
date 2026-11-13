@@ -34,6 +34,7 @@ import schema_getEvidenceRequest from './schemas/getEvidenceRequest.json' with {
 import schema_listGrades from './schemas/listGrades.json' with { type: 'json' }
 import schema_listIcsFeeds from './schemas/listIcsFeeds.json' with { type: 'json' }
 import schema_createIcsFeed from './schemas/createIcsFeed.json' with { type: 'json' }
+import schema_getIcsFeed from './schemas/getIcsFeed.json' with { type: 'json' }
 import schema_deleteIcsFeed from './schemas/deleteIcsFeed.json' with { type: 'json' }
 import schema_getProjectIndicators from './schemas/getProjectIndicators.json' with { type: 'json' }
 import schema_ingestReadings from './schemas/ingestReadings.json' with { type: 'json' }
@@ -153,6 +154,7 @@ export const operationSchemas: Record<OperationId, OperationSchema> = {
   listGrades: schema_listGrades,
   listIcsFeeds: schema_listIcsFeeds,
   createIcsFeed: schema_createIcsFeed,
+  getIcsFeed: schema_getIcsFeed,
   deleteIcsFeed: schema_deleteIcsFeed,
   getProjectIndicators: schema_getProjectIndicators,
   ingestReadings: schema_ingestReadings,

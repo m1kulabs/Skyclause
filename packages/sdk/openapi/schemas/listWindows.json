@@ -166,7 +166,8 @@
                             }
                           }
                         },
-                        "required": ["frequency", "days_of_week", "skip_dates"]
+                        "required": ["frequency", "days_of_week", "skip_dates"],
+                        "additionalProperties": false
                       },
                       "latest_calls": {
                         "type": "object",
