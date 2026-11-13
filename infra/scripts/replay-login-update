@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Replays in-place updates of the Terraform-made database logins on a throwaway Postgres 18, the image of
+# packages/db/docker that stands in for Neon (#619). Terraform creates the logins as the non-superuser `migrator`, with a
+# local state, from database.tf's own locals and login resources; every migration runs; then Terraform updates the logins
+# in place. Fails unless `app` keeps only its migration membership, public_reader WITH INHERIT FALSE, SET TRUE, after each
+# step, and unless Terraform refuses to replace a login.
+# Usage: replay-login-update [<git ref>]
+# The logins are created from database.tf at <ref>, then the working tree's is applied, so `origin/main` replays the
+# first production apply of a change to database.tf. Without <ref> both are the working tree. Needs Docker, Terraform and
+# a `bun install`ed checkout; it removes its container, its volume and its temporary directory when it ends.
+set -euo pipefail
+
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+database_tf="infra/environments/production/database.tf"
+ref="${1:-}"
+work="$(mktemp -d)"
+container="skyclause-login-replay-$$"
+failures=0
+# -v also removes the anonymous volume the Postgres image's data directory gets.
+trap 'docker rm -fv "$container" >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
+
+psql() { docker exec -i "$container" psql -X -q -v ON_ERROR_STOP=1 --dbname=skyclause "$@"; }
+
+# Writes the module: the provider on the container as `migrator`, then database.tf's locals and login resources as-is.
+write_module() {
+  cat >"$work/main.tf" <<EOF
+terraform {
+  required_providers {
+    postgresql = { source = "cyrilgdn/postgresql", version = "~> 1.27" }
+    random     = { source = "hashicorp/random", version = "~> 3.9" }
+  }
+}
+
+provider "postgresql" {
+  host      = "127.0.0.1"
+  port      = $port
+  database  = "skyclause"
+  username  = "migrator"
+  password  = "migrator"
+  sslmode   = "disable"
+  superuser = false
+}
+
+EOF
+  awk '/^(locals|resource "(random_password|postgresql_role)" "login") \{/ { keep = 1 } keep { print } /^\}/ { keep = 0 }' \
+    >>"$work/main.tf"
+}
+
+# Runs terraform in the module and prints the plan's resource and attribute lines, or all its output when it fails.
+tf() {
+  local status=0
+  terraform -chdir="$work" "$@" -input=false -no-color >"$work/terraform.log" 2>&1 || status=$?
+  if ((status == 0)); then
+    grep -E '^ +(# |[-~] )|^(Plan|Apply complete|No changes)' "$work/terraform.log" || true
+  else
+    cat "$work/terraform.log"
+  fi
+  return "$status"
+}
+
+# Prints the logins' memberships and counts a failure unless their only one is app's public_reader, inherit f and set t.
+memberships() {
+  local logins="SELECT oid FROM pg_roles WHERE rolname IN ('app', 'auth_app', 'system', 'retention')" kept
+  psql --username=migrator -c "SELECT r.rolname AS login, r.rolinherit, m.roleid::regrole AS member_of,
+      m.grantor::regrole, m.admin_option AS admin, m.inherit_option AS inherit, m.set_option AS set
+    FROM pg_roles r LEFT JOIN pg_auth_members m ON m.member = r.oid WHERE r.oid IN ($logins) ORDER BY 1, 3"
+  kept="$(psql --username=migrator -tA -c "SELECT count(*) = 1 AND bool_and(member = 'app'::regrole
+      AND roleid = 'public_reader'::regrole AND NOT admin_option AND NOT inherit_option AND set_option)
+    FROM pg_auth_members WHERE member IN ($logins)")"
+  if [[ "$kept" != t ]]; then
+    echo "FAIL $1: the logins' memberships are not just public_reader to app WITH INHERIT FALSE, SET TRUE"
+    failures=$((failures + 1))
+  fi
+}
+
+image="$(docker build -q "$repo/packages/db/docker")"
+docker run -d --name "$container" -e POSTGRES_PASSWORD=postgres -p 127.0.0.1::5432 "$image" >/dev/null
+tries=0
+until docker exec "$container" pg_isready --host=127.0.0.1 --username=migrator --dbname=skyclause >/dev/null 2>&1; do
+  if ((++tries == 60)); then
+    docker logs "$container"
+    echo "Postgres didn't accept connections within 60 seconds" >&2
+    exit 1
+  fi
+  sleep 1
+done
+port="$(docker port "$container" 5432/tcp | head -1 | sed 's/.*://')"
+psql --username=postgres -c 'SELECT version()' -tA
+# init.sql also makes the four logins, which Terraform makes in production.
+psql --username=postgres -c 'DROP ROLE app, auth_app, "system", retention'
+cp "$repo/infra/environments/production/.terraform.lock.hcl" "$work/"
+
+echo "== Terraform creates the logins from database.tf at ${ref:-the working tree}"
+if [[ -n "$ref" ]]; then git -C "$repo" show "$ref:$database_tf"; else cat "$repo/$database_tf"; fi | write_module
+tf init
+tf apply -auto-approve
+
+echo "== migrator runs every migration"
+(cd "$repo" && DATABASE_URL_MIGRATE="postgresql://migrator:migrator@127.0.0.1:$port/skyclause" \
+  bun packages/db/scripts/migrate.ts | grep -c '^applied ') | sed 's/$/ migrations applied/'
+memberships migrations
+
+if [[ -n "$ref" ]]; then
+  echo "== Terraform applies the working tree's database.tf"
+  write_module <"$repo/$database_tf"
+  tf apply -auto-approve
+  memberships "working tree apply"
+fi
+
+echo "== app's password is rotated, an in-place update of postgresql_role.login[\"app\"]"
+tf apply -auto-approve -replace='random_password.login["app"]'
+memberships "password rotation"
+
+echo "== a plan to replace postgresql_role.login[\"app\"]"
+tf plan -replace='postgresql_role.login["app"]' || true
+if ! grep -q 'Instance cannot be destroyed' "$work/terraform.log"; then
+  echo "FAIL replace: Terraform doesn't refuse to replace the login, which drops every privilege the migrations granted it"
+  failures=$((failures + 1))
+fi
+
+if ((failures > 0)); then
+  echo "$failures failed"
+  exit 1
+fi
+echo "ok"
