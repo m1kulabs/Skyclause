@@ -49,7 +49,8 @@ export function isAuthRoute(path: string): boolean {
 }
 
 export type AuthState =
-  | { kind: 'confirm'; link: string; resend?: string; stepUp: boolean }
+  // `until` is the opened link's real end, when the server knows it (route.tsx).
+  | { kind: 'confirm'; link: string; resend?: string; stepUp: boolean; until?: string }
   | { kind: 'expired'; resend?: string; stepUp?: boolean; resendFailed?: boolean }
   | { kind: 'link-pending' }
   | { kind: 'google-failed' }

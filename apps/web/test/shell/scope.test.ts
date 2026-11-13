@@ -30,3 +30,22 @@ test('the scope carries the request language into the names the bar prints', () 
   expect(shellScope(nobody, '/', {}, 'ms').orgName).toBe('Tiada organisasi')
   expect(shellScope(member, '/test-org', { org: 'test-org' }, 'ms').projectName).toBe('Pilih projek')
 })
+
+test('a project the member does not have (the not-found page) gets no project links, only the organisation’s', () => {
+  const scope = shellScope(member, '/test-org/no-such-page', { org: 'test-org', project: 'no-such-page' })
+  expect(scope.org).toBe('test-org')
+  expect(scope.core).toEqual([])
+  expect(scope.projectMenu).toEqual([])
+  expect(scope.current).toBeUndefined()
+  expect(scope.organisationMenu.map((item) => item.href)).toContain('/test-org')
+  // The member's own project keeps its links.
+  const own = shellScope(member, '/test-org/test-project/windows', { org: 'test-org', project: 'test-project' })
+  expect(own.core.map((item) => item.href)).toContain('/test-org/test-project/windows')
+  // When the project list could not be read, the URL's project is all there is to go on: its links stay.
+  const unread = shellScope(
+    { ...member, projectsError: { 'org-one': { status: 503, at: '2026-11-13T00:00:00.000Z' } } },
+    '/test-org/test-project/windows',
+    { org: 'test-org', project: 'test-project' }
+  )
+  expect(unread.core.map((item) => item.href)).toContain('/test-org/test-project/windows')
+})

@@ -93,22 +93,30 @@ export function WindowStrip({ windows, strip, list, locale = 'en' }: WindowStrip
         locale
       )
     : t('data.strip.no_crossing', {}, locale)
-  const summary = input.replay
+  // A window that has not started has no readings to cross the line: the summary says when it starts instead.
+  const ahead = !input.replay && !!input.window && Date.parse(input.window.from) > Date.parse(input.now)
+  const summary = ahead
     ? t(
-        count === 1 ? 'data.strip.summary_replay_one' : 'data.strip.summary_replay',
-        {
-          source: input.replay.source,
-          captured: formatTime(input.replay.capturedAt, locale),
-          crossing: crossingText,
-          count
-        },
+        count === 1 ? 'data.strip.summary_ahead_one' : 'data.strip.summary_ahead',
+        { to: formatTime(input.now, locale), start: formatTime(input.window!.from, locale), count },
         locale
       )
-    : t(
-        count === 1 ? 'data.strip.summary_live_one' : 'data.strip.summary_live',
-        { to: formatTime(input.to, locale), crossing: crossingText, count },
-        locale
-      )
+    : input.replay
+      ? t(
+          count === 1 ? 'data.strip.summary_replay_one' : 'data.strip.summary_replay',
+          {
+            source: input.replay.source,
+            captured: formatTime(input.replay.capturedAt, locale),
+            crossing: crossingText,
+            count
+          },
+          locale
+        )
+      : t(
+          count === 1 ? 'data.strip.summary_live_one' : 'data.strip.summary_live',
+          { to: formatTime(input.to, locale), crossing: crossingText, count },
+          locale
+        )
 
   const win = windows[0]
   const toggleLabel = showTable ? t('data.strip.hide_table', {}, locale) : t('data.strip.show_table', {}, locale)

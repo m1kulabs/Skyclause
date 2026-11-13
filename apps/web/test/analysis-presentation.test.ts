@@ -86,7 +86,7 @@ describe('analysis reads and copy', () => {
     }
     for (const key of keys(en)) expect(messageAt(catalogueFor('ms', 'analysis'), key), key.join('.')).toBeTruthy()
     expect(messageAt(catalogueFor('ms', 'analysis'), ['reviewTitle'])).toBe(
-      'Item semakan dan tetingkap tanpa keputusan'
+      'Item semakan dan jendela masa tanpa keputusan'
     )
   })
 })

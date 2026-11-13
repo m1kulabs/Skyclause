@@ -418,7 +418,7 @@ test('an Owner at the window step of the first run sees the steps here, and decl
   await dialog.locator('[name="end"]').fill('16:00')
   await dialog.getByRole('button', { name: w('save'), exact: true }).click()
   await expect(dialog).toBeHidden()
-  await expect(current).toContainText('Set the rota')
+  await expect(current).toContainText('Set the approver rota')
 })
 
 test('the first-run steps stay off the windows page once every step is done', async ({ page }) => {

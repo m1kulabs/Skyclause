@@ -2,8 +2,8 @@
   "title": "Lejar",
   "entries": "Entri",
   "evidence": "Permintaan bukti",
-  "empty": "Belum ada entri (n=0). Lejar merekodkan setiap keputusan yang diluluskan, disunting atau ditolak, notis, penilaian dan versi klausa.",
-  "next": "Minta bukti untuk satu tempoh, atau kembali selepas operasi platform pertama.",
+  "empty": "Belum ada entri (n=0). Lejar merekodkan setiap keputusan yang diluluskan, disunting atau ditolak, notis, gred dan versi klausa.",
+  "next": "Minta bukti untuk satu jendela masa, atau kembali selepas larian platform pertama.",
   "emptyFiltered": "Tiada entri yang sepadan dengan penapis ini (n=0).",
   "emptyFilteredNext": "Kosongkan penapis untuk melihat semua entri.",
   "loading": "Memuatkan lejar…",
@@ -14,7 +14,7 @@
   "filters": "Tapis rekod",
   "from": "Tarikh mula",
   "to": "Tarikh akhir",
-  "pack": "Pakej",
+  "pack": "Pek",
   "mode": "Mod",
   "state": "Status",
   "show": "Tunjukkan",
@@ -40,7 +40,7 @@
     "entry": "Entri",
     "concerns": "Berkenaan",
     "actor": "Diputuskan oleh",
-    "detail": "Mod dan penilaian",
+    "detail": "Mod dan gred",
     "toApproval": "Hingga kelulusan",
     "toNotice": "Hingga notis",
     "seq": "No.",
@@ -52,7 +52,7 @@
   "seq": "No. {n}",
   "platform": "Skyclause",
   "callRef": "Keputusan {id}",
-  "openCall": "Panggilan tanpa tetingkap",
+  "openCall": "Keputusan tanpa jendela masa",
   "corrects": "Membetulkan entri {id}",
   "correctsShort": "Membetulkan entri",
   "entry": "Entri {id}",
@@ -74,7 +74,7 @@
   "kinds": {
     "sheets_ledger": "Lejar Sheets",
     "jira_register": "Daftar Jira",
-    "run_traces": "Jejak operasi"
+    "run_traces": "Jejak larian"
   },
   "entryKinds": {
     "call_approved": "Keputusan diluluskan",
@@ -82,32 +82,32 @@
     "call_rejected": "Keputusan ditolak",
     "call_expired": "Keputusan tamat tempoh",
     "call_sent": "Notis dihantar",
-    "grade": "Tempoh dinilai",
-    "night_graded": "Malam dinilai",
+    "grade": "Jendela masa digredkan",
+    "night_graded": "Malam digredkan",
     "listing_listed": "Senarai ditambah",
     "listing_changed": "Senarai diubah",
     "listing_cancelled": "Senarai dibatalkan",
     "clause_version": "Versi klausa",
-    "window_cancelled": "Tempoh dibatalkan",
+    "window_cancelled": "Jendela masa dibatalkan",
     "evidence_replied": "Bukti dibalas",
-    "crowd_reply": "Balasan orang ramai",
+    "crowd_reply": "Balasan Crowd",
     "correction": "Pembetulan"
   },
   "kindGroups": {
     "calls": "keputusan dan notis",
-    "grades": "penilaian",
+    "grades": "gred",
     "listings": "senarai acara",
     "clauses": "versi klausa",
-    "windows": "perubahan tempoh",
+    "windows": "perubahan jendela masa",
     "evidence": "balasan bukti",
     "corrections": "pembetulan"
   },
   "kindOptions": {
     "calls": "Keputusan dan notis",
-    "grades": "Penilaian",
+    "grades": "Gred",
     "listings": "Senarai acara",
     "clauses": "Versi klausa",
-    "windows": "Perubahan tempoh",
+    "windows": "Perubahan jendela masa",
     "evidence": "Balasan bukti",
     "corrections": "Pembetulan"
   },
@@ -115,23 +115,23 @@
     "hit": "Tepat",
     "miss": "Terlepas",
     "false_alarm": "Amaran palsu",
-    "correct_normal": "Normal yang betul",
+    "correct_normal": "Biasa dengan tepat",
     "in_band": "Dalam julat",
     "out_of_band": "Luar julat",
     "unlisted_surge": "Lonjakan tidak tersenarai",
     "no_call": "Tiada keputusan",
-    "pending": "Belum dinilai"
+    "pending": "Belum digredkan"
   },
   "outcomeOther": "Hasil lain",
   "packs": {
-    "sky": "Langit",
-    "crowd": "Orang ramai"
+    "sky": "Sky",
+    "crowd": "Crowd"
   },
   "modes": {
-    "normal": "Normal",
+    "normal": "Biasa",
     "outdoor_limited": "Aktiviti luar terhad",
     "commute_disruption": "Gangguan perjalanan",
-    "hybrid_recommended": "Hibrid disyorkan",
+    "hybrid_recommended": "Mod hibrid disyorkan",
     "surge_night": "Malam lonjakan"
   },
   "roles": {

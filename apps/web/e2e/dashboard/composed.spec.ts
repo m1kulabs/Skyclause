@@ -48,7 +48,7 @@ test.describe('the organisation dashboard on a production-style server', () => {
     const cookie = await member(org.id)
     const project = await inOrg(org.id, async (tx) => {
       const row = await makeProject(tx, { name: 'Bukit Jalil campus' })
-      await makeProjectPack(tx, { projectId: row.id, pack: 'sky' })
+      await makeProjectPack(tx, { projectId: row.id, pack: 'sky', enabled: true })
       return row
     })
     // The window is declared through the API, as the Windows page declares it.

@@ -1,5 +1,7 @@
-import { generateKeyPairSync, randomBytes } from 'node:crypto'
+import { generateKeyPairSync, randomBytes, randomUUID } from 'node:crypto'
 import { makeAccount, signIn } from '@skyclause/auth/testing'
+import { verification } from '@skyclause/db'
+import { authDatabase } from '@skyclause/db/auth'
 import { expect, expectAxeClean, test } from '../fixtures'
 import { signedOut } from '../quality/roles'
 
@@ -19,8 +21,9 @@ async function expectAuthAxe(page: import('@playwright/test').Page) {
   await page.emulateMedia({ colorScheme: 'dark', contrast: 'no-preference', forcedColors: 'none' })
 }
 
+/** The form column: a region named by the page's one h1, which says what each state is. */
 function signInRegion(page: import('@playwright/test').Page) {
-  return page.getByRole('region', { name: /^Sign in/ })
+  return page.locator('section[aria-labelledby="sign-in-title"]')
 }
 
 test.beforeEach(async ({ page }) => {
@@ -51,7 +54,11 @@ test('sign-in shows the email link, passkey, Google, the legal links and the roo
     'href',
     '/#picture-credits'
   )
-  await expect(page.locator('[data-sign-in-strip="day"]')).toContainText(/Now \d\d:\d\d\sMYT/)
+  // At rest the strip already draws the window a link sent now would have, and says until when, in words.
+  const strip = page.locator('[data-sign-in-strip="rest"]')
+  await expect(strip).toContainText(/Now \d\d:\d\d\sMYT/)
+  await expect(strip.locator('[data-shown]')).toHaveText(/^A link sent now works until \d\d:\d\d\sMYT$/)
+  await expect(page.locator('[data-sign-in-window="ready"]')).toBeVisible()
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })
@@ -92,7 +99,8 @@ test('email sign-in preserves next, announces Sending, names the address, and al
   await page.getByRole('button', { name: 'Send sign-in link' }).click()
   await expect(sending).toBeVisible()
   await expect(signInRegion(page).getByRole('status')).toContainText(address)
-  await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeFocused()
+  await expect(page.getByRole('heading', { level: 1, name: 'Check your email' })).toBeFocused()
+  await expect(page.getByRole('heading')).toHaveCount(1)
   await expect(page.getByRole('link', { name: 'Use a different email' })).toBeVisible()
   // The strip draws the link's window and says until when it works.
   await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
@@ -268,7 +276,10 @@ test('step-up link confirmation posts to the step-up endpoint and asks to return
   await expectAuthAxe(page)
   await page.getByRole('button', { name: 'Confirm it’s you' }).click()
 
-  await expect(signInRegion(page).getByRole('status')).toContainText('Return to the tab and choose Send again')
+  await expect(page.getByRole('heading', { level: 1, name: 'Your confirmation link' })).toBeVisible()
+  await expect(signInRegion(page).getByRole('status')).toContainText(
+    'Confirmed. Go back to the tab that asked and press Continue.'
+  )
   expect(confirmCount).toBe(1)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -283,10 +294,10 @@ test('an expired link with a resend handle takes one press and announces the sen
   })
 
   await page.goto('/sign-in?state=link-expired&resend=resend-handle')
-  await expect(page.getByText('This link has expired. Request a new one.')).toBeVisible()
+  await expect(page.getByText('This sign-in link has expired or was already used.')).toBeVisible()
   await expect(page.getByLabel('Email address')).toHaveCount(0)
   await expectAuthAxe(page)
-  await page.getByRole('button', { name: 'Resend' }).click()
+  await page.getByRole('button', { name: 'Send a new link' }).click()
 
   await expect(signInRegion(page).getByRole('status')).toContainText(
     'A new sign-in link is on its way to the same address.'
@@ -301,17 +312,17 @@ test('expired step-up links direct the person back to the requesting tab', async
   await page.goto('/sign-in?state=link-expired&for=step-up')
 
   await expect(
-    page.getByText('This link has expired. Go back to the tab that requested it and choose Send again.')
+    page.getByText('This link has expired. Go back to the tab that asked and send a new link from there.')
   ).toBeVisible()
   await expect(page.getByLabel('Email address')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Resend' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Send a new link' })).toHaveCount(0)
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
 })
 
 test('expired links without a resend handle and account-link errors show next actions', async ({ page }) => {
   await page.goto('/sign-in?state=link-expired')
-  await expect(page.getByText('This link has expired. Request a new one.')).toBeVisible()
+  await expect(page.getByText('This sign-in link has expired or was already used.')).toBeVisible()
   await expect(page.getByLabel('Email address')).toBeVisible()
   await expectNoPasswordControls(page)
   await expectAuthAxe(page)
@@ -459,8 +470,11 @@ test('the link’s window runs to its real end; then the form returns with the a
   await expect(email).toHaveValue('reader@example.org')
   await expect(email).toBeFocused()
   await expect(signInRegion(page).getByRole('status')).toContainText(/Your sign-in link expired at \d\d:\d\d\sMYT/)
-  await expect(page.locator('[data-sign-in-strip="day"]')).toBeVisible()
-  await expect(page.locator('[data-sign-in-window]')).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in', exact: true })).toBeVisible()
+  // The strip keeps the closed window where it was, so the eye sees what ended, rather than snapping back.
+  const closed = page.locator('[data-sign-in-strip="closed"]')
+  await expect(closed.locator('[data-shown]')).toHaveText(/^Your link expired at \d\d:\d\d\sMYT$/)
+  await expect(page.locator('[data-sign-in-window="closed"]')).toBeVisible()
   await expectAuthAxe(page)
 })
 
@@ -512,7 +526,7 @@ test('without JavaScript the email form posts and the page says what happened', 
   // A sent link's page, as the form lands on it: the address it went to, and until when it works.
   const until = new Date(Date.now() + 14 * 60_000).toISOString()
   await page.goto(`/sign-in?state=link-sent&until=${encodeURIComponent(until)}`)
-  await expect(page.getByRole('heading', { level: 2, name: 'Check your email' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Check your email' })).toBeVisible()
   await expect(page.getByText(/It works until \d\d:\d\d\sMYT\./)).toBeVisible()
   await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/Your link works until \d\d:\d\d\sMYT/)
   await page.getByRole('link', { name: 'Use a different email' }).click()
@@ -523,7 +537,81 @@ test('without JavaScript the email form posts and the page says what happened', 
   await page.goto('/sign-in?link=unknown-token&resend=unknown-handle')
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL(/\/sign-in\?state=link-expired&resend=unknown-handle$/)
-  await expect(page.getByText('This link has expired. Request a new one.')).toBeVisible()
+  await expect(page.getByText('This sign-in link has expired or was already used.')).toBeVisible()
   await expectNoPasswordControls(page)
   await context.close()
+})
+
+test('the emailed link’s page says it is their link and draws what is left of its window, never whose it is', async ({
+  page
+}) => {
+  const token = randomUUID()
+  const expiresAt = new Date(Date.now() + 9 * 60_000)
+  await authDatabase()
+    .insert(verification)
+    .values({ identifier: `magic-link:${token}`, value: JSON.stringify({ email: 'owner@example.org' }), expiresAt })
+
+  await page.goto(`/sign-in?link=${token}&resend=resend-handle`)
+  await expect(page.getByRole('heading', { level: 1, name: 'Your sign-in link' })).toBeVisible()
+  await expect(
+    page.getByText('This is the link we emailed you. Press Sign in to finish signing in on this browser.')
+  ).toBeVisible()
+  await expect(signInRegion(page).getByText(/^It works until \d\d:\d\d\sMYT\.$/)).toBeVisible()
+  await expect(page.locator('[data-sign-in-strip="link"]')).toContainText(/(8|9)\smin left/)
+  await expect(page.locator('[data-sign-in-window="live"]')).toBeVisible()
+  await expect(page.getByRole('button')).toHaveText(['Sign in'])
+  await expect(page.locator('body')).not.toContainText('owner@example.org')
+  await expectAuthAxe(page)
+
+  // A link the server does not know (used, past or mistyped) still offers Sign in, which says it has expired.
+  await page.goto('/sign-in?link=unknown-token')
+  await expect(page.getByRole('heading', { level: 1, name: 'Your sign-in link' })).toBeVisible()
+  await expect(page.getByText(/It works until/)).toHaveCount(0)
+})
+
+test('every state holds one frame: the wordmark, the h1 and the room stay where they are', async ({ browser }) => {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 }
+  ]) {
+    const context = await browser.newContext({ viewport })
+    const page = await context.newPage()
+    await signedOut(page)
+    await page.route('**/api/auth/sign-in/magic-link', (route) => route.fulfill({ json: { status: true } }))
+    const frame = async () => {
+      // Measured once the entrance has settled.
+      await page.waitForTimeout(1000)
+      const box = async (selector: string) => (await page.locator(selector).first().boundingBox())!
+      return {
+        brand: (await box('.sign-in-brand')).y,
+        h1: (await box('h1')).y,
+        photo: await box('.sign-in-photo'),
+        strip: (await box('.sign-in-strip')).y
+      }
+    }
+    await page.goto('/sign-in')
+    const rest = await frame()
+    const states: Record<string, Awaited<ReturnType<typeof frame>>> = { rest }
+
+    await page.getByRole('button', { name: 'Send sign-in link' }).click()
+    await expect(page.getByText('Enter your email address.')).toBeVisible()
+    states.invalid = await frame()
+
+    await page.getByLabel('Email address').fill('reader@example.org')
+    await page.getByRole('button', { name: 'Send sign-in link' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Check your email' })).toBeVisible()
+    states.sent = await frame()
+
+    await page.goto('/sign-in?link=unknown-token&resend=unknown-handle')
+    states.link = await frame()
+    await page.goto('/sign-in?state=link-expired&resend=unknown-handle')
+    states.expired = await frame()
+    await page.goto('/sign-in?state=send-failed')
+    states.failed = await frame()
+
+    for (const [name, measured] of Object.entries(states)) {
+      expect(measured, `${name} at ${viewport.width}`).toEqual(rest)
+    }
+    await context.close()
+  }
 })

@@ -360,6 +360,8 @@ export function RotaPanel({ org, viewer, locale, alertsCard }: RotaPanelProps) {
       setDraft(saved)
       setSavedSignature(stableSignature(saved))
       setSaveResult('saved')
+      // A saved shift can complete the first run's rota step: the steps on this page read again.
+      window.dispatchEvent(new Event('onboarding:changed'))
     } catch {
       setSaveResult('failed')
     } finally {

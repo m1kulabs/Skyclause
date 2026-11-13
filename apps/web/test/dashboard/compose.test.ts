@@ -356,6 +356,16 @@ describe('composeDashboard', () => {
     expect(blocks.upcoming_risks.ok && blocks.upcoming_risks.data.map((item) => item.pack)).toEqual(['sky'])
   })
 
+  test('a project without the Sky pack never reads storm days, and shows no Sky call, grade or storm', async () => {
+    const calls: Array<{ id: string; options: Options }> = []
+    const { blocks } = await compose(fakeApi({}, calls), [project(1, bundle, ['crowd'])])
+    expect(calls.map((item) => item.id)).not.toContain('listProjectDays')
+    expect(blocks.upcoming_risks.ok && blocks.upcoming_risks.data.map((item) => item.pack)).toEqual(['crowd'])
+    // The window's only call is Sky's, a pack the project does not run: the window has no call to show.
+    expect(blocks.windows_at_risk.ok && blocks.windows_at_risk.data.map((item) => item.state)).toEqual([null])
+    expect(blocks.yesterday_grades).toEqual({ ok: true, data: [], n: 0 })
+  })
+
   test('one project’s failed read keeps the other projects’ rows and names the project that could not be read', async () => {
     const api = (async (operationId: string, options: Options) => {
       if (operationId === 'listProjectSources' && options.params?.id === id(2))

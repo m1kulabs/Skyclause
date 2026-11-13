@@ -1,6 +1,6 @@
 {
   "title": "{brand} · {project}",
-  "noApprovedCall": "Belum ada panggilan yang diluluskan",
+  "noApprovedCall": "Belum ada keputusan yang diluluskan",
   "range": "{from} – {to}",
   "window": "{range} · {date}",
   "approved": "Diluluskan pada {time}",
@@ -40,25 +40,25 @@
     "w": {
       "rain_max_60m_mm": "Hujan maksimum dalam 60 minit",
       "rain_max_4h_mm": "Hujan maksimum dalam 4 jam",
-      "met_warning_in_force": "Amaran MET berkuat kuasa semasa tetingkap"
+      "met_warning_in_force": "Amaran MET berkuat kuasa semasa jendela masa"
     }
   },
   "pages": {
     "site": "Skyclause",
     "landing": {
-      "title": "Skyclause · Panggilan untuk setiap jendela masa",
-      "heading": "Panggilan untuk setiap jendela masa",
-      "description": "Skyclause membaca tolok hujan, indeks jerebu dan senarai acara stadium di sekitar Bukit Jalil, dan membuat satu panggilan yang diluluskan dan dinilai bagi setiap jendela masa kelas, acara atau perjalanan."
+      "title": "Skyclause · Keputusan untuk setiap jendela masa",
+      "heading": "Keputusan untuk setiap jendela masa",
+      "description": "Skyclause membaca tolok hujan, indeks jerebu dan senarai acara stadium di sekitar Bukit Jalil, dan membuat satu keputusan yang diluluskan dan digredkan bagi setiap jendela masa kelas, acara atau perjalanan."
     },
     "signIn": {
       "title": "Log masuk ke Skyclause",
       "heading": "Log masuk",
-      "description": "Log masuk ke Skyclause untuk mengisytiharkan jendela masa anda, menyemak setiap panggilan dan menyimpan rekodnya."
+      "description": "Log masuk ke Skyclause untuk mengisytiharkan jendela masa anda, menyemak setiap keputusan dan menyimpan rekodnya."
     },
     "signUp": {
       "title": "Cipta akaun · Skyclause",
       "heading": "Cipta akaun",
-      "description": "Cipta akaun Skyclause untuk mendapatkan satu panggilan yang diluluskan dan dinilai bagi setiap jendela masa kelas, acara atau perjalanan."
+      "description": "Cipta akaun Skyclause untuk mendapatkan satu keputusan yang diluluskan dan digredkan bagi setiap jendela masa kelas, acara atau perjalanan."
     },
     "notFound": {
       "title": "Halaman tidak ditemui · Skyclause"

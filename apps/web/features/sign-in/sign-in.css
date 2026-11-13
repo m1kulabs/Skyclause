@@ -1,7 +1,7 @@
 /*
  * The sign-in page: the form column on the Dusk ground beside the room, a surface holding one photograph of Bukit
- * Jalil in the enormous capsule and the day strip under it, where a sent link's window appears. On a phone the
- * photograph is a short capsule on top, the form follows, and the strip is the last band.
+ * Jalil in the enormous capsule and the link's strip under it. On a phone the photograph is a short capsule on top,
+ * the strip under it, then the form. Every state holds one frame: the wordmark, the h1 and the room never move.
  *
  * The page has its own layout: the shared auth column (globals.css, used by device, invite and consent) gives way to
  * it only where the sign-in page is inside, as the subscriber data page widens it.
@@ -20,8 +20,8 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     'photo'
-    'column'
     'strip'
+    'column'
     'credit';
   align-content: start;
   min-height: 100svh;
@@ -46,7 +46,7 @@
   width: min(100%, 34rem);
   min-width: 0;
   margin-inline: auto;
-  padding-top: 20px;
+  padding-top: 24px;
   overflow-wrap: anywhere;
 }
 
@@ -83,7 +83,10 @@
   line-height: 1.05;
   text-wrap: balance;
 }
-/* "Sign in or create your account" holds two lines in the column at the next step down. */
+/* Every title longer than "Sign in" takes the next step down, so it holds two lines and never breaks a word. */
+.sign-in-title:focus:not(:focus-visible) {
+  outline: none;
+}
 .sign-in-title[data-long] {
   font-size: clamp(2rem, 1rem + 2.4vw, 3rem);
   line-height: 1.08;
@@ -124,8 +127,24 @@
 }
 .sign-in .sign-in-hint,
 .sign-in .sign-in-field-error {
+  margin: 0;
   font-size: 1rem;
   line-height: 1.4;
+  text-wrap: pretty;
+}
+/* The hint and the field's error share one slot, so the slot is as tall as the taller and nothing under it moves. */
+.sign-in-field-note {
+  display: grid;
+}
+.sign-in .sign-in-field-note > * {
+  grid-area: 1 / 1;
+  margin: 0;
+}
+.sign-in-field-note > [data-covered] {
+  visibility: hidden;
+}
+.sign-in [data-slot='alert'] p {
+  text-wrap: pretty;
 }
 .sign-in .sign-in-field-error {
   font-weight: 600;
@@ -146,16 +165,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-.sign-in-sent-title {
-  margin: 0;
-  font-size: clamp(1.5rem, 1rem + 1.6vw, 2.25rem);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-.sign-in-sent-title:focus:not(:focus-visible) {
-  outline: none;
 }
 .sign-in-sent-to,
 .sign-in-sent-again {
@@ -225,6 +234,7 @@
   height: clamp(7.5rem, 4rem + 14vw, 12rem);
   overflow: clip;
 }
+/* The short phone capsule shows the sky over the station's roof, the room's subject, not the paving. */
 /* On a phone the whole capsule shows inside the margins; on a desktop it runs past the room's edge, as the landing's. */
 .sign-in-capsule {
   position: absolute;
@@ -238,7 +248,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 55%;
+  object-position: 50% 30%;
 }
 
 .sign-in-strip {
@@ -248,7 +258,7 @@
   gap: 8px;
   width: min(100%, 34rem);
   min-width: 0;
-  margin: 56px auto 0;
+  margin: 20px auto 0;
 }
 .sign-in-strip-caption {
   display: flex;
@@ -262,7 +272,17 @@
 .sign-in-strip-caption > :last-child {
   color: var(--muted-foreground);
 }
-[data-sign-in-strip='link'] .sign-in-strip-caption > :first-child {
+.sign-in-strip-label {
+  display: grid;
+}
+.sign-in-strip-label > * {
+  grid-area: 1 / 1;
+}
+.sign-in-strip-label > :not([data-shown]) {
+  visibility: hidden;
+}
+/* A live link's line is set firmer than the would-be and the closed ones (always, so the slot keeps its width). */
+.sign-in-strip-label > [data-phase='link'] {
   font-weight: 600;
 }
 .sign-in-track {
@@ -272,14 +292,36 @@
   border-radius: 9999px;
   background: var(--surface);
 }
-/* The link's window: the one capsule on the strip, inverted, from now to the link's end; it narrows as time runs out. */
+/*
+ * The link's window, the one capsule on the strip. At rest it is the window a link sent now would have: dotted and
+ * unfilled, as a window with no call yet. Sent, it fills with ink in place (the fill fades in: opacity only) and
+ * narrows from now to the link's end. Expired, it is drawn closed in the expired tone where it was.
+ */
 .sign-in-window {
   position: absolute;
   top: 4px;
   bottom: 4px;
   min-width: 4px;
+  box-sizing: border-box;
+  /* 2px in every theme, as the tone-fill capsules: the would-be window is drawn by its edge alone. */
+  border: 2px var(--tone-edge-style, solid) var(--tone-edge, transparent);
   border-radius: 9999px;
+  background: var(--tone, transparent);
+}
+[data-sign-in-window='ready'] {
+  --tone-edge-style: dotted;
+}
+.sign-in-window::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
   background: var(--ink);
+  opacity: 0;
+  transition: opacity 400ms var(--ease);
+}
+[data-sign-in-window='live']::after {
+  opacity: 1;
 }
 .sign-in-now {
   position: absolute;
@@ -293,7 +335,7 @@
 .sign-in-credit {
   grid-area: credit;
   width: min(100%, 34rem);
-  margin: 16px auto 0;
+  margin: 40px auto 0;
 }
 
 @media (min-width: 1024px) {
@@ -303,21 +345,26 @@
     grid-template-areas: 'column room';
     column-gap: var(--m);
   }
+  /* Top-aligned, the wordmark level with the photograph's top, so no state moves the title. */
   .sign-in-column {
-    justify-content: center;
-    padding: 32px;
+    justify-content: flex-start;
+    padding: calc(32px + var(--edge-width)) 32px 32px;
   }
   .sign-in-stack {
     width: min(100%, 26.5rem);
     margin-inline: 0;
     padding-top: 0;
   }
+  /* One screen tall and held there: a longer column scrolls past it and never stretches or moves it. */
   .sign-in-room {
     grid-area: room;
+    position: sticky;
+    top: var(--m);
+    align-self: start;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    min-height: calc(100svh - 2 * var(--m));
+    height: calc(100svh - 2 * var(--m));
     padding: 32px;
     border: var(--edge-width) solid var(--edge);
     border-radius: 16px;
@@ -406,6 +453,16 @@
   .sign-in-window,
   .sign-in-now {
     forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .sign-in-window {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+  [data-sign-in-window='ready'] {
+    background: transparent;
+  }
+  .sign-in-window::after {
     background: CanvasText;
   }
   .sign-in-track {

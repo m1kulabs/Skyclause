@@ -28,6 +28,8 @@ export interface HeroReadoutProps {
   rainAnimated: boolean
   /** The labelled replay the server drew (ReplayAnswer), the answer while live verdicts are not open. */
   replay: ReactNode
+  /** Why the answer is a replay (ReplayNote), said last and small under it. */
+  replayNote?: ReactNode
   /** A read the visitor asked for is under way: the answer on screen is the last window's, dimmed and said so. */
   pending?: boolean
 }
@@ -202,6 +204,7 @@ export function HeroReadout({
   calendarQuery,
   rainAnimated,
   replay,
+  replayNote = null,
   pending = false
 }: HeroReadoutProps) {
   let answer: ReactNode
@@ -241,6 +244,7 @@ export function HeroReadout({
     >
       {answer}
       <LatestCallLine latestCall={latestCall} calendarQuery={calendarQuery} />
+      {result.kind === 'unavailable' ? replayNote : null}
     </div>
   )
 }

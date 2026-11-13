@@ -3,7 +3,7 @@
   "inbox": "Peti masuk",
   "enable": "Hidupkan makluman",
   "cardTitle": "Terima makluman pada peranti ini",
-  "cardBody": "Terima makluman pada peranti ini apabila himpunan memerlukan anda semasa syif anda.",
+  "cardBody": "Terima makluman pada peranti ini apabila berkas memerlukan anda semasa syif anda.",
   "device": "Peranti ini",
   "devices": "Peranti berdaftar",
   "preferences": "Keutamaan dalam aplikasi",
@@ -44,7 +44,7 @@
   "unavailable": "Tidak tersedia",
   "kinds": {
     "needs_review": "Perlu semakan",
-    "escalated": "Dirujuk ke peringkat seterusnya",
+    "escalated": "Dieskalasi",
     "source_error": "Ralat sumber",
     "review_item": "Item semakan",
     "auditor": "Juruaudit"

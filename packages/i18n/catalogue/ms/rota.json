@@ -13,7 +13,7 @@
   "finding_none": "Tiada slot tanpa pelulus dalam 7 hari akan datang.",
   "finding_item": "{date}, {start}–{end}: {template}",
   "storm_template": "Petang ribut",
-  "surge_template": "Malam acara",
+  "surge_template": "Malam lonjakan",
   "templates_heading": "Templat",
   "template_assigned": "Pelulus ditugaskan",
   "custom_template": "Waktu tersuai",

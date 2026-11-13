@@ -15,7 +15,7 @@ function catalogued(name: string): boolean {
 }
 
 /**
- * An indicator's name for people ("Rain in the last 60 minutes (site)"), never its registry key (`site.rain_60m_mm`). A
+ * An indicator's name for people ("Rain in the last 60 minutes"), never its registry key (`site.rain_60m_mm`). A
  * key the catalogue does not hold reads "Other input"; a name that is not a registry key is already a name and is
  * printed as it came.
  */

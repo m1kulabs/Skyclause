@@ -218,10 +218,9 @@ describe('proxy.ts', () => {
   }
 
   it('rewrites a host to its route group, answers 404 elsewhere, and sets no cookie', () => {
+    // No embed frame is built yet: its host answers the not-found page, on its own host.
     const embed = run('https://embed.skyclause.m1ku.tech/apu/bukit-jalil?theme=dark')
-    expect(embed.headers.get('x-middleware-rewrite')).toBe(
-      'https://embed.skyclause.m1ku.tech/embed/apu/bukit-jalil?theme=dark'
-    )
+    expect(embed.headers.get('x-middleware-rewrite')).toBe('https://embed.skyclause.m1ku.tech/_not-found')
 
     const unknown = run(`https://${RUN_APP}/`)
     expect(unknown.headers.get('x-middleware-rewrite')).toBe(`https://${RUN_APP}/_not-found`)
@@ -251,6 +250,28 @@ describe('proxy.ts', () => {
         new URL(response === embed ? 'https://embed.skyclause.m1ku.tech' : `https://${RUN_APP}`).host
       )
     }
+  })
+
+  it('answers the not-found page for every path of the docs and embed hosts, whose pages are not built yet', () => {
+    // Rewritten into /docs/ or /embed/, a path fell to the app's /[org]/[project] and its sign-in, which those hosts
+    // do not serve: a blank page.
+    for (const url of [
+      'https://docs.skyclause.m1ku.tech/',
+      'https://docs.skyclause.m1ku.tech/problems/not-built',
+      'https://docs.skyclause.m1ku.tech/sign-in',
+      'https://embed.skyclause.m1ku.tech/',
+      'https://embed.skyclause.m1ku.tech/apu/bukit-jalil/ledger'
+    ]) {
+      const response = run(url)
+      expect(response.headers.get('x-middleware-rewrite'), url).toBe(`${new URL(url).origin}/_not-found`)
+      expect(response.headers.get('location'), url).toBeNull()
+    }
+    // The embed script and the shared assets are still served there.
+    expect(run('https://embed.skyclause.m1ku.tech/elements/v1.js').headers.get('x-middleware-next')).toBe('1')
+    expect(run('https://docs.skyclause.m1ku.tech/favicon.ico').headers.get('x-middleware-next')).toBe('1')
+    // The API and MCP hosts answer as before.
+    expect(run('https://api.skyclause.m1ku.tech/v1/projects').headers.get('x-middleware-next')).toBe('1')
+    expect(run('https://mcp.skyclause.m1ku.tech/mcp').headers.get('x-middleware-next')).toBe('1')
   })
 })
 

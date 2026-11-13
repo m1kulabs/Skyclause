@@ -1,5 +1,12 @@
 import { expect, test } from 'vitest'
-import { localDateAt, overviewFilterState, selectTodayAtRisk, todaysWindows } from '../../features/overview/model'
+import {
+  enabledPacks,
+  localDateAt,
+  overviewFilterState,
+  packStatesFor,
+  selectTodayAtRisk,
+  todaysWindows
+} from '../../features/overview/model'
 
 function riskWindow(id: string, startsAt: string, atRisk = true) {
   return {
@@ -43,6 +50,27 @@ test('overview pack filter defaults to all and restores valid URL state', () => 
   expect(overviewFilterState(new URLSearchParams())).toEqual({ pack: 'all' })
   expect(overviewFilterState(new URLSearchParams('pack=crowd'))).toEqual({ pack: 'crowd' })
   expect(overviewFilterState(new URLSearchParams('pack=other'))).toEqual({ pack: 'all' })
+})
+
+test('only the packs a project runs are shown, filtered or read', () => {
+  const skyOnly = [
+    { pack: 'sky' as const, enabled: true },
+    { pack: 'crowd' as const, enabled: false }
+  ]
+  expect(enabledPacks(skyOnly)).toEqual(['sky'])
+  expect(
+    enabledPacks([
+      { pack: 'crowd', enabled: true },
+      { pack: 'sky', enabled: true }
+    ])
+  ).toEqual(['sky', 'crowd'])
+  expect(enabledPacks([])).toEqual([])
+  // A link that filters by a pack the project does not run shows the packs it does.
+  expect(overviewFilterState(new URLSearchParams('pack=crowd'), ['sky'])).toEqual({ pack: 'all' })
+  expect(overviewFilterState(new URLSearchParams('pack=sky'), ['sky'])).toEqual({ pack: 'sky' })
+  // The summary's pack states cover every pack: a state for a pack that is off is left out.
+  const states = [{ pack: 'sky' as const }, { pack: 'crowd' as const }]
+  expect(packStatesFor(states, ['sky'])).toEqual([{ pack: 'sky' }])
 })
 
 test('today’s windows overlap the project’s day, including one still running from before midnight, never a cancelled one', () => {

@@ -208,3 +208,11 @@ test('the list is written in the language it is given', async () => {
   render(<ProjectsList org="test-org" canCreate archived={false} locale="ms" />)
   expect(await screen.findByText(/Tiada projek lagi/)).toBeTruthy()
 })
+
+test('a pack the project does not run gets no note, though the summary carries its state', async () => {
+  vi.mocked(apiFetch).mockImplementation(async () => ({ data: [summarized()], next_cursor: null }) as never)
+  render(<ProjectsList org="test-org" canCreate archived={false} />)
+  const row = await screen.findByRole('article', { name: 'Bukit Jalil' })
+  expect(row.textContent).toMatch(/Sky/)
+  expect(row.textContent).not.toMatch(/Crowd/)
+})

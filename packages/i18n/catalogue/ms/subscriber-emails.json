@@ -5,6 +5,6 @@
   },
   "preference_link": {
     "subject": "Pilihan notis anda untuk {project}",
-    "body": "Tukar tetingkap, saluran atau bahasa notis anda untuk {project}, atau berhenti melanggan, di sini: {url}\n\nPautan ini sah selama 30 hari dan tidak memerlukan akaun. Jika anda tidak memintanya, abaikan e-mel ini."
+    "body": "Tukar jendela masa, saluran atau bahasa notis anda untuk {project}, atau berhenti melanggan, di sini: {url}\n\nPautan ini sah selama 30 hari dan tidak memerlukan akaun. Jika anda tidak memintanya, abaikan e-mel ini."
   }
 }

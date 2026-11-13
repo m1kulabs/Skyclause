@@ -170,7 +170,11 @@ export async function setup(page: Page, options: { role?: Role; empty?: boolean;
     camera_day_start: '07:00',
     camera_day_end: '19:00',
     warning_area_terms: [],
-    packs: []
+    // The page offers and reads Crowd only where the project runs it.
+    packs: [
+      { pack: 'sky' as const, enabled: true, sheet_id: sheetId, schedule: null, sla_s: 600 },
+      { pack: 'crowd' as const, enabled: options.crowd !== false, sheet_id: null, schedule: null, sla_s: 7200 }
+    ]
   }
   await stubApi(page, 'listMyMemberships', { data: [membership], next_cursor: null }, { registry })
   await stubApi(page, 'listProjects', { data: [project], next_cursor: null }, { registry })

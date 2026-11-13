@@ -7,8 +7,10 @@ import { APP, productionPage, secureCookie, shellCookieValue, startProductionSer
 
 // A judge's first run with a new account, on the built server as production runs it (HOST_MODE=multi), with a real
 // session and the real API behind the app host's bridge: create an organisation, create a project, bind a source,
-// declare a window, then the rota and channel steps. No step may show an error, a status code, "not built", or a
-// control whose operation has no handler.
+// declare a window, skip the approver rota and turn on a channel, each from the steps on the page it opens, and land
+// on the project's overview with every step shown. No step may show an error, a status code, "not built", or a
+// control whose operation has no handler. The project keeps the form's default packs, Sky only, so nothing anywhere
+// may show, offer or read the Crowd pack.
 const port = Number(process.env.E2E_PORT ?? 3100) + 62
 
 /** What a judge must never see, in the page's main content. */
@@ -48,7 +50,7 @@ test.describe('the first run on a production-style server', () => {
     await stop?.()
   })
 
-  test('a new account creates an organisation and a project, binds a source and declares a window', async ({
+  test('a new account walks all six steps from the steps on each page and lands on its project', async ({
     browser,
     request
   }) => {
@@ -71,7 +73,7 @@ test.describe('the first run on a production-style server', () => {
     )
     const account = await makeAccount()
     const cookie = secureCookie((await signIn(account.id)).cookie)
-    const { context, page, close } = await productionPage(browser, request, port, cookie, null)
+    const { context, page, log, close } = await productionPage(browser, request, port, cookie, null)
     const plantShell = async (projects: Array<{ id: string; name: string; slug: string }>, orgId: string) =>
       context.addCookies([
         {
@@ -158,21 +160,70 @@ test.describe('the first run on a production-style server', () => {
     await expect(page.locator('main')).toContainText('Open-air lecture')
     await expect(progress).toContainText('4 of 6 steps complete')
     await expectClean(page, 'windows')
+    // The project runs Sky only: the windows page draws no Crowd lane.
+    await expect(page.locator('main').getByText(/Crowd/).filter({ visible: true })).toHaveCount(0)
     await shoot(page, '4-window-saved')
 
-    // 5. The rota and 6. a channel: both pages open with their own working forms.
-    await page.goto(`${APP}/${orgSlug}/settings/rota`)
+    // 5. The approver rota: the step says which rota and what completes it, and Continue opens it. The steps carry on
+    // there, and Skip works from there.
+    await expect(progress.getByRole('heading', { name: 'Set the approver rota' })).toBeVisible()
+    await expect(progress).toContainText('Organisation settings, Approver rota')
+    await progress.getByRole('link', { name: 'Continue' }).click()
+    await expect(page).toHaveURL(`${APP}/${orgSlug}/settings/rota`)
+    await expect(progress).toContainText('4 of 6 steps complete')
+    await expect(progress).toContainText('You are here')
     await expectClean(page, 'rota')
     await shoot(page, '5-rota')
-    await page.goto(`${APP}/${orgSlug}/${projectSlug}/settings/channels`)
+    await progress.getByRole('button', { name: 'Skip this step' }).click()
+    await expect(progress).toContainText('5 of 6 steps complete')
+    await expect(progress).toContainText('Project settings, Channels')
+
+    // 6. A channel: Continue opens the project's channels, where turning one on finishes the first run.
+    await progress.getByRole('link', { name: 'Continue' }).click()
+    await expect(page).toHaveURL(`${APP}/${orgSlug}/${projectSlug}/settings/channels`)
+    await expect(progress).toContainText('You are here')
     await expectClean(page, 'channels')
     await shoot(page, '6-channels')
+    await page.getByRole('switch', { name: 'Enable In-app' }).click()
+    await expect(progress).toContainText('6 of 6 steps complete')
+    await expect(progress).toContainText('First run complete.')
+    await shoot(page, '6-channels-done')
+
+    // The end: the project's overview, with every step shown and the next thing to do. The overview opens the
+    // project's bundle stream, which this walk does not judge: an idle one, so the harness's head request for it can't
+    // hang up mid-walk.
+    await context.route(/\/bundles\/stream(\?|$)/, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/event-stream', body: ': idle\n\n' })
+    )
+    const landed = log.length
+    await progress.getByRole('link', { name: 'Continue' }).click()
+    await expect(page).toHaveURL(`${APP}/${orgSlug}/${projectSlug}?first-run=done`)
+    await expect(progress).toContainText('6 of 6 steps complete')
+    await expect(progress.locator('[data-state="current"], [data-state="todo"]')).toHaveCount(0)
+    await expect(progress.getByRole('button', { name: 'Ask for a call' })).toBeVisible()
+    await expectClean(page, 'overview')
+    // Sky only: one pack answer, no Crowd card and no pack filter.
+    const overview = page.locator('[data-project-overview]')
+    await expect(overview.locator('[data-pack="sky"]')).toBeVisible()
+    await expect(overview.locator('[data-pack="crowd"]')).toHaveCount(0)
+    await expect(overview.getByRole('button', { name: /Crowd pack/ })).toHaveCount(0)
+    await shoot(page, '7-overview')
+
+    // Analysis offers no Crowd tab and never asks for the Crowd pack.
+    await page.goto(`${APP}/${orgSlug}/${projectSlug}/analysis`)
+    await expect(page.getByRole('tab', { name: 'Sky', exact: true })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Crowd', exact: true })).toHaveCount(0)
+    await expectClean(page, 'analysis')
+    await shoot(page, '8-analysis')
+    // Nothing the overview or analysis read was refused or asked for the Crowd pack.
+    const reads = log.slice(landed).filter((line) => line.includes('/api/'))
+    expect(reads.filter((line) => line.includes('pack=crowd') || /^4\d\d /.test(line))).toEqual([])
 
     // Back on the dashboard, the window and the source are there, read through the composed reads.
     await page.goto(`${APP}/${orgSlug}`)
     await expect(page.locator('[data-dashboard-block="signal_health"]')).toContainText(`Sg. Kuyoh ${gauge}`)
     await expectClean(page, 'dashboard')
-    await shoot(page, '7-dashboard')
+    await shoot(page, '9-dashboard')
     await close()
   })
 })

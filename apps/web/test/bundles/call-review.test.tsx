@@ -132,3 +132,44 @@ test('fired clauses lead with the wording in the interface’s language and neve
   expect(english).toMatch(/class="bundle-clause-name">Storm confirmed over the campus</)
   expect(english).toContain('lang="ms">Ribut disahkan di kampus<')
 })
+
+test('a window still ahead is drawn past now on the strip, and the summary says it has not started', () => {
+  const call: CallDetail = {
+    ...sent,
+    state: 'drafted',
+    window: {
+      id: 'ahead',
+      project_id: 'project',
+      // 07:29–08:29 MYT, reviewed at 06:59 MYT.
+      starts_at: '2026-11-12T23:29:00Z',
+      ends_at: '2026-11-13T00:29:00Z',
+      title: 'Open-air lecture',
+      kind: 'class',
+      tz: 'Asia/Kuala_Lumpur',
+      declared_by: 'test-account',
+      guest: false,
+      via: 'app',
+      expires_at: null,
+      series_id: null,
+      ics_feed_id: null,
+      cancelled_at: null,
+      share_link_id: null,
+      moderation: 'visible'
+    }
+  }
+  // The read strip ends at now.
+  const strip = {
+    from: '2026-11-12T17:00:00Z',
+    to: '2026-11-12T22:59:00Z',
+    now: '2026-11-12T22:59:00Z',
+    rain5: [{ at: '2026-11-12T22:55:00Z', value: 0.5, state: 'received' as const }],
+    rain60: [{ at: '2026-11-12T22:55:00Z', value: 1.5 }]
+  }
+  const html = renderToStaticMarkup(
+    <CallReview call={call} decision={{}} expired={false} basePath="/test/project" strip={strip} />
+  )
+  // The window's capsule, drawn as the draft it is.
+  expect(html).toMatch(/data-window="ahead"[^>]*data-draft="true"/)
+  expect(html).toContain('Live strip to 06:59 MYT. The window starts at 07:29 MYT.')
+  expect(html).not.toContain('No Lebat crossing in this window')
+})
