@@ -1,4 +1,12 @@
-import { systemPrincipal, window, windowSeries, withTenant, type Tx } from '@skyclause/db'
+import {
+  mutateNativeWindowSeries,
+  project as projectTable,
+  systemPrincipal,
+  window,
+  windowSeries,
+  withTenant,
+  type Tx
+} from '@skyclause/db'
 import { makeOrganization, makeProject } from '@skyclause/db/test/factories/index'
 import { eq } from 'drizzle-orm'
 import { expect, test } from 'vitest'
@@ -319,4 +327,116 @@ test('an invalid later local time rolls back the entire native extension', async
   const [stored] = await inOrg((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, series!.id)))
   expect(stored!.checkedOn).toBeNull()
   expect(stored!.materialisedUntil).toBeNull()
+})
+
+test.each(['extension', 'failure'] as const)(
+  'an older %s cannot supersede a newer successful local-date check',
+  async (lateAttempt) => {
+    const orgId = (await makeOrganization()).id
+    const principal = systemPrincipal('windows-due')
+    const inOrg = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal }, fn)
+    const project = await inOrg((tx) => makeProject(tx, { timeZone: 'UTC' }))
+    const failed = lateAttempt === 'failure'
+    const [series] = await inOrg((tx) =>
+      tx
+        .insert(windowSeries)
+        .values({
+          orgId,
+          projectId: project.id,
+          localStart: '09:00',
+          localEnd: '10:00',
+          rule: { frequency: 'weekly', days_of_week: ['monday'], count: 30, skip_dates: [] },
+          definition: {
+            version: 1,
+            source: 'native',
+            anchor: '2026-11-16',
+            dateOffsetDays: 0,
+            endDayOffset: 0,
+            title: 'Class',
+            kind: 'class',
+            tz: 'UTC',
+            provenance: { declaredBy: 'account', via: 'app', shareLinkId: null, guest: false }
+          }
+        })
+        .returning()
+    )
+    const older = new Date('2026-11-16T00:00:00Z')
+    const newer = new Date('2026-11-17T00:00:00Z')
+    const input = { projectId: project.id, seriesId: series!.id }
+    if (failed)
+      await expect(
+        inOrg((tx) =>
+          mutateNativeWindowSeries(
+            tx,
+            { ...input, now: older },
+            async () => {
+              throw new Error('planning failed')
+            },
+            async () => {}
+          )
+        )
+      ).rejects.toThrow('planning failed')
+    await inOrg((tx) => extendDueWindowSeries({ tx, principal }, { ...input, now: newer }))
+    const [successful] = await inOrg((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, series!.id)))
+    const members = await inOrg((tx) => tx.select().from(window).where(eq(window.seriesId, series!.id)))
+    expect(successful).toMatchObject({ checkedOn: newer.toISOString().slice(0, 10), lastError: null, updatedAt: newer })
+    if (lateAttempt === 'extension')
+      await inOrg((tx) => extendDueWindowSeries({ tx, principal }, { ...input, now: older }))
+    else await inOrg((tx) => recordNativeWindowFailure({ tx, principal }, { ...input, now: older }))
+    const [after] = await inOrg((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, series!.id)))
+    expect(after).toMatchObject({
+      checkedOn: successful!.checkedOn,
+      materialisedUntil: successful!.materialisedUntil,
+      lastError: null,
+      updatedAt: newer
+    })
+    const afterMembers = await inOrg((tx) => tx.select().from(window).where(eq(window.seriesId, series!.id)))
+    expect(afterMembers.map((row) => row.id).sort()).toEqual(members.map((row) => row.id).sort())
+  }
+)
+
+test('a westward project timezone change waits for the local date to pass the last successful date', async () => {
+  const orgId = (await makeOrganization()).id
+  const principal = systemPrincipal('windows-due')
+  const inOrg = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal }, fn)
+  const project = await inOrg((tx) => makeProject(tx, { timeZone: 'Pacific/Kiritimati' }))
+  const [series] = await inOrg((tx) =>
+    tx
+      .insert(windowSeries)
+      .values({
+        orgId,
+        projectId: project.id,
+        localStart: '09:00',
+        localEnd: '10:00',
+        rule: { frequency: 'weekly', days_of_week: ['monday'], count: 30, skip_dates: [] },
+        definition: {
+          version: 1,
+          source: 'native',
+          anchor: '2026-11-16',
+          dateOffsetDays: 0,
+          endDayOffset: 0,
+          title: 'Class',
+          kind: 'class',
+          tz: 'UTC',
+          provenance: { declaredBy: 'account', via: 'app', shareLinkId: null, guest: false }
+        }
+      })
+      .returning()
+  )
+  const first = new Date('2026-11-16T12:00:00Z')
+  const later = new Date('2026-11-16T13:00:00Z')
+  const input = { projectId: project.id, seriesId: series!.id }
+  await inOrg((tx) => extendDueWindowSeries({ tx, principal }, { ...input, now: first }))
+  const [before] = await inOrg((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, series!.id)))
+  expect(before!.checkedOn).toBe('2026-11-17')
+  await inOrg((tx) => tx.update(projectTable).set({ timeZone: 'America/Adak' }).where(eq(projectTable.id, project.id)))
+  await inOrg((tx) => extendDueWindowSeries({ tx, principal }, { ...input, now: later }))
+  await inOrg((tx) => recordNativeWindowFailure({ tx, principal }, { ...input, now: later }))
+  const [after] = await inOrg((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, series!.id)))
+  expect(after).toMatchObject({
+    checkedOn: before!.checkedOn,
+    materialisedUntil: before!.materialisedUntil,
+    lastError: null,
+    updatedAt: first
+  })
 })

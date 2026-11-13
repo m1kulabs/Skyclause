@@ -42,7 +42,7 @@ export async function listDueNativeWindowSeries(tx: Tx, input: { projectId: stri
         eq(windowSeries.projectId, input.projectId),
         isNull(windowSeries.icsFeedId),
         isNull(windowSeries.cancelledAt),
-        sql`${windowSeries.checkedOn} IS DISTINCT FROM (${input.now}::timestamptz AT TIME ZONE ${project.timeZone})::date`
+        sql`(${windowSeries.checkedOn} IS NULL OR ${windowSeries.checkedOn} < (${input.now}::timestamptz AT TIME ZONE ${project.timeZone})::date)`
       )
     )
     .orderBy(asc(windowSeries.updatedAt), asc(windowSeries.id))

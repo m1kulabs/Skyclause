@@ -275,7 +275,7 @@ export async function mutateNativeWindowSeries(
     if (members.length > 20_000) throw new WindowStateConflict('Native series membership exceeds the work limit.')
     await lockWindowParentSet(child, { windowIds: members.map((row) => row.id) })
     const proposed = await plan({ series, members }, child)
-    if (series.checkedOn === proposed.checkedOn) return 0
+    if (series.checkedOn !== null && series.checkedOn >= proposed.checkedOn) return 0
     for (const values of proposed.creates) {
       if (values.projectId !== input.projectId || values.seriesId !== series.id || values.icsFeedId)
         throw new Error('native extension escaped its parent')
@@ -319,7 +319,7 @@ export async function recordNativeSeriesFailure(tx: Tx, input: { projectId: stri
       .where(and(eq(project.orgId, orgId), eq(project.id, input.projectId)))
     if (!owner) return
     const local = await windowLocalSpan(child, { startsAt: input.now, endsAt: input.now, tz: owner.timeZone })
-    if (series.checkedOn === local.date) return
+    if (series.checkedOn !== null && series.checkedOn >= local.date) return
     await child
       .update(windowSeries)
       .set({ lastError: 'extension-failed', updatedAt: input.now })

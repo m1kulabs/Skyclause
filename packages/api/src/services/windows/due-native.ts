@@ -35,7 +35,8 @@ export async function extendDueWindowSeries(
         tz: project.project.timeZone
       })
       const materialisedUntil = addDays(span.date, span.endDayOffset)
-      if (series.checkedOn === span.date) return { creates: [], checkedOn: span.date, materialisedUntil }
+      if (series.checkedOn !== null && series.checkedOn >= span.date)
+        return { creates: [], checkedOn: span.date, materialisedUntil }
       const existing = new Set(members.map((row) => row.seriesOccurrenceDate))
       const candidates = await materializeNative(
         { ...ctx, tx },

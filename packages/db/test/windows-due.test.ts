@@ -52,6 +52,47 @@ test('native discovery selects due active series oldest first and bounds work', 
   ).toEqual([rows[0]!.id])
 })
 
+test('discovery skips a series already checked on a later local date', async () => {
+  const orgId = (await makeOrganization()).id
+  const principal = systemPrincipal('windows-due')
+  const inOrg = <T>(fn: (tx: Tx) => Promise<T>) => withTenant({ orgId, principal }, fn)
+  const project = await inOrg((tx) => makeProject(tx, { timeZone: 'UTC' }))
+  const [future, due] = await inOrg((tx) =>
+    tx
+      .insert(windowSeries)
+      .values([
+        {
+          orgId,
+          projectId: project.id,
+          localStart: '09:00',
+          localEnd: '10:00',
+          rule: {},
+          checkedOn: '2026-11-17',
+          updatedAt: new Date('2026-01-01')
+        },
+        {
+          orgId,
+          projectId: project.id,
+          localStart: '09:00',
+          localEnd: '10:00',
+          rule: {},
+          checkedOn: '2026-11-15',
+          updatedAt: new Date('2026-01-02')
+        }
+      ])
+      .returning()
+  )
+  const selected = await inOrg((tx) =>
+    listDueNativeWindowSeries(tx, {
+      projectId: project.id,
+      now: new Date('2026-11-16T00:00:00Z'),
+      limit: 2
+    })
+  )
+  expect(selected).toEqual([due!.id])
+  expect(selected).not.toContain(future!.id)
+})
+
 test('an archived project cannot claim due calendar work', async () => {
   const orgId = (await makeOrganization()).id
   const principal = systemPrincipal('windows-due')
