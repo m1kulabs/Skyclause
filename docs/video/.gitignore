@@ -4,3 +4,9 @@ public/footage
 public/voice
 record/.state
 record/preflight
+edit/assets
+edit/renders
+edit/.hyperframes
+edit/AGENTS.md
+edit/CLAUDE.md
+edit/index.html

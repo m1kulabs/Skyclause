@@ -1,0 +1,5 @@
+Back on the live system. Here's what lands in front of the person on duty.
+Gemini has drafted the call. Its reasons are there, and so is the age of every reading.
+At the same time, a second check runs. The clause engine works it out on its own, with plain arithmetic. If the two disagree, that shows first.
+The AI drafts. It never sends.
+One person reads it, and approves. One click. And now the call has an owner.

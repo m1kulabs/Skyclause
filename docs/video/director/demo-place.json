@@ -1,0 +1,22 @@
+{
+  "D1": {
+    "offset": 0.0
+  },
+  "D2": {
+    "offset": -3.2
+  },
+  "D3": {
+    "offset": 0.0,
+    "splits": [[26.6, 1.0]]
+  },
+  "D4": {
+    "offset": 0.0
+  },
+  "D5": {
+    "offset": 0.0
+  },
+  "D6": {
+    "offset": 0.0
+  },
+  "note": "Locked 08:24 MYT; D2 J-cut v3 09:05 MYT: D2's voice starts 3.2 s before its picture (at D1 beat 21.8). D3 has 1.0 s of silence at voice 26.6 s."
+}

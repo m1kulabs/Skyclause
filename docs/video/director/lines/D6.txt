@@ -1,0 +1,5 @@
+Finally, every call ends up here. The ledger.
+Who approved it, when, and how long it took.
+Each row is sealed to the one before it. So if anybody edits history later, this check catches it.
+You see, that's what we're really selling. It's not a weather app.
+It's one decision, made in time, that you can still defend six months later.
