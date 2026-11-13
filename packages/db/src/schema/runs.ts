@@ -113,7 +113,10 @@ export const bundle = tenantTable(
     sameOrg('bundle_project', self, self.projectId, project, true),
     sameOrg('bundle_run', self, self.runId, run, true),
     sameOrg('bundle_superseded_by', self, self.supersededBy, self),
-    index('bundle_project_id_state_idx').on(self.projectId, self.state)
+    index('bundle_project_id_state_idx').on(self.projectId, self.state),
+    // a-observability: the `sli` batch reads an organisation's bundles by these (#600).
+    index('bundle_org_id_needs_review_at_idx').on(self.orgId, self.needsReviewAt),
+    index('bundle_org_id_sla_due_at_idx').on(self.orgId, self.slaDueAt)
   ]
 )
 
@@ -168,7 +171,9 @@ export const call = tenantTable(
     sameOrg('call_window', self, self.windowId, window),
     sameOrg('call_night', self, self.nightId, night),
     sameOrg('call_superseded_by', self, self.supersededByCallId, self),
-    check('call_window_or_night', sql`${self.windowId} IS NULL OR ${self.nightId} IS NULL`)
+    check('call_window_or_night', sql`${self.windowId} IS NULL OR ${self.nightId} IS NULL`),
+    // a-observability: the `sli` batch reads an organisation's approved calls (#600).
+    index('call_org_id_approved_at_idx').on(self.orgId, self.approvedAt)
   ]
 )
 
@@ -193,6 +198,8 @@ export const approval = tenantTable(
     sameOrg('approval_listing', self, self.listingId, listing, true),
     sameOrg('approval_evidence_request', self, self.evidenceRequestId, evidenceRequest, true),
     sameOrg('approval_call', self, self.callId, call, true),
-    check('approval_target', sql`num_nonnulls(${self.bundleId}, ${self.listingId}, ${self.evidenceRequestId}) = 1`)
+    check('approval_target', sql`num_nonnulls(${self.bundleId}, ${self.listingId}, ${self.evidenceRequestId}) = 1`),
+    // a-observability: the `sli` batch reads each bundle's approvals (#600).
+    index('approval_org_id_bundle_id_idx').on(self.orgId, self.bundleId)
   ]
 )

@@ -50,21 +50,29 @@ export function databaseReads(): SliReads {
 
   // Each bundle with its first accepted on-duty alert; an escalation's alert is a later step, not this one. A bundle
   // leaves Needs review when approved (`approved_at`) or for a final state (superseded, expired, closed), whose
-  // transition is its last `updated_at`.
-  const alerts = (tx: Tx, where: SQL | undefined, dueS: number) =>
-    tx
+  // transition is its last `updated_at`. Each bundle's alert is a lateral aggregate rather than a group by, so the latest
+  // bundles are read newest first, down `needs_review_at`'s index, and the read stops at the last one it needs.
+  const alerts = (tx: Tx, where: SQL | undefined, dueS: number) => {
+    const alert = tx
+      .select({ acceptedAt: min(bundleAlert.acceptedAt).as('accepted_at') })
+      .from(bundleAlert)
+      .where(and(eq(bundleAlert.bundleId, bundle.id), eq(bundleAlert.level, 'on_duty')))
+      .as('alert')
+    return tx
       .select({
         needsReviewAt: sql<Date>`${bundle.needsReviewAt}`.mapWith(bundle.needsReviewAt),
-        acceptedAt: min(bundleAlert.acceptedAt)
+        acceptedAt: alert.acceptedAt
       })
       .from(bundle)
-      .leftJoin(bundleAlert, and(eq(bundleAlert.bundleId, bundle.id), eq(bundleAlert.level, 'on_duty')))
-      .where(where)
-      .groupBy(bundle.id)
-      .having(
-        sql`${min(bundleAlert.acceptedAt)} IS NOT NULL OR ${bundle.state} IN ('needs_review', 'reconfirm')
-          OR coalesce(${bundle.approvedAt}, ${bundle.updatedAt}) >= ${bundle.needsReviewAt} + make_interval(secs => ${dueS})`
+      .leftJoinLateral(alert, sql`true`)
+      .where(
+        and(
+          where,
+          sql`(${alert.acceptedAt} IS NOT NULL OR ${bundle.state} IN ('needs_review', 'reconfirm')
+            OR coalesce(${bundle.approvedAt}, ${bundle.updatedAt}) >= ${bundle.needsReviewAt} + make_interval(secs => ${dueS}))`
+        )
       )
+  }
 
   return {
     storedReadings: (window) =>
@@ -78,6 +86,9 @@ export function databaseReads(): SliReads {
       ),
 
     // A run serves a crossing through its own dedupe key or one coalesced into it (`runsServing`); the earliest counts.
+    // Each key that is `crossing:` and a canonical UUID, the text of a crossing's ID, is cast to that ID (no other key
+    // is, so none fails the cast), for the primary key to find. OFFSET 0 keeps the cast in its own subquery: inlined
+    // into the join, it is a leaky function of the key, which RLS won't let an index condition on `crossing` use.
     reviews: (window) =>
       eachOrganisation((tx) =>
         tx
@@ -87,10 +98,12 @@ export function databaseReads(): SliReads {
           })
           .from(bundle)
           .innerJoin(run, eq(run.id, bundle.runId))
-          .innerJoin(
-            crossing,
-            sql`'crossing:' || ${crossing.id} = ANY (array_append(${run.coalescedKeys}, ${run.dedupeKey}))`
+          .innerJoinLateral(
+            sql`(SELECT substr(k, 10)::uuid AS id FROM unnest(array_append(${run.coalescedKeys}, ${run.dedupeKey})) AS k
+              WHERE k ~ '^crossing:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' OFFSET 0) AS served`,
+            sql`true`
           )
+          .innerJoin(crossing, sql`${crossing.id} = served.id`)
           .where(within(bundle.needsReviewAt, window))
           .groupBy(bundle.id)
       ),

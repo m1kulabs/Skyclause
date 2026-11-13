@@ -351,6 +351,13 @@
       "when": 1794365714754,
       "tag": "0049_b-evaluator-deadlines",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1794443998500,
+      "tag": "0051_a-observability-sli-indexes",
+      "breakpoints": true
     }
   ]
 }
