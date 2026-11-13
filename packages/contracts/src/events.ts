@@ -158,12 +158,35 @@ export const EvidenceRequestAnsweredEventSchema = eventEnvelope(
   })
 )
 
-const windowEventData = z.object({
-  window_id: idSchema,
-  via: windowViaSchema,
-  times_changed: z.boolean(),
-  series_id: idSchema.nullable()
+// Canonicalize only calendar metadata; ordinary event IDs retain their existing behavior.
+const calendarIdSchema = idSchema.toLowerCase()
+export const WindowCalendarMetadataSchema = z.strictObject({
+  feed_id: calendarIdSchema,
+  revision: calendarIdSchema,
+  window_ids: z
+    .array(calendarIdSchema)
+    .min(1)
+    .max(20_000)
+    .refine((ids) => ids.every((id, index) => index === 0 || id > ids[index - 1]!), {
+      message: 'Window IDs must be unique and sorted'
+    })
+    .optional()
 })
+
+export type WindowCalendarMetadata = z.infer<typeof WindowCalendarMetadataSchema>
+
+const windowEventData = z
+  .object({
+    window_id: idSchema,
+    via: windowViaSchema,
+    times_changed: z.boolean(),
+    series_id: idSchema.nullable(),
+    calendar: WindowCalendarMetadataSchema.optional()
+  })
+  .refine(({ window_id, calendar }) => !calendar?.window_ids || calendar.window_ids[0] === window_id.toLowerCase(), {
+    path: ['calendar', 'window_ids'],
+    message: 'Only the smallest changed window ID may carry the complete set'
+  })
 
 export const WindowCreatedEventSchema = eventEnvelope('window.created', windowEventData)
 export const WindowUpdatedEventSchema = eventEnvelope('window.updated', windowEventData)

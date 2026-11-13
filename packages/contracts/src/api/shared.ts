@@ -195,12 +195,30 @@ export const Window = z.object({
   moderation: z.enum(['visible', 'hidden_pending_review', 'removed'])
 })
 export type Window = z.infer<typeof Window>
-export const IcsFeed = z.object({
-  id: z.string(),
-  project_id: z.string(),
-  url: z.url().nullable(),
-  filename: z.string().optional()
-})
+export const IcsFeed = z
+  .object({
+    id: z.string(),
+    project_id: z.string(),
+    url: z.url().nullable(),
+    filename: z.string().optional(),
+    kind: z.enum(['class', 'event', 'commute_wave']),
+    status: z.enum(['pending', 'ready', 'error', 'removed']),
+    refreshed_at: Instant.nullable(),
+    last_attempt_at: Instant.nullable(),
+    deleted_at: Instant.nullable(),
+    last_error: z.object({ code: z.string(), detail: z.string() }).strict().nullable(),
+    skipped: z.array(
+      z
+        .object({
+          uid: z.string().nullable(),
+          recurrence_id: z.string().nullable(),
+          pointer: z.string(),
+          detail: z.string()
+        })
+        .strict()
+    )
+  })
+  .strict()
 export type IcsFeed = z.infer<typeof IcsFeed>
 export const SourceKind = z.enum([
   'jps_rain',

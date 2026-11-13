@@ -4,10 +4,20 @@
 import { randomUUID } from 'node:crypto'
 import type { Page, Principal } from '@skyclause/contracts'
 import { analyticsEvent, domainEvent, window, withSystem, withTenant, systemPrincipal, type Tx } from '@skyclause/db'
-import { makeBundle, makeCall, makeOrganization, makeProject, makeRun } from '@skyclause/db/test/factories/index'
+import {
+  makeBundle,
+  makeCall,
+  makeOrganization,
+  makeProject,
+  makeRun,
+  makeWindow
+} from '@skyclause/db/test/factories/index'
 import { and, eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { encodeCursor } from '../src/pagination'
+const { can: canonicalCan } = (await import(new URL('../../auth/src/can.ts', import.meta.url).href)) as {
+  can: import('@skyclause/contracts').Can
+}
 import {
   apiRequest,
   asApiKey,
@@ -82,6 +92,48 @@ beforeAll(async () => {
 })
 
 describe('POST /v1/projects/{id}/windows', () => {
+  test('idempotent replay rechecks the current project grant', async () => {
+    const app = createTestApi({ deps: testDeps({ withTenant, can: canonicalCan }) }).v1
+    const replayProject = (await inOrg(ORG, (tx) => makeProject(tx))).id
+    const as = asOAuth({ org: ORG, role: 'editor', scopes: ['draft'], projectIds: [replayProject] })
+    if (as.kind !== 'oauth') throw new Error('OAuth fixture required')
+    const key = randomUUID()
+    const send = (principal: Principal) =>
+      apiRequest(app, {
+        as: principal,
+        org: ORG,
+        method: 'POST',
+        path: `/v1/projects/${replayProject}/windows`,
+        body: body(),
+        idempotencyKey: key
+      })
+    const first = await send(as)
+    expect(first.status).toBe(201)
+    const replay = await send({ ...as, projectIds: [] })
+    expect(replay.status).toBe(404)
+  })
+  test('authorized replay remains the original response after its start time passes', async () => {
+    let clock = new Date('2026-11-08T02:00:00Z')
+    const app = createTestApi({ deps: testDeps({ withTenant, can: canonicalCan, now: () => clock }) }).v1
+    const as = asSession({ org: ORG, role: 'editor' })
+    const key = randomUUID()
+    const send = () =>
+      apiRequest(app, {
+        as,
+        org: ORG,
+        method: 'POST',
+        path: `/v1/projects/${projectId}/windows`,
+        body: body({ starts_at: '2026-11-08T03:00:00Z', ends_at: '2026-11-08T04:00:00Z' }),
+        idempotencyKey: key
+      })
+    const first = await send()
+    expect(first.status).toBe(201)
+    const original = await first.json()
+    clock = new Date('2026-11-08T05:00:00Z')
+    const replay = await send()
+    expect(replay.status).toBe(201)
+    expect(await replay.json()).toEqual(original)
+  })
   test('a member declares a window: 201, only the declared fields stored, then the list shows it', async () => {
     const as = editor()
     const response = await declare(as, projectId, body({ title: 'Morning lecture' }))
@@ -221,7 +273,7 @@ describe('POST /v1/projects/{id}/windows', () => {
     })
   })
 
-  test('a recurrence answers 501 not-built for b-windows-api and stores nothing', async () => {
+  test('a recurrence declares its materialized series', async () => {
     const response = await declare(
       editor(),
       projectId,
@@ -230,9 +282,9 @@ describe('POST /v1/projects/{id}/windows', () => {
         recurrence: { frequency: 'weekly', days_of_week: ['monday'], count: 3, skip_dates: [] }
       })
     )
-    expect(response.status).toBe(501)
-    expect(await response.json()).toMatchObject({ owner: 'b-windows-api' })
-    expect(await inOrg(ORG, (tx) => tx.select().from(window).where(eq(window.title, 'Weekly')))).toHaveLength(0)
+    expect(response.status).toBe(201)
+    expect(await response.json()).toMatchObject({ series_id: expect.any(String) })
+    expect(await inOrg(ORG, (tx) => tx.select().from(window).where(eq(window.title, 'Weekly')))).toHaveLength(3)
   })
 
   test('a Viewer is denied with 403, and an API key without the draft scope too', async () => {
@@ -423,4 +475,20 @@ describe('GET /v1/projects/{id}/windows', () => {
       params: { id: otherProjectId }
     }).run()
   })
+})
+
+test('updateWindow and cancelWindow reject a foreign tenant window', async () => {
+  const foreign = await inOrg(OTHER, (tx) => makeWindow(tx, { projectId: otherProjectId }))
+  const as = editor()
+  await crossOrgCase('updateWindow', {
+    app: v1,
+    as,
+    org: ORG,
+    params: { id: foreign.id },
+    body: { title: 'Changed' }
+  }).run()
+  await crossOrgCase('cancelWindow', { app: v1, as, org: ORG, params: { id: foreign.id } }).run()
+  const [unchanged] = await inOrg(OTHER, (tx) => tx.select().from(window).where(eq(window.id, foreign.id)))
+  expect(unchanged!.title).toBe(foreign.title)
+  expect(unchanged!.cancelledAt).toBeNull()
 })

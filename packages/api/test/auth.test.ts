@@ -1,6 +1,8 @@
 import { z } from '@hono/zod-openapi'
 import { createRoute, Problem, type Principal, type SkyclauseRoute } from '@skyclause/contracts'
 import { describe, expect, it, vi } from 'vitest'
+import { withTenant } from '@skyclause/db'
+import { makeOrganization, makeProject } from '@skyclause/db/test/factories/index'
 import { requireHumanSession, requireRecentAuth } from '../src/middleware/auth'
 import {
   apiRequest,
@@ -487,10 +489,21 @@ describe('session and scope rules', () => {
     expect(slug(await problem(response))).toBe('insufficient-scope')
 
     const draft = asApiKey({ org: 'scopes', role: 'owner', scopes: ['read', 'draft'] })
-    const allowed = await apiRequest(v1, {
+    const missing = await apiRequest(v1, {
       as: draft,
       method: 'POST',
       path: '/v1/projects/p-1/windows',
+      idempotencyKey: 'k-2',
+      body: {}
+    })
+    expect(missing.status).toBe(404)
+    await makeOrganization({ id: testOrg('scopes').id, slug: 'scopes' })
+    const target = await withTenant({ orgId: testOrg('scopes').id, principal: draft }, makeProject)
+    const realApi = createTestApi({ deps: testDeps({ withTenant }) }).v1
+    const allowed = await apiRequest(realApi, {
+      as: draft,
+      method: 'POST',
+      path: `/v1/projects/${target.id}/windows`,
       idempotencyKey: 'k-1',
       body: {}
     })

@@ -95,3 +95,33 @@ export async function latestWindowCalls(tx: Tx, windowIds: string[]): Promise<Wi
     WindowCallRecord[]
   >
 }
+
+export {
+  nextWindowLocalDate,
+  resolveWindowLocalSpan,
+  windowLocalSpan,
+  windowZoneExists,
+  WindowLocalTimeError
+} from './calendar-time'
+export { writeWindowChange } from './mutations'
+export { lockWindowParent, lockWindowParents, lockWindowParentSet } from './repository'
+export type { CalendarBatch, LocalSpan, WindowChange, WindowMutationInsert } from './types'
+export {
+  createNativeWindowSeries,
+  getWindowRecord,
+  mutateWindowSet,
+  mutateNativeWindowSeries,
+  recordNativeSeriesFailure,
+  readWindowSeriesDefinition,
+  WindowStateConflict
+} from './lifecycle'
+export type {
+  WindowSet,
+  WindowSetPlan,
+  WindowSeriesRow,
+  NativeWindowDefinition,
+  ImportedWindowDefinition,
+  WindowSeriesDefinition
+} from './lifecycle'
+
+export { listWindowDueProjects, listDueNativeWindowSeries } from './due'

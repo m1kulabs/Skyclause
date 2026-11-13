@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./members": "./src/services/members/index.ts",
     "./rota": "./src/services/rota/index.ts",
+    "./windows": "./src/services/windows/worker.ts",
     "./testing": "./test/harness/index.ts",
     "./evaluator": "./src/services/evaluator/index.ts"
   },
@@ -25,10 +26,10 @@
     "drizzle-orm": "0.45.4",
     "google-auth-library": "11.3.3",
     "hono": "4.13.16",
+    "ical.js": "2.2.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@opentelemetry/sdk-metrics": "3.1.0",
-    "ical.js": "2.2.1"
+    "@opentelemetry/sdk-metrics": "3.1.0"
   }
 }

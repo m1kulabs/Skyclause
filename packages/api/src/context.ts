@@ -13,6 +13,7 @@ import type { withPublicReader, withSystem } from '@skyclause/db'
 import type { Scope } from '@skyclause/contracts'
 import type { IdempotencyStore, MembershipLookup, RateLimitStore } from './stores'
 import type { WithTenant } from './tenancy'
+import type { CalendarTransport } from './services/windows/fetch-ics'
 
 export type WithSystem = typeof withSystem
 export type WithPublicReader = typeof withPublicReader
@@ -83,6 +84,8 @@ export interface OAuthManagement {
 
 /** Everything the API reaches outside itself; production wires `@skyclause/db` and the registered auth seams. */
 export interface ApiDeps {
+  /** Optional test transport; production uses the guarded network implementation. */
+  calendarTransport?: CalendarTransport
   resolvePrincipal: ResolvePrincipal
   can: Can
   membership: MembershipLookup

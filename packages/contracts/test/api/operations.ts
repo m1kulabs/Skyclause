@@ -382,6 +382,16 @@ export const OPERATIONS: readonly ExpandedOperation[] = [
     note: 'ICS feeds use collection GET/POST and item DELETE for listing, importing and disconnecting (WIN-4).'
   },
   {
+    method: 'get',
+    path: '/v1/ics-feeds/{id}',
+    surface: 'v1',
+    operationId: 'getIcsFeed',
+    owner: 'b-windows-api',
+    statement: 'project.view',
+    idempotent: false,
+    crossOrg: true
+  },
+  {
     method: 'delete',
     path: '/v1/ics-feeds/{id}',
     surface: 'v1',
