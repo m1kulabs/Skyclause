@@ -1,0 +1,25 @@
+{
+  "created_at": "2026-11-11T15:35:04.485Z",
+  "data": {
+    "bounce": {
+      "diagnosticCode": [
+        "smtp; 550 5.1.1 As requested: user unknown <bounce@simulator.amazonses.com>"
+      ],
+      "message": "The recipient's email provider sent a hard bounce message, but didn't specify the reason for the hard bounce. We recommend removing the recipient's email address from your mailing list. Sending messages to addresses that produce hard bounces can have a negative impact on your reputation as a sender.",
+      "subType": "General",
+      "type": "Permanent"
+    },
+    "created_at": "2026-11-11T15:35:03.334Z",
+    "email_id": "01a1cb3f-9102-76d7-8e22-3b5353ab09bb",
+    "from": "Skyclause <sign-in@notices.skyclause.m1ku.tech>",
+    "message_id": "<010601a1cb3f93aa-d49003ec-448b-4f1b-9e26-be5ca0f85373-000000@ap-northeast-1.amazonses.com>",
+    "subject": "Your Skyclause sign-in link",
+    "tags": {
+      "category": "magic_link"
+    },
+    "to": [
+      "bounced@resend.dev"
+    ]
+  },
+  "type": "email.bounced"
+}

@@ -1,9 +1,15 @@
-// Signed Resend webhook calls and Resend's received-email API for tests only. The bodies are Resend's documented examples
-// (fixtures/resend-webhooks.json, from https://resend.com/docs/webhooks/emails/delivered.md, bounced.md, complained.md,
-// suppressed.md, failed.md, received.md and https://resend.com/docs/webhooks/suppressions/added.md;
-// fixtures/resend-received-email.json, from https://resend.com/docs/api-reference/emails/retrieve-received-email.md;
-// error messages from https://resend.com/docs/api-reference/errors.md) until calls captured in production replace them
-// (#653).
+// Signed Resend webhook calls and Resend's received-email API for tests only. The bodies are payloads captured from
+// production on 11 Nov 2026, the cutover (#660), from Resend's webhook-events API and received-email API after sends
+// through the sign-in endpoint to Resend's test addresses and to cutover-probe@in.skyclause.m1ku.tech, with no user
+// data (fixtures/resend-email-{delivered,bounced,complained,received}-2026-11-11.json, resend-retrieve-received-2026-11-11.json).
+// Three fields of the retrieve capture hold placeholders, since they held a live sign-in link and a signed download URL:
+// `text`, `html` and `raw.download_url`. It was fetched without the `html_format=cid` the handler asks for, so its
+// `html_format` reads `data_uri`. Variations a capture can't give are the capture with named fields replaced.
+//
+// Only what no capture exists for stays Resend's documentation (fixtures/resend-webhooks-documented.json, from
+// https://resend.com/docs/webhooks/emails/suppressed.md, failed.md and https://resend.com/docs/webhooks/suppressions/added.md:
+// Resend's test addresses never suppress or fail a send); so do the error messages (from
+// https://resend.com/docs/api-reference/errors.md).
 import { createHmac, randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
@@ -13,10 +19,17 @@ export const webhookSecret = `whsec_${randomBytes(24).toString('base64')}`
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8'))
 
 type Example = { type: string; created_at: string; data: Record<string, unknown> }
-const examples = fixture('resend-webhooks.json') as Record<string, Example>
-const received = fixture('resend-received-email.json') as Record<string, unknown>
+const examples: Record<string, Example> = {
+  // Documentation only: no capture exists for these types.
+  ...fixture('resend-webhooks-documented.json'),
+  'email.delivered': fixture('resend-email-delivered-2026-11-11.json') as Example,
+  'email.bounced': fixture('resend-email-bounced-2026-11-11.json') as Example,
+  'email.complained': fixture('resend-email-complained-2026-11-11.json') as Example,
+  'email.received': fixture('resend-email-received-2026-11-11.json') as Example
+}
+const received = fixture('resend-retrieve-received-2026-11-11.json') as Record<string, unknown>
 
-/** Resend's documented `GET /emails/receiving/{id}` answer, with fields replaced, such as `text` or `authentication`. */
+/** The captured `GET /emails/receiving/{id}` answer, with fields replaced, such as `text` or `authentication`. */
 export function receivedEmail(fields: Record<string, unknown> = {}): Record<string, unknown> {
   return { ...received, ...fields }
 }
@@ -55,10 +68,13 @@ export function retrieveDouble(emails: Record<string, Record<string, unknown>> =
   return double
 }
 
-/** Resend's documented example of `type`, with `data` fields replaced, such as the email ID, `to` and `tags`. */
+/**
+ * The captured webhook of `type` (the documented example for `email.suppressed`, `email.failed` and `suppression.added`),
+ * with `data` fields replaced, such as the email ID, `to` and `tags`.
+ */
 export function resendEvent(type: string, data: Record<string, unknown> = {}): Example {
   const example = examples[type]
-  if (!example) throw new Error(`no documented example for ${type}`)
+  if (!example) throw new Error(`no capture or documented example for ${type}`)
   return { ...example, data: { ...example.data, ...data } }
 }
 

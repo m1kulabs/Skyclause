@@ -49,7 +49,8 @@ export function verifyResendWebhook(secret: string, headers: Headers, body: stri
 
 /**
  * A Resend webhook's body: its event `type`, such as `email.delivered`, `created_at`, when Resend made the event (RFC
- * 3339, unchecked), and `data`, which the type's handler reads.
+ * 3339, unchecked; on `email.received` it is the message's own `Date`, so that handler reads `data.created_at`), and
+ * `data`, which the type's handler reads.
  */
 export interface ResendWebhook {
   type: string

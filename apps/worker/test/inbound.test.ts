@@ -1,5 +1,6 @@
-// #657: the inbound router behind `POST /resend/webhook`. Calls are Resend's documented `email.received` example, signed
-// with the test secret, and Resend's retrieve call is answered by a double; the consumers here only keep what they get.
+// #657: the inbound router behind `POST /resend/webhook`. Calls are the `email.received` webhook captured in production
+// (11 Nov 2026), signed with the test secret, and Resend's retrieve call is answered by a double built on the captured
+// answer; the consumers here only keep what they get.
 import { startTelemetry, traceContext, withTrace } from '@skyclause/config'
 import { createInboundRouter, type InboundMessage } from '@skyclause/delivery'
 import {
@@ -18,10 +19,10 @@ const KEY = 're_receiving_key_for_tests'
 const DOMAIN = 'in.skyclause.m1ku.tech'
 const EVIDENCE = `upm.haze-2026@${DOMAIN}`
 const REPLY = `r+tok_9f3a@${DOMAIN}`
-// The documented example's email ID and receipt time, and a clock a minute later.
-const ID = '56761188-7520-42d8-8898-ff6fc54ce618'
-const RECEIVED_AT = '2026-02-22T23:41:11.894Z'
-const NOW = new Date('2026-02-22T23:42:11.894Z')
+// The capture's email ID and receipt time, and a clock a minute later.
+const ID = '260df29d-f19d-4af4-97c6-8c8b934e8a68'
+const RECEIVED_AT = '2026-11-11T15:35:05.895Z'
+const NOW = new Date('2026-11-11T15:36:05.895Z')
 
 function setup() {
   const router = createInboundRouter()
@@ -52,7 +53,7 @@ function setup() {
     resendWebhookSecret: webhookSecret,
     heartbeat: () => {}
   })
-  /** Posts Resend's `email.received` example with `data` fields replaced, signed now. */
+  /** Posts the captured `email.received` with `data` fields replaced, signed now. */
   const post = (data: Record<string, unknown> = {}) => {
     const body = JSON.stringify(resendEvent('email.received', data))
     return app.request('/resend/webhook', { method: 'POST', headers: signedHeaders(body), body })
@@ -74,13 +75,8 @@ afterEach(() => vi.restoreAllMocks())
 describe('email.received on POST /resend/webhook', () => {
   test('reaches the consumer its recipient matches, with the message read from Resend with the receiving key', async () => {
     const t = setup()
-    t.resend.emails[ID] = receivedEmail({
-      id: ID,
-      to: [EVIDENCE],
-      from: 'lecturer@example.edu.my',
-      subject: 'Photo of the field',
-      text: 'Flooded.\n'
-    })
+    // The captured `text` is a placeholder for the sign-in link it held, so the body is replaced.
+    t.resend.emails[ID] = receivedEmail({ to: [EVIDENCE], text: 'Flooded.\n' })
 
     const res = await t.post({ to: [EVIDENCE] })
 
@@ -88,8 +84,8 @@ describe('email.received on POST /resend/webhook', () => {
     expect(t.evidence).toEqual([
       {
         recipient: EVIDENCE,
-        from: 'lecturer@example.edu.my',
-        subject: 'Photo of the field',
+        from: 'sign-in@notices.skyclause.m1ku.tech',
+        subject: 'Your Skyclause sign-in link',
         text: 'Flooded.\n',
         messageId: ID,
         receivedAt: RECEIVED_AT,
@@ -126,13 +122,15 @@ describe('email.received on POST /resend/webhook', () => {
     }
   })
 
-  test('an HTML-only message, as in Resend’s example, reaches the consumer with empty text', async () => {
+  test('an HTML-only message, whose `text` Resend answers null, reaches the consumer with empty text', async () => {
     const t = setup()
-    t.resend.emails[ID] = receivedEmail()
+    t.resend.emails[ID] = receivedEmail({ text: null })
 
     await t.post({ to: [EVIDENCE] })
 
-    expect(t.evidence).toMatchObject([{ from: 'onboarding@resend.dev', subject: 'Hello World', text: '' }])
+    expect(t.evidence).toMatchObject([
+      { from: 'sign-in@notices.skyclause.m1ku.tech', subject: 'Your Skyclause sign-in link', text: '' }
+    ])
   })
 
   test('a recipient matches whatever its case, and reaches the consumer as Resend received it', async () => {
@@ -150,7 +148,7 @@ describe('email.received on POST /resend/webhook', () => {
     const t = setup()
     t.resend.emails[ID] = receivedEmail()
 
-    // Resend's example: forwarded from forwarded@example.com to an address at the receiving domain.
+    // The capture's `received_for` repeats `to`; a message forwarded to us would differ.
     await t.post({ to: [REPLY], received_for: ['forwarded@example.com'] })
     await t.post({ email_id: `${ID}-2`, to: ['someone@example.com'], received_for: [EVIDENCE] })
 
@@ -239,16 +237,16 @@ describe('email.received on POST /resend/webhook', () => {
     t.resend.emails[ID] = receivedEmail()
     const lines = logged()
 
-    const late = await t.post({ to: [EVIDENCE], created_at: '2026-02-22T00:42:11.893Z' })
+    const late = await t.post({ to: [EVIDENCE], created_at: '2026-11-10T16:36:05.894Z' })
     expect(late.status).toBe(200)
     expect(t.resend.requests).toEqual([])
     // Mail no consumer claims is no loss, however old.
-    await t.post({ email_id: `${ID}-2`, to: ['postmaster@in.skyclause.m1ku.tech'], created_at: '2026-02-01T00:00:00Z' })
+    await t.post({ email_id: `${ID}-2`, to: ['postmaster@in.skyclause.m1ku.tech'], created_at: '2026-11-01T00:00:00Z' })
     expect(lines().filter((line) => line.severity === 'ERROR')).toEqual([
       expect.objectContaining({ message: 'inbound mail too old to handle once', messageId: ID })
     ])
 
-    expect((await t.post({ to: [EVIDENCE], created_at: '2026-02-22T00:42:11.894Z' })).status).toBe(200)
+    expect((await t.post({ to: [EVIDENCE], created_at: '2026-11-10T16:36:05.895Z' })).status).toBe(200)
     expect(t.calls).toEqual(['evidence'])
   })
 

@@ -457,7 +457,7 @@ describe('POST /resend/webhook', () => {
     const body = JSON.stringify(resendEvent('email.delivered'))
     const other = `whsec_${Buffer.from('another-resend-webhook-secret').toString('base64')}`
     expect((await deliver(body, signedHeaders(body, { secret: other }))).status).toBe(401)
-    expect((await deliver(body.replace('delivered@', 'altered@'), signedHeaders(body))).status).toBe(401)
+    expect((await deliver(body.replace('complained@', 'altered@'), signedHeaders(body))).status).toBe(401)
     const stale = Math.floor(Date.now() / 1000) - 6 * 60
     expect((await deliver(body, signedHeaders(body, { timestamp: stale }))).status).toBe(401)
     expect((await deliver(body, {})).status).toBe(401)
