@@ -86,6 +86,8 @@ test('no choice is disabled while a save is on its way, so focus is never droppe
   let release!: () => void
   const held = new Promise<void>((resolve) => (release = resolve))
   const patches: unknown[] = []
+  // Like the server, it answers with everything it holds, so an answer carries the earlier changes too.
+  let serverState = stored
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -94,9 +96,10 @@ test('no choice is disabled while a save is on its way, so focus is never droppe
         const update = JSON.parse(String(init.body))
         patches.push(update)
         await held
-        return Response.json({ ...stored, ...update })
+        serverState = { ...serverState, ...update }
+        return Response.json(serverState)
       }
-      return Response.json(stored)
+      return Response.json(serverState)
     })
   )
   render(<Panel />)
@@ -114,9 +117,13 @@ test('no choice is disabled while a save is on its way, so focus is never droppe
     expect(control.hasAttribute('data-disabled')).toBe(false)
   }
   expect(document.activeElement).toBe(day)
-  // A second choice while one is saving is ignored, not queued behind it or sent over it.
+  // A second choice while one is saving shows at once and is sent after it, in order: a change is never dropped.
   fireEvent.click(screen.getByRole('radio', { name: /^Compact/ }))
-  release()
-  expect(await screen.findByText('Saved.')).toBeDefined()
+  expect(screen.getByRole('radio', { name: /^Compact/ })).toHaveProperty('checked', true)
   expect(patches).toEqual([{ theme: 'light' }])
+  release()
+  await waitFor(() => expect(patches).toEqual([{ theme: 'light' }, { density: 'compact' }]))
+  expect(await screen.findByText('Saved.')).toBeDefined()
+  expect(screen.getByRole('radio', { name: /^Day/ })).toHaveProperty('checked', true)
+  expect(screen.getByRole('radio', { name: /^Compact/ })).toHaveProperty('checked', true)
 })
