@@ -179,7 +179,7 @@ test('P2-5: with nothing else waiting, the approved bundle says so', () => {
 test('the review speaks the request’s language', () => {
   const html = render({ locale: 'ms' })
   expect(html).toContain('lang="ms"')
-  expect(html).toContain('Luluskan 1 panggilan')
+  expect(html).toContain('Luluskan 1 keputusan')
   expect(html).toContain('Menghantar 1 notis kepada 2 penerima')
   expect(html).toContain('Termasuk dalam kelulusan')
 })

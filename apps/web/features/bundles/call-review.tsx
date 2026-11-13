@@ -72,7 +72,8 @@ const minutes = (before: string, after: string) =>
 
 /**
  * The readings strip for one call: the project's readings with this call's window as the one capsule, filled by its
- * mode and edged while it is a draft. Before the readings arrive, the window alone at `now`.
+ * mode and edged while it is a draft. The readings end at now; a window still ahead stretches the strip to its end, so
+ * its capsule is drawn past the Now line. Before the readings arrive, the window alone at `now`.
  */
 function callStrip(call: CallDetail, strip: StripInput | undefined, now: string): StripInput | undefined {
   if (!call.window) return undefined
@@ -86,7 +87,9 @@ function callStrip(call: CallDetail, strip: StripInput | undefined, now: string)
       title: call.window.title
     }
   ]
-  return strip ? { ...strip, window, windows } : { from: now, to: now, now, window, windows, rain5: [], rain60: [] }
+  if (!strip) return { from: now, to: now, now, window, windows, rain5: [], rain60: [] }
+  const to = Date.parse(window.to) > Date.parse(strip.to) ? window.to : strip.to
+  return { ...strip, to, window, windows }
 }
 
 /** One call in the open bundle: its window on the strip, its mode, the clauses that fired with each input's age. */

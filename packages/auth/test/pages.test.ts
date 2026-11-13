@@ -1,6 +1,9 @@
 // Page helpers for server components: the principal, with a session's organisation role taken from the URL.
+import { randomUUID } from 'node:crypto'
+import { verification } from '@skyclause/db'
+import { authDatabase } from '@skyclause/db/auth'
 import { beforeAll, expect, test } from 'vitest'
-import { pageAccountEmail, pagePrincipal } from '../src/pages'
+import { pageAccountEmail, pagePrincipal, signInLinkUntil } from '../src/pages'
 import { addMember, makeAccount, makeOrg, makeShareLinkFor, signIn } from './harness'
 
 let org: { id: string; slug: string }
@@ -67,4 +70,18 @@ test('a share link keeps its own organisation, and no credential is null', async
     principal: { kind: 'share_link', orgId: org.id }
   })
   expect((await pagePrincipal(new Headers(), { org: org.slug })).principal).toBeNull()
+})
+
+test('the page an emailed link opens reads until when it works, without using it up; else null', async () => {
+  const token = randomUUID()
+  const expiresAt = new Date(Date.now() + 10 * 60_000)
+  await authDatabase()
+    .insert(verification)
+    .values({ identifier: `magic-link:${token}`, value: JSON.stringify({ email: 'reader@example.org' }), expiresAt })
+  expect(await signInLinkUntil(token)).toEqual(expiresAt)
+  // Reading it twice finds it twice: the page never consumes the link.
+  expect(await signInLinkUntil(token)).toEqual(expiresAt)
+  expect(await signInLinkUntil(token, new Date(expiresAt.getTime() + 1))).toBeNull()
+  expect(await signInLinkUntil(randomUUID())).toBeNull()
+  expect(await signInLinkUntil('')).toBeNull()
 })

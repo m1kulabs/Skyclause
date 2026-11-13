@@ -88,6 +88,7 @@ describe('HeroPicker', () => {
     cleanup()
     vi.unstubAllGlobals()
     vi.useRealTimers()
+    window.history.replaceState(null, '', '/')
   })
 
   test('time fields produce the same request as keys, debounced 300ms, beaconing once after the response', async () => {
@@ -125,7 +126,7 @@ describe('HeroPicker', () => {
     expect(beaconBody).not.toContain('2026-11-05')
   })
 
-  test('while live verdicts are not open, no control and no minute asks for one; the strip still draws the window', async () => {
+  test('while live verdicts are not open, no control and no minute asks for one; every change is named and kept in the URL', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     render(
       <HeroPicker
@@ -141,8 +142,16 @@ describe('HeroPicker', () => {
       />
     )
     const slider = screen.getByRole('slider')
+    // The picker's answer is a polite line naming the chosen window, in the replay's own format.
+    const line = document.querySelector('[data-window-line]')!
+    expect(line.getAttribute('aria-live')).toBe('polite')
+    const closed = 'Its live verdict opens later; the replay above shows a window that got a call.'
+    expect(line.textContent).toBe(`Your window: Thursday 5 November 2026, 21:30 MYT to 23:00 MYT. ${closed}`)
     fireEvent.keyDown(slider, { key: 'ArrowRight' })
     expect(slider.getAttribute('aria-valuetext')).toMatch(/21:45.*23:15/)
+    expect(line.textContent).toBe(`Your window: Thursday 5 November 2026, 21:45 MYT to 23:15 MYT. ${closed}`)
+    await vi.advanceTimersByTimeAsync(400)
+    expect(window.location.search).toBe('?date=2026-11-05&start=21%3A45&end=23%3A15')
     fireEvent.click(screen.getAllByRole('radio')[2]!)
     fireEvent.change(screen.getByLabelText('Window start') as HTMLInputElement, { target: { value: '18:00' } })
     fireEvent.change(screen.getByLabelText('Window end') as HTMLInputElement, { target: { value: '19:00' } })
@@ -154,6 +163,9 @@ describe('HeroPicker', () => {
     expect(document.querySelector('[data-replay]')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
     expect(slider.getAttribute('aria-valuetext')).toMatch(/18:00.*19:00/)
+    expect(line.textContent).toBe(`Your window: Saturday 7 November 2026, 18:00 MYT to 19:00 MYT. ${closed}`)
+    // The URL keeps the choice as the no-JS form's GET would, so a reload or a shared link opens it again.
+    expect(window.location.search).toBe('?date=2026-11-07&start=18%3A00&end=19%3A00')
   })
 
   test('a browser read that answers 501 turns to the replay and stops asking, the minute refresh included', async () => {

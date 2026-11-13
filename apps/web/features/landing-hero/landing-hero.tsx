@@ -6,7 +6,7 @@ import { HeroActivator } from './activator'
 import { HeroFacts } from './hero-facts'
 import { HeroRoom } from './hero-room'
 import { HeroStatic } from './hero-static'
-import { ReplayAnswer } from './replay-answer'
+import { ReplayAnswer, ReplayNote } from './replay-answer'
 import type { EvaluateResult, LatestCallRead, StatusRead } from './evaluate'
 import { calendarPath, pilotRefOf } from './evaluate'
 import { heroStripSvg } from './strip-html'
@@ -38,9 +38,11 @@ function HeadingLine({ text, offset }: { text: string; offset: number }) {
   )
 }
 
-// Striped card beside the room: the card holds the day strip (the stripe band), the name, the h1, one sentence and
-// the one action; the room holds Bukit Jalil's sky inside the enormous capsule, and the window form with the clause
-// engine's verdict on a solid panel beside it. Server-rendered per request, readable without JavaScript.
+// Card beside the panel, then the room. The card holds the live time, the name, the h1, one sentence and the one
+// action; the solid panel beside it leads with the clause engine's answer, then the visitor's window (the day strip,
+// the dates and the times); the room, Bukit Jalil's sky inside the enormous capsule, closes the hero with its pause.
+// The source order is the reading order at every width, so Tab never jumps between corners. Server-rendered per
+// request, readable without JavaScript.
 export function LandingHero({ read }: { read: HeroRead }) {
   const { now, win, result, latestCall, status } = read
   const strip = result.kind === 'ok' ? stripOf(result.data.strip, win, result.data.evaluated_at) : null
@@ -50,6 +52,7 @@ export function LandingHero({ read }: { read: HeroRead }) {
   // never to the marketing host; with one host for everything, to the page's own origin.
   const apiOrigin = process.env.API_ORIGIN
   const replay = <ReplayAnswer />
+  const replayNote = <ReplayNote />
   const pilot = pilotRefOf(process.env.PILOT_PROJECT)
   const line1 = t('landing-hero.heading_line_1', {}, 'en')
   const dates = datesTodayPlusSeven(now)
@@ -80,7 +83,6 @@ export function LandingHero({ read }: { read: HeroRead }) {
           </nav>
         </div>
       </div>
-      <HeroRoom />
       <HeroActivator
         initialResult={result}
         initialStripSvg={stripSvg}
@@ -91,6 +93,7 @@ export function LandingHero({ read }: { read: HeroRead }) {
         calendarQuery={calendarPath(pilot)}
         apiOrigin={apiOrigin}
         replay={replay}
+        replayNote={replayNote}
       >
         <HeroStatic
           result={result}
@@ -101,8 +104,10 @@ export function LandingHero({ read }: { read: HeroRead }) {
           calendarQuery={calendarPath(pilot)}
           now={now.toISOString()}
           replay={replay}
+          replayNote={replayNote}
         />
       </HeroActivator>
+      <HeroRoom />
     </section>
   )
 }

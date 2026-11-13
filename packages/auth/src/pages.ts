@@ -114,3 +114,18 @@ export async function pageAccountEmail(headers: Headers): Promise<string | null>
   const found = await getAuth().auth.api.getSession({ headers, query: { disableRefresh: true } })
   return found?.user.email ?? null
 }
+
+/**
+ * Until when an emailed sign-in link works, for the page it opens, read without consuming it. Better Auth's magic-link
+ * plugin keeps the token as `magic-link:<token>` (stored plain), the key the sign-in plugin confirms it by. Null when
+ * the link is unknown, already used or past its end. It says nothing about whose link it is.
+ */
+export async function signInLinkUntil(token: string, now = new Date()): Promise<Date | null> {
+  if (!token || token.length > 512) return null
+  const [row] = await authDatabase()
+    .select({ expiresAt: verification.expiresAt })
+    .from(verification)
+    .where(and(eq(verification.identifier, `magic-link:${token}`), gt(verification.expiresAt, now)))
+    .limit(1)
+  return row?.expiresAt ?? null
+}

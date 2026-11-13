@@ -77,6 +77,20 @@ export function progressForSteps(steps: Array<{ completed_at: string | null; ski
   return { completed, total, percentage: total === 0 ? 0 : (completed / total) * 100 }
 }
 
+/** Every step is done or skipped: nothing is left to guide. */
+export function firstRunFinished(steps: ReadonlyArray<{ completed_at: string | null; skipped: boolean }>): boolean {
+  return steps.every((step) => !!step.completed_at || step.skipped)
+}
+
+/**
+ * The first project's overview, read from the steps' own links: the channel step opens that project's settings. With
+ * no project yet the step points at the project form, and there is no overview.
+ */
+export function projectHomeHref(steps: ReadonlyArray<{ step: string; href: string }>): string | null {
+  const channel = steps.find((item) => item.step === 'channel')?.href ?? ''
+  return /^(\/[^/]+\/[^/]+)\/settings\/channels$/.exec(channel)?.[1] ?? null
+}
+
 export type StepState = 'done' | 'skipped' | 'current' | 'todo'
 
 /** Each first-run step's place: done, skipped, the next one (the first still open) or still to do. */

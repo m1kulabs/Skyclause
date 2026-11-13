@@ -261,6 +261,26 @@ test.describe('HOST_MODE=multi', () => {
     expect(anonymousStream.status()).toBe(401)
   })
 
+  // No docs site or embed frame is built: both hosts answer the styled not-found page, whose links go to the
+  // marketing and app origins, never a blank page on their own host.
+  test('the docs and embed hosts answer the not-found page, its links on the hosts that serve them', async ({
+    request
+  }) => {
+    for (const [host, pathname] of [
+      ['docs.skyclause.m1ku.tech', '/'],
+      ['docs.skyclause.m1ku.tech', '/problems/not-built'],
+      ['embed.skyclause.m1ku.tech', '/'],
+      ['embed.skyclause.m1ku.tech', '/apu/bukit-jalil']
+    ] as const) {
+      const response = await request.get(`${origin}${pathname}`, { headers: { host }, maxRedirects: 0 })
+      expect(response.status(), `${host}${pathname}`).toBe(404)
+      const html = await response.text()
+      expect(html, `${host}${pathname}`).toContain('Page not found')
+      expect(html, `${host}${pathname}`).toContain('href="https://skyclause.m1ku.tech/"')
+      expect(html, `${host}${pathname}`).toContain('href="https://app.skyclause.m1ku.tech/sign-in"')
+    }
+  })
+
   // This server starts without PLANTED_ROUTES, as production does. Next matches a two-segment path such as
   // /_test/tokens to the app's /[org]/[project] page whichever host asked, and that page's notFound() answers 200 once
   // the shell streams (#610): the proxy must send the test routes to the not-found page itself, on every host.

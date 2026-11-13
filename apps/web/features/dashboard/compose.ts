@@ -89,8 +89,9 @@ function failed(error: unknown, at: string): { ok: false; status: number | null;
   return { ok: false, status, at, ...(error instanceof ApiProblem && error.retryAt ? { retryAt: error.retryAt } : {}) }
 }
 
-/** Whether the project has the Crowd pack on: only then has it show nights to read. */
-const hasCrowd = (project: DashboardProject) => project.packs.some((pack) => pack.pack === 'crowd' && pack.enabled)
+/** Whether the project runs `pack`: only a pack that is on is read or shown (Crowd's show nights, Sky's storm days). */
+const runs = (project: DashboardProject, pack: 'sky' | 'crowd') =>
+  project.packs.some((item) => item.pack === pack && item.enabled)
 
 /** The project's ref as the blocks carry it. */
 function refOf(project: DashboardProject, org: string): ProjectRef {
@@ -127,9 +128,13 @@ function sortSignals(entries: SignalEntry[]): SignalEntry[] {
 }
 
 /** Yesterday's graded windows and nights for one project, one card per pack: how often the call agreed, with its n. */
-function gradeEntries(project: ProjectRef, grades: readonly DashboardGrade[]): GradeEntry[] {
+function gradeEntries(
+  project: ProjectRef,
+  grades: readonly DashboardGrade[],
+  packs: ReadonlyArray<'sky' | 'crowd'>
+): GradeEntry[] {
   const graded = grades.filter((grade) => grade.outcome !== 'pending')
-  return (['sky', 'crowd'] as const).flatMap((pack) => {
+  return packs.flatMap((pack) => {
     const own = graded.filter((grade) => grade.pack === pack)
     if (!own.length) return []
     const agreed = own.filter((grade) => grade.agrees).length
@@ -221,16 +226,20 @@ export async function composeDashboard(
         wanted('signal_health')
           ? api('listProjectSources', { ...common(), params, query: { limit: ROWS } })
           : skipped(),
-        wanted('upcoming_risks') ? api('listProjectDays', { ...common(), params, query: { limit: ROWS } }) : skipped(),
-        // A Sky-only project has no show nights: the read is skipped, as an empty one.
-        wanted('upcoming_risks') && hasCrowd(project)
+        // A project without Sky has no storm afternoons, and one without Crowd no show nights: each read is skipped,
+        // as an empty one.
+        wanted('upcoming_risks') && runs(project, 'sky')
+          ? api('listProjectDays', { ...common(), params, query: { limit: ROWS } })
+          : skipped(),
+        wanted('upcoming_risks') && runs(project, 'crowd')
           ? api('listNights', { ...common(), params, query: { limit: 200 } })
           : skipped(),
         wanted('yesterday_grades')
           ? api('listGrades', { ...common(), params, query: { from: yesterday, to: yesterday, limit: 200 } })
           : skipped()
       ])
-      return { project, ref: refOf(project, org), today, bundles, windows, sources, days, nights, grades }
+      const packs = (['sky', 'crowd'] as const).filter((pack) => runs(project, pack))
+      return { project, ref: refOf(project, org), packs, today, bundles, windows, sources, days, nights, grades }
     })
   )
 
@@ -279,13 +288,13 @@ export async function composeDashboard(
         })
   )
 
-  const windowsAtRisk = block<TodayWindow>(({ windows, ref }) =>
+  const windowsAtRisk = block<TodayWindow>(({ windows, ref, packs }) =>
     windows.status === 'rejected'
       ? windows
       : windows.value.data
           .filter((window) => !window.cancelled_at)
           .map((window) => {
-            const calls = [window.latest_calls.sky, window.latest_calls.crowd].filter((call) => call !== null)
+            const calls = packs.map((pack) => window.latest_calls[pack]).filter((call) => call !== null)
             const risky = calls.find((call) => call.mode !== null && call.mode !== 'normal') ?? calls[0]
             return {
               project: ref,
@@ -315,8 +324,8 @@ export async function composeDashboard(
         : upcomingEntries(ref, today, nights.value.data, days.value.data)
   )
 
-  const yesterdayGrades = block<GradeEntry>(({ grades, ref }) =>
-    grades.status === 'rejected' ? grades : gradeEntries(ref, grades.value.data)
+  const yesterdayGrades = block<GradeEntry>(({ grades, ref, packs }) =>
+    grades.status === 'rejected' ? grades : gradeEntries(ref, grades.value.data, packs)
   )
 
   return {

@@ -1,6 +1,6 @@
 {
   "title": "Percubaan kamera",
-  "views": "Pandangan percubaan",
+  "views": "Paparan percubaan",
   "view_label": "Label bingkai",
   "view_resolve": "Selesaikan percanggahan",
   "view_progress": "Kemajuan",
@@ -42,7 +42,7 @@
   "picker_search": "Cari ahli",
   "picker_search_placeholder": "Cari ahli…",
   "picker_none": "Tiada ahli ditemui.",
-  "picker_more": "Menunjukkan {count} ahli pertama. Taip untuk mengecilkan.",
+  "picker_more": "Menunjukkan {count} ahli pertama. Taip untuk menapis.",
   "picker_loading": "Memuatkan ahli…",
   "picker_limit": "Hanya dua pelabel. Buang seorang untuk memilih yang lain.",
   "picker_need_two": "Pilih dua pelabel sebelum menyimpan.",

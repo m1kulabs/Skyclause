@@ -1,8 +1,8 @@
 import { t } from '@skyclause/i18n'
-import { CircleAlertIcon, InfoIcon } from 'lucide-react'
 import type { ComponentProps, ReactNode, Ref } from 'react'
 import { Alert } from '#ui/alert'
 import { cn } from '#lib/utils'
+import { Glyph } from '../brand/glyph'
 import './auth.css'
 import './catalogue'
 
@@ -49,16 +49,17 @@ export function AuthHeader({
 }
 
 /**
- * A message with a glyph, so it is never told by colour alone: an error is announced at once in the error style, a
- * result (a confirmation, an expiry) politely in the plain one.
+ * A message with the product's glyph, so it is never told by colour alone: an error is announced at once in the error
+ * style with the cross, a result (a confirmation) politely in the plain one with the ring. Something that ends or waits
+ * on the clock (an expiry, a rate limit) takes the clock in either tone.
  */
 export function AuthMessage({
   tone = 'error',
+  glyph,
   children,
   className,
   ...props
-}: Omit<ComponentProps<typeof Alert>, 'variant'> & { tone?: 'error' | 'result' }) {
-  const Icon = tone === 'error' ? CircleAlertIcon : InfoIcon
+}: Omit<ComponentProps<typeof Alert>, 'variant'> & { tone?: 'error' | 'result'; glyph?: 'clock' }) {
   return (
     <Alert
       variant={tone === 'error' ? 'destructive' : 'default'}
@@ -66,7 +67,7 @@ export function AuthMessage({
       className={cn('text-base leading-6', className)}
       {...props}
     >
-      <Icon aria-hidden="true" />
+      <Glyph state={glyph === 'clock' ? 'stale' : tone === 'error' ? 'error' : 'fresh'} />
       <p className="m-0">{children}</p>
     </Alert>
   )

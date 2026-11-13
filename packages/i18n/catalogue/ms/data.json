@@ -2,10 +2,12 @@
   "strip": {
     "summary_live": "Strip langsung hingga {to}. {crossing}. {count} bacaan.",
     "summary_live_one": "Strip langsung hingga {to}. {crossing}. 1 bacaan.",
+    "summary_ahead": "Strip langsung hingga {to}. Jendela masa bermula pada {start}. {count} bacaan.",
+    "summary_ahead_one": "Strip langsung hingga {to}. Jendela masa bermula pada {start}. 1 bacaan.",
     "summary_replay": "Ulangan {source}, dirakam {captured}. {crossing}. {count} bacaan.",
     "summary_replay_one": "Ulangan {source}, dirakam {captured}. {crossing}. 1 bacaan.",
     "crossing": "Lebat dicapai pada {time} ({value} mm dalam 60 min)",
-    "no_crossing": "Tiada lintasan Lebat dalam tetingkap ini",
+    "no_crossing": "Tiada lintasan Lebat dalam jendela masa ini",
     "show_table": "Tunjuk jadual",
     "hide_table": "Sembunyi jadual",
     "table_caption": "Bacaan hujan dengan jumlah 60 minit",
@@ -13,11 +15,11 @@
     "table_rain5": "mm setiap 5 min",
     "table_rain60": "mm setiap 60 min",
     "missing": "–",
-    "empty": "Tiada bacaan lagi (n=0). Ikat sumber untuk memulakan strip.",
+    "empty": "Tiada bacaan lagi (n=0). Pautkan sumber untuk memulakan strip.",
     "replay_badge": "Ulangan",
-    "window": "Tetingkap",
+    "window": "Jendela masa",
     "now": "Kini",
-    "ages_title": "Umur input",
+    "ages_title": "Usia input",
     "lebat_line": "Lebat 31 mm",
     "chart_date": "{date} · MYT",
     "now_label": "Kini MYT",
@@ -32,7 +34,7 @@
     "label_stale": "{name} {age} {stale}",
     "stale": "lapuk",
     "no_reading": "{name} belum ada bacaan",
-    "error": "{name} ralat sejak {time}",
+    "error": "Ralat {name} sejak {time}",
     "daily": "data hingga {date}",
     "source_time": "Waktu sumber",
     "received_time": "Waktu diterima",
@@ -58,7 +60,7 @@
     "open_source": "Buka sumber"
   },
   "call": {
-    "window": "Tetingkap {id}",
+    "window": "Jendela masa {id}",
     "dashboard_window": "{project} · {title}",
     "unknown_mode": "Tidak diketahui",
     "night": "Malam {id}",
@@ -70,11 +72,11 @@
     "state_rejected": "Ditolak",
     "state_expired": "Tamat tempoh",
     "state_superseded": "Digantikan",
-    "state_sending": "Dihantar",
-    "state_sent": "Telah dihantar",
+    "state_sending": "Sedang dihantar",
+    "state_sent": "Dihantar",
     "state_failed": "Gagal",
     "fired_empty": "Tiada klausa dicetuskan",
-    "actions": "Tindakan panggilan"
+    "actions": "Tindakan keputusan"
   },
   "bundle": {
     "trigger": "{trigger} pada {time}",
@@ -84,9 +86,9 @@
     "agrees": "Setuju",
     "disagrees": "Tidak setuju pada {count}",
     "escalation": "Eskalasi {level}",
-    "approve": "Luluskan {count} panggilan",
+    "approve": "Luluskan {count} keputusan",
     "draft_only": "Draf: belum disemak, belum dihantar",
-    "calls_title": "Panggilan mengikut mod",
+    "calls_title": "Keputusan mengikut mod",
     "actions": "Tindakan berkas"
   },
   "grade": {
@@ -95,33 +97,33 @@
     "n_zero": "n=0",
     "period": "{from} hingga {to}",
     "replay": "Ulangan",
-    "empty": "Tiada tetingkap dinilai lagi (n=0).",
+    "empty": "Belum ada jendela masa digredkan (n=0).",
     "interval_label": "Selang Wilson 95% {low} hingga {high}",
     "wilson_95": "Wilson 95%: {low}–{high}",
     "count": "{x} daripada {n}",
     "no_interval": "Belum ada selang."
   },
   "pack": {
-    "clause_engine": "Keputusan enjin klausa: belum disemak, belum dihantar",
-    "approved_call": "Panggilan diluluskan",
+    "clause_engine": "Ketetapan enjin klausa: belum disemak, belum dihantar",
+    "approved_call": "Keputusan diluluskan",
     "no_basis": "Tiada keputusan lagi"
   },
   "day": {
-    "label": "Tetingkap pada {date}",
-    "summary": "{count} tetingkap pada {date}. Masa dalam MYT.",
-    "summary_one": "1 tetingkap pada {date}. Masa dalam MYT.",
-    "empty": "Tiada tetingkap pada {date}.",
+    "label": "Jendela masa pada {date}",
+    "summary": "{count} jendela masa pada {date}. Waktu dalam MYT.",
+    "summary_one": "1 jendela masa pada {date}. Waktu dalam MYT.",
+    "empty": "Tiada jendela masa pada {date}.",
     "now": "Kini {time}",
     "range": "{from}–{to} MYT",
     "pending": "Belum ada keputusan",
     "draft": "Draf, belum diluluskan",
-    "more": "{count} lagi tetingkap tidak disenaraikan.",
-    "list": "Tetingkap dan keputusannya",
-    "more_one": "1 lagi tetingkap tidak disenaraikan."
+    "more": "{count} lagi jendela masa tidak disenaraikan.",
+    "list": "Jendela masa dan keputusannya",
+    "more_one": "1 lagi jendela masa tidak disenaraikan."
   },
   "no_call": {
     "reason": "{inputs} gagal sejak {time}.",
-    "reason_plain": "Input wajib gagal, jadi tetingkap ini tiada keputusan."
+    "reason_plain": "Input wajib gagal, jadi jendela masa ini tiada keputusan."
   },
   "source_error": {
     "title": "Tidak dapat membaca {source} buat masa ini.",
@@ -135,10 +137,10 @@
   },
   "indicators": {
     "site": {
-      "rain_60m_mm": "Hujan dalam 60 minit lepas (tapak)",
+      "rain_60m_mm": "Hujan dalam 60 minit lepas",
       "api_max": "Indeks Pencemaran Udara (IPU), tertinggi antara stesen",
       "api_0600_min_last3_max": "Indeks Pencemaran Udara (IPU) pada 06:00, terendah dalam tiga pagi lepas",
-      "met_warning_in_force": "Amaran MET sedang berkuat kuasa (tapak)",
+      "met_warning_in_force": "Amaran MET sedang berkuat kuasa",
       "met_afternoon_thunderstorm": "Ramalan MET: ribut petir waktu petang",
       "camera_far_low_frames": "Kamera langit: bingkai jauh berkontras rendah, daripada 3 terakhir",
       "night": {
@@ -157,22 +159,22 @@
       }
     },
     "w": {
-      "rain_max_60m_mm": "Hujan 60 minit paling lebat dalam tetingkap",
-      "rain_max_4h_mm": "Hujan 4 jam paling lebat dalam tetingkap",
-      "met_warning_in_force": "Amaran MET berkuat kuasa semasa tetingkap",
-      "start": "Permulaan tetingkap",
-      "end": "Penamat tetingkap",
-      "start_local_min": "Permulaan tetingkap, minit selepas tengah malam",
-      "end_local_min": "Penamat tetingkap, minit selepas tengah malam",
-      "kind": "Jenis tetingkap",
-      "duration": "Tempoh tetingkap"
+      "rain_max_60m_mm": "Hujan 60 minit paling lebat dalam jendela masa",
+      "rain_max_4h_mm": "Hujan 4 jam paling lebat dalam jendela masa",
+      "met_warning_in_force": "Amaran MET berkuat kuasa semasa jendela masa",
+      "start": "Permulaan jendela masa",
+      "end": "Penamat jendela masa",
+      "start_local_min": "Permulaan jendela masa, minit selepas tengah malam",
+      "end_local_min": "Penamat jendela masa, minit selepas tengah malam",
+      "kind": "Jenis jendela masa",
+      "duration": "Tempoh jendela masa"
     },
     "other": "Input lain"
   },
   "signal": {
     "source": "Sumber",
     "value": "Nilai terkini",
-    "age": "Umur",
+    "age": "Usia",
     "health": "Kesihatan",
     "no_value": "Belum ada bacaan",
     "updated": "Dibaca {time}"

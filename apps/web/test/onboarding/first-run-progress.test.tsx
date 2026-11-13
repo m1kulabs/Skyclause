@@ -143,3 +143,72 @@ test('the source step says it is bound, or that it needs attention, never the so
     cleanup()
   }
 })
+
+/** The steps as the API links them, for an organisation `campus` whose first project is `bukit-jalil`. */
+const linked = (done: number, skipped: readonly string[] = []) => {
+  const hrefs: Record<(typeof steps)[number], string> = {
+    organisation: '/new',
+    project: '/campus/new',
+    sources: '/campus/bukit-jalil/settings/packs',
+    window: '/campus/bukit-jalil/windows?declare=window',
+    rota: '/campus/settings/rota',
+    channel: '/campus/bukit-jalil/settings/channels'
+  }
+  const answer = view(done, skipped)
+  for (const item of answer.steps) item.href = hrefs[item.step]
+  return answer
+}
+
+test('the rota step names the organisation’s approver rota and what completes it', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(linked(4) as never)
+  render(<FirstRunProgress org="campus" />)
+  const list = await screen.findByRole('list')
+  expect(within(list).getByRole('heading', { name: 'Set the approver rota' })).toBeTruthy()
+  expect(within(list).getByText(/Organisation settings, Approver rota: add an approver to a shift/)).toBeTruthy()
+  const link = within(list).getByRole('link', { name: /^Continue/ })
+  expect(link.getAttribute('href')).toBe('/campus/settings/rota')
+})
+
+test('finishing the last step here offers Continue to the first project’s overview', async () => {
+  vi.mocked(onboardingApi)
+    .mockResolvedValueOnce(linked(5) as never)
+    .mockResolvedValueOnce(linked(6) as never)
+  render(<FirstRunProgress org="campus" />)
+  await screen.findByRole('list')
+  // The channel was connected on this page: the page says so, and the steps read again.
+  window.dispatchEvent(new Event('onboarding:changed'))
+  expect(await screen.findByText('6 of 6 steps complete')).toBeTruthy()
+  const link = screen.getByRole('link', { name: /^Continue/ })
+  expect(link.getAttribute('href')).toBe('/campus/bukit-jalil?first-run=done')
+  expect(screen.queryByRole('button', { name: /^Skip this step/ })).toBeNull()
+})
+
+test('skipping the last step finishes the first run there too', async () => {
+  vi.mocked(onboardingApi)
+    .mockResolvedValueOnce(linked(5) as never)
+    .mockResolvedValueOnce(linked(5, ['channel']) as never)
+  render(<FirstRunProgress org="campus" />)
+  fireEvent.click(await screen.findByRole('button', { name: /^Skip this step/ }))
+  expect(await screen.findByText('6 of 6 steps complete')).toBeTruthy()
+  expect(screen.getByRole('link', { name: /^Continue/ }).getAttribute('href')).toBe(
+    '/campus/bukit-jalil?first-run=done'
+  )
+})
+
+test('a first run finished before this page opened shows nothing, unless this is where it lands', async () => {
+  vi.mocked(onboardingApi).mockResolvedValue(linked(6) as never)
+  const { container } = render(<FirstRunProgress org="campus" />)
+  await waitFor(() => expect(container.querySelector('[aria-busy]')).toBeNull())
+  expect(container.textContent).toBe('')
+  cleanup()
+  render(
+    <FirstRunProgress
+      org="campus"
+      next={{ sentence: 'Next, ask for a call.', action: <button type="button" aria-label="Ask for a call" /> }}
+    />
+  )
+  expect(await screen.findByText('6 of 6 steps complete')).toBeTruthy()
+  expect(screen.getByText(/Next, ask for a call\./)).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Ask for a call' })).toBeTruthy()
+  expect(screen.queryByRole('link', { name: /^Continue/ })).toBeNull()
+})

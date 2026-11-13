@@ -78,8 +78,8 @@ describe('indicator names', () => {
   afterEach(cleanup)
 
   test('a registry key reads as words in en and ms, an unknown one as "Other input", a plain name as it came', () => {
-    expect(indicatorName('site.rain_60m_mm', 'en')).toBe('Rain in the last 60 minutes (site)')
-    expect(indicatorName('site.rain_60m_mm', 'ms')).toBe('Hujan dalam 60 minit lepas (tapak)')
+    expect(indicatorName('site.rain_60m_mm', 'en')).toBe('Rain in the last 60 minutes')
+    expect(indicatorName('site.rain_60m_mm', 'ms')).toBe('Hujan dalam 60 minit lepas')
     expect(indicatorName('site.night.band_low', 'en')).toBe('Night exits, forecast band (low)')
     expect(indicatorName('site.not_in_registry', 'en')).toBe('Other input')
     expect(indicatorName('gauge', 'en')).toBe('gauge')

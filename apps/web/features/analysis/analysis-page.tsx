@@ -22,7 +22,8 @@ import {
   type LiveSeries,
   type Locale
 } from './model'
-import { EmptyBlock, Failure, Loading, MetricFigure, MetricRow, featureOff, rangeText } from './presentation'
+import { EmptyBlock, Failure, Loading, MetricFigure, MetricRow, rangeText } from './presentation'
+import { enabledPacks } from '../overview/model'
 import { useRead } from './use-read'
 import { LiveChart } from './live-chart'
 import { GradedTable } from './graded-table'
@@ -179,33 +180,21 @@ function Workspace({
     ? projects.find((item) => item.slug === slug)
     : projects.find((item) => item.id === state.project)
   const projectId = project?.id
-  const { period, pack } = state
+  // Crowd is read and offered only where it runs: in this project, or in any of the organisation's.
+  const crowdEnabled = slug
+    ? !!project && enabledPacks(project.packs).includes('crowd')
+    : projects.some((item) => enabledPacks(item.packs).includes('crowd'))
+  /** A link to the Crowd tab where Crowd does not run: it says so, and reads nothing. */
+  const crowdOff = state.tab === 'crowd' && !crowdEnabled
+  const { period } = state
+  const pack = crowdEnabled ? state.pack : 'sky'
+  /** The state as the page reads it: a Crowd pack in the URL where Crowd does not run reads Sky. */
+  const view: AnalysisState = pack === state.pack ? state : { ...state, pack }
   const liveRead = useCallback(
     (signal: AbortSignal) => readAnalysis(org, slug ? projectId : undefined, { period, pack }, signal),
     [org, slug, projectId, period, pack]
   )
   const live = useRead(liveRead)
-  const crowdRead = useCallback(
-    async (signal: AbortSignal) => {
-      try {
-        if (slug && !projectId) return false
-        if (slug)
-          await apiFetch('getProjectAnalysis', {
-            org,
-            params: { id: projectId! },
-            query: { period: state.period, pack: 'crowd' },
-            signal
-          })
-        else await apiFetch('getOrganisationAnalysis', { org, query: { period: state.period, pack: 'crowd' }, signal })
-        return true
-      } catch (error) {
-        if (featureOff(error)) return false
-        throw error
-      }
-    },
-    [org, slug, projectId, state.period]
-  )
-  const crowd = useRead(crowdRead)
   const liveRange = live.status === 'ready' ? { from: live.value.from, to: live.value.to } : null
   const rangeFrom = liveRange?.from
   const rangeTo = liveRange?.to
@@ -216,17 +205,16 @@ function Workspace({
         apiFetch('listGrades', {
           org,
           params: { id: projectId },
-          query: { pack: state.pack, from: rangeFrom, to: rangeTo, cursor },
+          query: { pack, from: rangeFrom, to: rangeTo, cursor },
           signal
         })
       )
     },
-    [org, projectId, state.pack, rangeFrom, rangeTo]
+    [org, projectId, pack, rangeFrom, rangeTo]
   )
   const grades = useRead(gradesRead)
   const canEdit = ['approver', 'admin', 'owner'].includes(role)
   const canDraft = canEdit || role === 'editor'
-  const crowdEnabled = crowd.status === 'ready' && crowd.value
   const visibleTabs = tabs.filter((tab) => tab !== 'crowd' || crowdEnabled)
   if (slug && !project)
     return (
@@ -266,15 +254,6 @@ function Workspace({
           ))}
         </ToggleGroup>
       </header>
-      {crowd.status === 'error' && live.status === 'ready' && (
-        <Failure
-          source={t('analysis.sources.crowd', {}, locale)}
-          error={crowd.error}
-          at={crowd.at}
-          retry={crowd.retry}
-          locale={locale}
-        />
-      )}
       <Tabs
         value={visibleTabs.includes(state.tab) ? state.tab : null}
         onValueChange={(value) =>
@@ -299,7 +278,7 @@ function Workspace({
                 name="pack"
                 className="native-select"
                 autoComplete="off"
-                value={state.pack}
+                value={pack}
                 onChange={(event) => guarded({ pack: event.target.value })}
               >
                 <option value="sky">{t('analysis.tabs.sky', {}, locale)}</option>
@@ -308,8 +287,13 @@ function Workspace({
             </label>
           )}
         </div>
-        {live.status === 'loading' && <Loading locale={locale} />}
-        {live.status === 'error' && (
+        {crowdOff && (
+          <p role="alert" className="analysis-error analysis-notice">
+            {t(slug ? 'analysis.crowdOff' : 'analysis.crowdOffOrganisation', {}, locale)}
+          </p>
+        )}
+        {!crowdOff && live.status === 'loading' && <Loading locale={locale} />}
+        {!crowdOff && live.status === 'error' && (
           <Failure
             source={t('analysis.sources.live', {}, locale)}
             error={live.error}
@@ -318,11 +302,11 @@ function Workspace({
             locale={locale}
           />
         )}
-        {live.status === 'ready' && (
+        {!crowdOff && live.status === 'ready' && (
           <>
             {tabs.map((tab) => (
               <TabsContent key={tab} value={tab} className="analysis-panel">
-                {tab === state.tab && <LiveFigures analysis={live.value} state={state} locale={locale} />}
+                {tab === state.tab && <LiveFigures analysis={live.value} state={view} locale={locale} />}
               </TabsContent>
             ))}
             {!slug && (
@@ -392,7 +376,7 @@ function Workspace({
                 key={`replay-${projectId}`}
                 projectId={projectId}
                 org={org}
-                state={state}
+                state={view}
                 change={change}
                 canDraft={canDraft}
                 locale={locale}

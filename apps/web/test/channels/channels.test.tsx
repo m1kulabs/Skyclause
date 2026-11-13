@@ -30,7 +30,7 @@ function answer(channels: Array<{ channel: string; enabled: boolean }>, preview?
 test('the panel is written in the language it is given, not one a query string asks for', async () => {
   answer([{ channel: 'email', enabled: true }])
   render(<Channels locale="ms" />)
-  expect(await screen.findByText('Ke mana panggilan diluluskan dihantar')).toBeInTheDocument()
+  expect(await screen.findByText('Ke mana keputusan diluluskan dihantar')).toBeInTheDocument()
   expect(screen.queryByText('Where approved calls go')).toBeNull()
   expect(screen.getByText(/Pelanggan yang telah mengesahkan/)).toBeInTheDocument()
 })
