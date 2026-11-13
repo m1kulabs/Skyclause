@@ -767,6 +767,11 @@ html[data-motion='reduce'] .pause {
   .copy {
     align-self: start;
     padding: 48px 40px 40px;
+    container-type: inline-size;
+  }
+  /* Sized to the card, not the viewport, so "every window" (6.4em wide) holds one line from 1024px up. */
+  .title {
+    font-size: min(var(--step-display), 15.2cqi);
   }
   .room {
     height: clamp(280px, 42svh, 480px);
