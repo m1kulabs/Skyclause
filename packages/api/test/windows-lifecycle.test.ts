@@ -5,6 +5,7 @@ import {
   domainEvent,
   icsFeed,
   ledgerEntry,
+  readWindowSeriesDefinition,
   window,
   windowSeries,
   withSystem,
@@ -23,6 +24,8 @@ import {
 import { and, eq } from 'drizzle-orm'
 import { beforeAll, expect, test } from 'vitest'
 import { cancelWindow, createWindow, createWindowSeries, updateWindow, windowViolations } from '../src/services/windows'
+import { extendDueWindowSeries } from '../src/services/windows/due-native'
+import { materializeNative, parseRule } from '../src/services/windows/series'
 import {
   apiRequest,
   asApiKey,
@@ -847,4 +850,146 @@ test.each([
   }
   // The historical selection is immutable; refusing the future invalid target also applies no partial plan.
   expect(await snapshot()).toEqual(before)
+})
+
+test.each([{ count: 30 }, { until: '2027-06-06' }])(
+  'a declared native series with %j refuses a future DST gap but extends after its civil date passes',
+  async (end) => {
+    const p = await run(makeProject)
+    const declarationNow = new Date('2026-11-13T00:00:00Z')
+    const app = createTestApi({ deps: testDeps({ withTenant, now: () => declarationNow }) }).v1
+    const response = await apiRequest(app, {
+      as: editor(),
+      org: ORG,
+      method: 'POST',
+      path: `/v1/projects/${p.id}/windows`,
+      idempotencyKey: randomUUID(),
+      body: fields({
+        title: 'London weekly',
+        starts_at: '2026-11-15T01:30:00Z',
+        ends_at: '2026-11-15T02:30:00Z',
+        tz: 'Europe/London',
+        recurrence: { frequency: 'weekly', days_of_week: ['sunday'], ...end, skip_dates: ['2026-12-06'] }
+      })
+    })
+    expect(response.status).toBe(201)
+    const view = (await response.json()) as View
+    const seriesId = view.series_id!
+    const before = await members(seriesId)
+    const [original] = await run((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, seriesId)))
+    expect(before).toHaveLength(12)
+    expect(before.map((row) => row.seriesOccurrenceDate)).not.toContain('2026-12-06')
+    const principal = systemPrincipal('windows-due')
+    for (const now of [new Date('2027-03-01T00:00:00Z'), new Date('2027-03-28T00:00:00Z')]) {
+      await expect(
+        withTenant({ orgId: testOrg(ORG).id, principal }, (tx) =>
+          extendDueWindowSeries({ tx, principal }, { projectId: p.id, seriesId, now })
+        )
+      ).rejects.toMatchObject({ status: 422 })
+      expect(await members(seriesId)).toEqual(before)
+      const [unchanged] = await run((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, seriesId)))
+      expect(unchanged).toEqual(original)
+    }
+    const afterGap = new Date('2027-03-29T00:00:00Z')
+    await withTenant({ orgId: testOrg(ORG).id, principal }, (tx) =>
+      extendDueWindowSeries({ tx, principal }, { projectId: p.id, seriesId, now: afterGap })
+    )
+    const after = await members(seriesId)
+    expect(after).toHaveLength(22)
+    expect(after.slice(0, before.length)).toEqual(before)
+    const identities = after.map((row) => row.seriesOccurrenceDate)
+    expect(identities).not.toContain('2027-03-28')
+    expect(identities).not.toContain('2027-03-21')
+    expect(identities).toContain('2027-04-04')
+    expect(identities).toContain('2027-06-06')
+    expect(identities).not.toContain('2027-06-13')
+    expect(new Set(identities).size).toBe(identities.length)
+  }
+)
+
+test('a shifted series filters in its effective civil-date frame, not its original identity frame', async () => {
+  const p = await run(makeProject)
+  const declarationNow = new Date('2026-11-13T00:00:00Z')
+  const app = createTestApi({ deps: testDeps({ withTenant, now: () => declarationNow }) }).v1
+  const response = await apiRequest(app, {
+    as: editor(),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/windows`,
+    idempotencyKey: randomUUID(),
+    body: fields({
+      title: 'Shifted London',
+      starts_at: '2026-11-15T01:30:00Z',
+      ends_at: '2026-11-15T02:30:00Z',
+      tz: 'Europe/London',
+      recurrence: { frequency: 'weekly', days_of_week: ['sunday'], count: 30, skip_dates: [] }
+    })
+  })
+  expect(response.status).toBe(201)
+  const view = (await response.json()) as View
+  const shifted = await apiRequest(app, {
+    as: editor(),
+    org: ORG,
+    method: 'PATCH',
+    path: `/v1/windows/${view.id}`,
+    query: { scope: 'series' },
+    body: { starts_at: '2026-11-16T01:30:00Z', ends_at: '2026-11-16T02:30:00Z' }
+  })
+  expect(shifted.status).toBe(200)
+  const seriesId = view.series_id!
+  const [series] = await run((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, seriesId)))
+  expect(series!.definition).toMatchObject({ anchor: '2026-11-15', dateOffsetDays: 1 })
+  const before = await members(seriesId)
+  const now = new Date('2027-03-29T00:00:00Z')
+  const principal = systemPrincipal('windows-due')
+  await withTenant({ orgId: testOrg(ORG).id, principal }, (tx) =>
+    extendDueWindowSeries({ tx, principal }, { projectId: p.id, seriesId, now })
+  )
+  const after = await members(seriesId)
+  expect(after.slice(0, before.length)).toEqual(before)
+  expect(after.find((row) => row.seriesOccurrenceDate === '2027-03-28')?.startsAt.toISOString()).toBe(
+    '2027-03-29T00:30:00.000Z'
+  )
+  expect(after.map((row) => row.seriesOccurrenceDate)).not.toContain('2027-06-13')
+})
+
+test('a same-day ambiguous fall-back time still resolves to the future standard-time instant', async () => {
+  const p = await run(makeProject)
+  const app = createTestApi({ deps: testDeps({ withTenant, now: () => new Date('2026-10-16T00:00:00Z') }) }).v1
+  const response = await apiRequest(app, {
+    as: editor(),
+    org: ORG,
+    method: 'POST',
+    path: `/v1/projects/${p.id}/windows`,
+    idempotencyKey: randomUUID(),
+    body: fields({
+      title: 'London fold',
+      starts_at: '2026-10-18T00:30:00Z',
+      ends_at: '2026-10-18T01:30:00Z',
+      tz: 'Europe/London',
+      recurrence: { frequency: 'weekly', days_of_week: ['sunday'], count: 3, skip_dates: [] }
+    })
+  })
+  expect(response.status).toBe(201)
+  const view = (await response.json()) as View
+  const [series] = await run((tx) => tx.select().from(windowSeries).where(eq(windowSeries.id, view.series_id!)))
+  const definition = readWindowSeriesDefinition(series!)
+  if (definition.source !== 'native') throw new Error('native fixture required')
+  const principal = systemPrincipal('windows-due')
+  const candidates = await withTenant({ orgId: testOrg(ORG).id, principal }, (tx) =>
+    materializeNative(
+      { tx, principal },
+      {
+        projectId: p.id,
+        definition,
+        rule: parseRule(series!.rule),
+        localStart: series!.localStart,
+        localEnd: series!.localEnd
+      },
+      new Date('2026-10-25T01:15:00Z')
+    )
+  )
+  expect(candidates.find((row) => row.seriesOccurrenceDate === '2026-10-25')?.startsAt.toISOString()).toBe(
+    '2026-10-25T01:30:00.000Z'
+  )
 })

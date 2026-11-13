@@ -73,7 +73,7 @@ export async function materializeNative(
   const rows: WindowMutationInsert[] = []
   for (const effective of dates) {
     const date = addDays(effective, -template.dateOffsetDays)
-    if (effective < addDays(localNow.date, -1)) continue
+    if (effective < localNow.date) continue
     const span = await resolveSpan(ctx, {
       date: effective,
       start: localStart,
