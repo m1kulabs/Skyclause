@@ -160,7 +160,7 @@ test('URL registration is pending, creates no windows, performs no HTTP and repl
       withTenant,
       recordAudit,
       now: () => now,
-      can: testCan,
+      can: canonicalCan,
       calendarTransport: {
         assertPublicUrl: async (url) => ({ url: new URL(url), addresses: ['192.0.2.1'] }),
         safeFetch: async () => {
@@ -200,7 +200,14 @@ test('URL registration is pending, creates no windows, performs no HTTP and repl
   expect(await tenant((tx) => tx.select().from(window).where(eq(window.projectId, p.id)))).toHaveLength(0)
 })
 
-test('ordinary member may import an empty calendar without creating windows', async () => {
+test.each([
+  { name: 'empty', content: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n' },
+  {
+    name: 'all-skipped',
+    content:
+      'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:missing-title\r\nDTSTART:20261115T100000Z\r\nDTEND:20261115T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
+  }
+])('ordinary member may import $name calendar without creating windows', async ({ content }) => {
   const p = await project()
   const app = createTestApi({ deps: testDeps({ withTenant, recordAudit, now: () => now, can: canonicalCan }) }).v1
   const response = await apiRequest(app, {
@@ -209,7 +216,7 @@ test('ordinary member may import an empty calendar without creating windows', as
     method: 'POST',
     path: `/v1/projects/${p.id}/ics-feeds`,
     idempotencyKey: randomUUID(),
-    body: { file: { name: 'empty.ics', content: 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n' } }
+    body: { file: { name: 'calendar.ics', content } }
   })
   expect(response.status).toBe(201)
   expect(await response.json()).toMatchObject({ status: 'ready' })

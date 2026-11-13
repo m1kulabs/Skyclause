@@ -1120,7 +1120,11 @@ test.each([
       seriesId
     ])
     const before = await members(seriesId)
+    const boundary = new Date(Date.parse(starts) + 90 * 86400000).toISOString()
+    expect(before.map((row) => row.startsAt.toISOString())).not.toContain(boundary)
     await inTenant((tx) => extendDueWindowSeries({ tx, principal }, { projectId: p.id, seriesId, now: nextNow }))
-    expect((await members(seriesId)).length).toBeGreaterThan(before.length)
+    const after = await members(seriesId)
+    expect(after.length).toBeGreaterThan(before.length)
+    expect(after.map((row) => row.startsAt.toISOString())).toContain(boundary)
   }
 )
