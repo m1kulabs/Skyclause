@@ -284,8 +284,8 @@ describe('HeroReadout', () => {
     expect(gauge.textContent).toContain('39.0 mm in 60 min')
     expect(gauge.textContent).toContain('0232901RF')
     expect(gauge.textContent).toContain('5 min old')
-    const source = screen.getByRole('link', { name: 'JPS gauge page for gauge 0232901RF, in a new tab' })
-    expect(source.textContent).toBe('JPS gauge page')
+    const source = screen.getByRole('link', { name: 'JPS gauge data for gauge 0232901RF, in a new tab' })
+    expect(source.textContent).toBe('JPS gauge data')
     expect(source.getAttribute('href')).toBe(JPS)
     expect(screen.getByText('Evaluated 15:05 MYT')).toBeTruthy()
     const mark = document.querySelector('[data-replay-mark]')!

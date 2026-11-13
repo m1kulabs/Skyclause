@@ -229,7 +229,7 @@ test('while live verdicts are not open, the hero answers with the 2 November rep
   await expect(gauge).toContainText('39.0 mm in 60 min')
   await expect(gauge).toContainText('0232901RF')
   await expect(gauge).toContainText('5 min old')
-  await expect(gauge.getByRole('link', { name: 'JPS gauge page for gauge 0232901RF, in a new tab' })).toHaveAttribute(
+  await expect(gauge.getByRole('link', { name: 'JPS gauge data for gauge 0232901RF, in a new tab' })).toHaveAttribute(
     'href',
     JPS
   )
@@ -561,7 +561,7 @@ for (const viewport of [
       'How it works',
       'The record',
       'Prices',
-      'JPS gauge page for gauge 0232901RF, in a new tab',
+      'JPS gauge data for gauge 0232901RF, in a new tab',
       'Your window on the day',
       chosenDate,
       'Window start',
