@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
 import { migrate } from '../src/migrate'
 import { createDatabase, dropDatabase, localUrl, migrationsFolder } from '../scripts/local'
-import { asLogin, migrationsWith } from './harness'
+import { asLogin, migrationsWith, refusal } from './harness'
 
 /** The repository's migrations, in order, from drizzle-kit's journal. */
 const tags = (
@@ -70,6 +70,84 @@ test('owner owns every table, view, type, function and schema the migrations cre
   })
   expect(owners.length).toBeGreaterThan(40)
   expect(owners.filter(({ owner }) => owner !== 'owner')).toEqual([])
+}, 120_000)
+
+// #608: a login's temporary table or view replaces a table that a SECURITY DEFINER function reads without a schema, such
+// as next_event_seq() reading `project`, and runs the login's code as `owner`; pg_partman 5.1.0 also puts pg_temp in its
+// functions' search path. A database's TEMPORARY privilege is granted to PUBLIC by default, and the harness's clone of
+// the template has that default ACL again, not the template's, so this needs a database `migrate()` built itself.
+test('only owner can create temporary objects, and partition_maintenance() still runs as system', async () => {
+  const database = await emptyDatabase()
+  await migrate(localUrl('migrator', database), migrationsFolder)
+
+  const logins = ['system', 'app', 'auth_app', 'retention'] as const
+  const allowed = await asLogin(
+    'postgres',
+    async (client) => {
+      const { rows } = await client.query<{ rolname: string; allowed: boolean }>(
+        "SELECT rolname, has_database_privilege(rolname, current_database(), 'TEMPORARY') AS allowed FROM pg_roles WHERE rolname = ANY($1)",
+        [[...logins, 'public_reader', 'owner']]
+      )
+      return Object.fromEntries(rows.map(({ rolname, allowed }) => [rolname, allowed]))
+    },
+    database
+  )
+  expect(allowed).toEqual({
+    system: false,
+    app: false,
+    auth_app: false,
+    retention: false,
+    public_reader: false,
+    owner: true
+  })
+
+  // A temporary table, and a temporary view named like a table that next_event_seq() reads without a schema.
+  const statements = ['CREATE TEMP TABLE probe (id int)', 'CREATE TEMP VIEW project AS SELECT 1 AS id']
+  for (const login of logins)
+    await asLogin(
+      login,
+      async (client) => {
+        for (const statement of statements)
+          expect(await refusal(client.query(statement)), `${login}: ${statement}`).toMatch(
+            /permission denied to create temporary tables/
+          )
+      },
+      database
+    )
+  await asLogin(
+    'migrator',
+    async (client) => {
+      await client.query('SET ROLE "owner"')
+      for (const statement of statements) await client.query(statement)
+    },
+    database
+  )
+
+  const partitions = () =>
+    asLogin(
+      'postgres',
+      async (client) => {
+        const { rows } = await client.query<{ name: string; owner: string }>(
+          `SELECT c.relname AS name, pg_get_userbyid(c.relowner) AS owner FROM pg_inherits i
+            JOIN pg_class c ON c.oid = i.inhrelid WHERE i.inhparent = 'reading'::regclass ORDER BY 1`
+        )
+        return rows
+      },
+      database
+    )
+  const before = await partitions()
+  const furthest = before.filter(({ name }) => name !== 'reading_default').at(-1)!.name
+  await asLogin(
+    'migrator',
+    async (client) => {
+      await client.query('SET ROLE "owner"')
+      await client.query(`DROP TABLE ${furthest}`)
+    },
+    database
+  )
+  expect((await partitions()).map(({ name }) => name)).not.toContain(furthest)
+  await asLogin('system', (client) => client.query('SELECT partition_maintenance()'), database)
+  expect(await partitions()).toEqual(expect.arrayContaining(before))
 }, 120_000)
 
 test('a failing migration rolls back and leaves no record, so the next run applies it once fixed', async () => {
