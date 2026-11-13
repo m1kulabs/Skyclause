@@ -4,7 +4,14 @@
 import { randomUUID } from 'node:crypto'
 import type { Page, Principal } from '@skyclause/contracts'
 import { analyticsEvent, domainEvent, window, withSystem, withTenant, systemPrincipal, type Tx } from '@skyclause/db'
-import { makeBundle, makeCall, makeOrganization, makeProject, makeRun } from '@skyclause/db/test/factories/index'
+import {
+  makeBundle,
+  makeCall,
+  makeOrganization,
+  makeProject,
+  makeRun,
+  makeWindow
+} from '@skyclause/db/test/factories/index'
 import { and, eq } from 'drizzle-orm'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { encodeCursor } from '../src/pagination'
@@ -468,4 +475,20 @@ describe('GET /v1/projects/{id}/windows', () => {
       params: { id: otherProjectId }
     }).run()
   })
+})
+
+test('updateWindow and cancelWindow reject a foreign tenant window', async () => {
+  const foreign = await inOrg(OTHER, (tx) => makeWindow(tx, { projectId: otherProjectId }))
+  const as = editor()
+  await crossOrgCase('updateWindow', {
+    app: v1,
+    as,
+    org: ORG,
+    params: { id: foreign.id },
+    body: { title: 'Changed' }
+  }).run()
+  await crossOrgCase('cancelWindow', { app: v1, as, org: ORG, params: { id: foreign.id } }).run()
+  const [unchanged] = await inOrg(OTHER, (tx) => tx.select().from(window).where(eq(window.id, foreign.id)))
+  expect(unchanged!.title).toBe(foreign.title)
+  expect(unchanged!.cancelledAt).toBeNull()
 })

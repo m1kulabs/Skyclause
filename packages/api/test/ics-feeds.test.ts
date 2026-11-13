@@ -1129,3 +1129,25 @@ test.each([
       .sort()
   ).toEqual(scenario.expected)
 })
+
+test('createIcsFeed, getIcsFeed and deleteIcsFeed reject foreign tenant resources', async () => {
+  const foreignPrincipal = { ...asApiKey({ org: OTHER, role: 'editor', scopes: ['read', 'draft'] }) }
+  const foreign = await withTenant({ orgId: testOrg(OTHER).id, principal: foreignPrincipal }, async (tx) => {
+    const project = await makeProject(tx)
+    return { project, feed: await makeIcsFeed(tx, { projectId: project.id }) }
+  })
+  const editor = asApiKey({ org: ORG, role: 'editor', scopes: ['read', 'draft'] })
+  await crossOrgCase('createIcsFeed', {
+    app: v1,
+    as: editor,
+    org: ORG,
+    params: { id: foreign.project.id },
+    body: { url: 'https://calendar.example.org/schedule.ics' }
+  }).run()
+  await crossOrgCase('getIcsFeed', { app: v1, as: editor, org: ORG, params: { id: foreign.feed.id } }).run()
+  await crossOrgCase('deleteIcsFeed', { app: v1, as: editor, org: ORG, params: { id: foreign.feed.id } }).run()
+  const [unchanged] = await withTenant({ orgId: testOrg(OTHER).id, principal: foreignPrincipal }, (tx) =>
+    tx.select().from(icsFeed).where(eq(icsFeed.id, foreign.feed.id))
+  )
+  expect(unchanged!.deletedAt).toBeNull()
+})
