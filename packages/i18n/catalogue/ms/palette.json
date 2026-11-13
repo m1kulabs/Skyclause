@@ -2,7 +2,7 @@
   "title": "Palet arahan",
   "description": "Cari halaman dan arahan yang tersedia untuk peranan anda. Gunakan kekunci anak panah untuk bergerak, Enter untuk memilih dan Escape untuk tutup.",
   "search": "Cari arahan",
-  "placeholder": "Cari arahan, contohnya isytiharkan tetingkap…",
+  "placeholder": "Cari arahan, contohnya isytiharkan jendela masa…",
   "results": "Arahan yang tersedia",
   "empty": "Tiada arahan yang sepadan. Tekan Escape untuk menutup.",
   "no_matches": "Tiada yang sepadan. Cuba carian lain.",
@@ -12,8 +12,8 @@
   "choose_project_empty": "Tiada projek tersedia untuk tindakan ini.",
   "open_organisation": "Buka organisasi {name}",
   "open_project": "Buka projek {name}",
-  "declare_window": "Isytiharkan tetingkap",
-  "declare_window_for": "Isytiharkan tetingkap · {name}",
+  "declare_window": "Isytiharkan jendela masa",
+  "declare_window_for": "Isytiharkan jendela masa · {name}",
   "open_ledger": "Buka lejar",
   "light": "Cerah",
   "dark": "Gelap",
@@ -29,7 +29,7 @@
     "choose": "Pilih projek",
     "project": "Projek",
     "source": "Sumber",
-    "window": "Tetingkap",
+    "window": "Jendela masa",
     "bundle": "Berkas",
     "call": "Keputusan",
     "ledger": "Entri lejar"
@@ -40,7 +40,7 @@
   "footer": {
     "move": "untuk bergerak",
     "choose": "untuk memilih",
-    "close": "untuk tutup",
+    "close": "untuk menutup",
     "enter": "Enter",
     "escape": "Esc"
   }
