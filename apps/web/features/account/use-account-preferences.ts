@@ -13,8 +13,13 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES, locale: 'en
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  // What the person sees: what the server last stored, with every change made since laid over it.
   const current = useRef(initial)
+  const confirmed = useRef(initial)
+  // Changes made since the last request went out. They wait for the request on its way, then go out as one.
+  const queued = useRef<Partial<PreferenceValues>>({})
   const inFlight = useRef(false)
+  const running = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     let active = true
@@ -22,6 +27,7 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES, locale: 'en
       .then((saved) => {
         if (!active || inFlight.current) return
         current.current = saved
+        confirmed.current = saved
         setPreferences(saved)
         applyAccountPreferences(saved)
       })
@@ -33,42 +39,60 @@ export function useAccountPreferences(initial = DEFAULT_PREFERENCES, locale: 'en
     }
   }, [])
 
+  const show = useCallback((next: PreferenceValues) => {
+    current.current = next
+    setPreferences(next)
+    applyAccountPreferences(next)
+  }, [])
+
+  const send = useCallback(async () => {
+    let failed = false
+    let languageStored = false
+    try {
+      while (Object.keys(queued.current).length > 0) {
+        const body = queued.current
+        queued.current = {}
+        try {
+          const stored = await accountApi('updateMyPreferences', { body })
+          confirmed.current = stored
+          // A change made while this one was on its way is already on screen: its own answer settles it.
+          show(Preferences.parse({ ...stored, ...queued.current }))
+          if ('language' in body) {
+            // The server renders every page's words: a language choice is remembered for every request.
+            rememberLanguage(stored.language)
+            languageStored = true
+          }
+        } catch {
+          failed = true
+          // Only this change goes back; the ones made after it stay and are still sent.
+          show(Preferences.parse({ ...confirmed.current, ...queued.current }))
+          // The server's own detail is English and says nothing the person can act on: the panel's sentence is shown.
+          setError(t('account-settings.appearance.saveFailed', {}, locale))
+        }
+      }
+      setSaved(!failed)
+      // This page loads again in the saved language unless it is already in it, once nothing is left to send.
+      if (languageStored && document.documentElement.lang !== confirmed.current.language) window.location.reload()
+    } finally {
+      inFlight.current = false
+      setSaving(false)
+    }
+  }, [locale, show])
+
   const save = useCallback(
-    async (update: Partial<PreferenceValues>) => {
-      if (inFlight.current) return
-      inFlight.current = true
-      const previous = current.current
-      const next = Preferences.parse({ ...previous, ...update })
-      current.current = next
-      setPreferences(next)
-      applyAccountPreferences(next)
-      setSaving(true)
+    (update: Partial<PreferenceValues>) => {
+      show(Preferences.parse({ ...current.current, ...update }))
+      queued.current = { ...queued.current, ...update }
       setError(null)
       setSaved(false)
-      try {
-        const stored = await accountApi('updateMyPreferences', { body: update })
-        current.current = stored
-        setPreferences(stored)
-        applyAccountPreferences(stored)
-        setSaved(true)
-        // The server renders every page's words: a language choice is remembered for every request, and this page
-        // loads again in it unless it is already in that language.
-        if ('language' in update) {
-          rememberLanguage(stored.language)
-          if (document.documentElement.lang !== stored.language) window.location.reload()
-        }
-      } catch {
-        current.current = previous
-        setPreferences(previous)
-        applyAccountPreferences(previous)
-        // The server's own detail is English and says nothing the person can act on: the panel's sentence is shown.
-        setError(t('account-settings.appearance.saveFailed', {}, locale))
-      } finally {
-        inFlight.current = false
-        setSaving(false)
+      if (!inFlight.current) {
+        inFlight.current = true
+        setSaving(true)
+        running.current = send()
       }
+      return running.current
     },
-    [locale]
+    [send, show]
   )
 
   return { preferences, save, saving, saved, error }

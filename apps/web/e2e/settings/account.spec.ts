@@ -210,10 +210,16 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
   await expect(page.getByRole('switch', { name: 'Collapse sidebar' })).toHaveCount(0)
 
   const shortcuts = page.getByRole('switch', { name: 'Keyboard shortcuts' })
+  // The toggle is optimistic and is saved after the theme's own save; wait for that save's answer before reloading.
+  const shortcutsSaved = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/me/preferences' &&
+      response.request().method() === 'PATCH' &&
+      response.request().postDataJSON()?.shortcuts === false
+  )
   await shortcuts.click()
   await expect(shortcuts).not.toBeChecked()
-  // The toggle is optimistic; wait for its save to finish before reloading.
-  await expect(shortcuts).toBeEnabled()
+  expect((await shortcutsSaved).status()).toBe(200)
   await page.reload()
   await expect(page.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
 
@@ -228,6 +234,41 @@ test('SET-2 applies system theme live, saves shortcuts, and enforces reduced mot
         )
     )
     .toBe(false)
+})
+
+test('SET-2 saves a change made while the previous save is still on its way', async ({ page }) => {
+  await signedIn(page)
+  await page.goto('/account/appearance')
+  const sent: Record<string, unknown>[] = []
+  let releaseFirst!: () => void
+  const firstHeld = new Promise<void>((resolve) => (releaseFirst = resolve))
+  await page.route('**/api/me/preferences', async (route) => {
+    const request = route.request()
+    if (request.method() !== 'PATCH') return route.continue()
+    sent.push(request.postDataJSON())
+    // The first save stays on its way for as long as the test says, whatever the clock or the load of the machine.
+    if (sent.length === 1) await firstHeld
+    await route.continue()
+  })
+
+  const shortcuts = page.getByRole('switch', { name: 'Keyboard shortcuts' })
+  await expect(shortcuts).toBeChecked()
+  await page.getByText('Day', { exact: true }).click()
+  await expect.poll(() => sent).toEqual([{ theme: 'light' }])
+
+  await shortcuts.click()
+  await expect(shortcuts).not.toBeChecked()
+  const shortcutsSaved = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH' && response.request().postDataJSON()?.shortcuts === false
+  )
+  releaseFirst()
+  expect((await shortcutsSaved).status()).toBe(200)
+  expect(sent).toEqual([{ theme: 'light' }, { shortcuts: false }])
+  await expect(page.getByText('Saved.')).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByRole('radio', { name: /^Day/ })).toBeChecked()
+  await expect(page.getByRole('switch', { name: 'Keyboard shortcuts' })).not.toBeChecked()
 })
 
 test('SET-2 shares preferences across browser contexts and paints the saved theme on the server', async ({
