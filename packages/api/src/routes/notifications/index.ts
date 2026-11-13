@@ -127,10 +127,11 @@ async function notificationStream(c: Context<ApiEnv>): Promise<Response> {
         }
       }
       const trigger = () => void reread()
-      const heartbeat = setInterval(trigger, SSE_HEARTBEAT_MS)
+      // Subscribed before the timer starts: a hub that refuses throws here and leaves nothing running.
       const unlisten = opening.map(({ orgId, projectIds }) =>
         listenEvents({ orgId, projectIds, types: NOTIFICATION_EVENT_TYPES }, trigger)
       )
+      const heartbeat = setInterval(trigger, SSE_HEARTBEAT_MS)
       return () => {
         clearInterval(heartbeat)
         for (const stop of unlisten) stop()

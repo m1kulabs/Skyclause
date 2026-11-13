@@ -3,7 +3,7 @@
 // denial below `project.view` on each operation.
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import type { EventEnvelope, Page, Principal, Role } from '@skyclause/contracts'
+import { NotBuiltError, type EventEnvelope, type Page, type Principal, type Role } from '@skyclause/contracts'
 import {
   bundle,
   createBundle,
@@ -555,6 +555,20 @@ describe('GET /v1/projects/{id}/bundles/stream', () => {
     const ids = [...text.matchAll(/^id: (\d+)$/gm)].map((m) => Number(m[1]))
     expect(ids).toEqual([...stored.map((e) => e.seq).filter((s) => s > 1), next.seq])
     expect(text).toContain(`event: ${stored[1]!.type}\n`)
+  })
+
+  test('answers 501 while the event hub is not built, never a stream that breaks after its headers', async () => {
+    vi.mocked(listenEvents).mockImplementationOnce(() => {
+      throw new NotBuiltError('d-org-api')
+    })
+    const response = await v1.fetch(
+      new Request(`https://api.skyclause.m1ku.tech/v1/projects/${made.scene.projectId}/bundles/stream`, {
+        headers: { 'Skyclause-Organization': A }
+      }),
+      { principal: as() }
+    )
+    expect(response.status).toBe(501)
+    expect(response.headers.get('Content-Type')).toContain('application/problem+json')
   })
 })
 
