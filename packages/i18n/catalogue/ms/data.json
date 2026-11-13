@@ -110,8 +110,8 @@
   },
   "day": {
     "label": "Jendela masa pada {date}",
-    "summary": "{count} jendela masa pada {date}. Masa dalam MYT.",
-    "summary_one": "1 jendela masa pada {date}. Masa dalam MYT.",
+    "summary": "{count} jendela masa pada {date}. Waktu dalam MYT.",
+    "summary_one": "1 jendela masa pada {date}. Waktu dalam MYT.",
     "empty": "Tiada jendela masa pada {date}.",
     "now": "Kini {time}",
     "range": "{from}–{to} MYT",
